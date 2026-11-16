@@ -60,6 +60,8 @@ async def test_full_info_is_lazy_and_cached(client: httpx.AsyncClient, ctx: AppC
     full = await get_json(client, f"/api/channels/{first['id']}/full")
     assert full["full_loaded"] is True
     assert full["members_count"] is not None
+    assert full["pulse"] is not None
+    assert len(full["pulse"]["weeks"]) == 26
 
 
 async def test_avatar_served(client: httpx.AsyncClient, ctx: AppContext) -> None:

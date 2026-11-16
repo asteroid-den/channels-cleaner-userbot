@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -59,6 +59,7 @@ class ChannelOut(BaseModel):
     decision: str | None
     decision_status: str | None
     error: str | None
+    pulse: dict[str, Any] | None
 
     @classmethod
     def from_row(cls, row: ChannelRow) -> ChannelOut:
@@ -91,4 +92,5 @@ class ChannelOut(BaseModel):
             decision=row.decision,
             decision_status=row.decision_status,
             error=row.error,
+            pulse=row.pulse,
         )

@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from pyrogram import Client, enums, errors
+from pyrogram import Client, enums, errors, raw
 from pyrogram.qrlogin import QRLogin
 
 from channels_cleaner.config import Settings
@@ -293,6 +293,35 @@ class KurigramGateway:
         if chat is None:
             return ChannelFull(about=None, members_count=None)
         return ChannelFull(about=chat.description, members_count=chat.members_count)
+
+    async def recent_post_dates(self, channel_id: int, limit: int) -> list[datetime]:
+        # Raw GetHistory: one request, no message parsing (the high-level iterator parses
+        # every message and may fetch replies on top).
+        client = self.client
+        try:
+            result = await client.invoke(
+                raw.functions.messages.GetHistory(
+                    peer=await client.resolve_peer(channel_id),
+                    offset_id=0,
+                    offset_date=0,
+                    add_offset=0,
+                    limit=limit,
+                    max_id=0,
+                    min_id=0,
+                    hash=0,
+                )
+            )
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        except errors.RPCError as exc:
+            log.info("History fetch failed for %s: %s", channel_id, exc)
+            return []
+        dates = [
+            datetime.fromtimestamp(m.date, tz=UTC)
+            for m in getattr(result, "messages", [])
+            if isinstance(m, raw.types.Message)
+        ]
+        return sorted(dates, reverse=True)
 
     async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None:
         try:

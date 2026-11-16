@@ -79,6 +79,10 @@ MIGRATIONS: list[str] = [
         PRIMARY KEY (account_id, key)
     );
     """,
+    # 2 — weekly posting activity ("pulse"), cached as JSON alongside the full info
+    """
+    ALTER TABLE channels ADD COLUMN pulse TEXT;
+    """,
 ]
 
 
@@ -114,13 +118,14 @@ class ChannelRow:
     decided_at: str | None = None
     applied_at: str | None = None
     error: str | None = None
+    pulse: dict[str, Any] | None = None
 
 
 _CHANNEL_SELECT = """
     SELECT c.channel_id, c.title, c.username, c.about, c.members_count, c.unread_count,
            c.is_muted, c.is_archived, c.photo_file_id, c.photo_unique_id, c.last_post_id,
            c.last_post_at, c.last_post_text, c.last_post_media, c.full_fetched_at, c.gone,
-           d.decision, d.status, d.decided_at, d.applied_at, d.error
+           d.decision, d.status, d.decided_at, d.applied_at, d.error, c.pulse
     FROM channels c
     LEFT JOIN decisions d ON d.account_id = c.account_id AND d.channel_id = c.channel_id
 """
@@ -150,6 +155,7 @@ def _row_to_channel(row: Sequence[Any]) -> ChannelRow:
         decided_at=row[18],
         applied_at=row[19],
         error=row[20],
+        pulse=json.loads(row[21]) if row[21] else None,
     )
 
 
@@ -311,14 +317,27 @@ class Database:
             )
         await self.conn.commit()
 
-    async def save_full(self, account_id: int, channel_id: int, full: ChannelFull) -> None:
+    async def save_full(
+        self,
+        account_id: int,
+        channel_id: int,
+        full: ChannelFull,
+        pulse: dict[str, Any] | None = None,
+    ) -> None:
         await self.conn.execute(
             """
             UPDATE channels SET about = ?, members_count = COALESCE(?, members_count),
-                                full_fetched_at = ?
+                                pulse = COALESCE(?, pulse), full_fetched_at = ?
             WHERE account_id = ? AND channel_id = ?
             """,
-            (full.about, full.members_count, now_iso(), account_id, channel_id),
+            (
+                full.about,
+                full.members_count,
+                json.dumps(pulse) if pulse is not None else None,
+                now_iso(),
+                account_id,
+                channel_id,
+            ),
         )
         await self.conn.commit()
 
