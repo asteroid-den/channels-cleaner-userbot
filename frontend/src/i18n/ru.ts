@@ -107,7 +107,7 @@ const ru: typeof en = {
       dead: 'Мёртвый',
     },
     stampKeep: 'Оставить',
-    stampLeave: 'Уйти',
+    stampLeave: 'Отписаться',
     stampSkip: 'Потом',
     syncing: 'Обновляем список…',
   },

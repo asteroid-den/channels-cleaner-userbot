@@ -15,7 +15,7 @@ const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
 
 export function relativeTime(iso: string, locale: string, now = Date.now()): string {
   const seconds = (new Date(iso).getTime() - now) / 1000
-  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' })
   for (const [unit, size] of UNITS) {
     if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit)
   }
