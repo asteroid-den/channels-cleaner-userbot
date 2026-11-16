@@ -88,13 +88,13 @@ const STAMPS: Record<Decision, { label: string; icon: IconName; cls: string; pos
     label: 'deck.stampKeep',
     icon: 'check',
     cls: 'border-success text-success',
-    pos: 'left-6 top-6 -rotate-12',
+    pos: 'left-5 top-[86px] -rotate-6',
   },
   unsubscribe: {
     label: 'deck.stampLeave',
     icon: 'x',
     cls: 'border-danger text-danger',
-    pos: 'right-6 top-6 rotate-12',
+    pos: 'right-5 top-[86px] rotate-6',
   },
   skip: {
     label: 'deck.stampSkip',
@@ -202,7 +202,7 @@ defineExpose({ fling, busy })
         <ChannelCard :channel="channel" />
         <div
           v-if="stamp"
-          class="pointer-events-none absolute flex items-center gap-2 rounded-xl border-[3px] bg-surface/80 px-4 py-1.5 text-2xl font-extrabold tracking-wider uppercase backdrop-blur-sm"
+          class="pointer-events-none absolute z-10 flex items-center gap-2 rounded-lg border-2 bg-surface-2/90 px-3 py-1.5 font-mono text-lg font-bold tracking-wide uppercase backdrop-blur-sm"
           :class="[STAMPS[stamp.decision].cls, STAMPS[stamp.decision].pos]"
           :style="{ opacity: stamp.strength }"
         >

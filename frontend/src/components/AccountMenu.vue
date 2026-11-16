@@ -60,16 +60,12 @@ async function logout(wipe: boolean) {
 <template>
   <div ref="root" class="relative">
     <button
-      class="flex h-9 items-center gap-2 rounded-full border border-border bg-surface px-1.5 pr-3 text-sm hover:bg-surface-2"
+      class="flex h-[30px] items-center gap-2 rounded-lg border border-border-2 px-2.5 text-[12.5px] text-muted hover:text-text"
       :aria-label="t('account.menu')"
       :aria-expanded="open"
       @click="open = !open"
     >
-      <span
-        class="flex h-6 w-6 items-center justify-center rounded-full bg-accent-soft text-accent"
-      >
-        <AppIcon name="user" :size="14" />
-      </span>
+      <AppIcon name="user" :size="14" />
       <span class="max-w-32 truncate">{{ auth.state.user?.first_name }}</span>
     </button>
     <Transition
@@ -80,7 +76,7 @@ async function logout(wipe: boolean) {
     >
       <div
         v-if="open"
-        class="absolute right-0 z-40 mt-2 w-72 overflow-hidden rounded-xl border border-border bg-surface p-1 shadow-card"
+        class="absolute right-0 z-40 mt-2 w-72 overflow-hidden rounded-xl border border-border-2 bg-surface p-1 shadow-card"
         role="menu"
       >
         <div class="px-3 py-2 text-xs text-muted">
