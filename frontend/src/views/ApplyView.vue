@@ -45,6 +45,58 @@ const BADGE: Record<ActionDecision, { icon: IconName; cls: string; verb: string 
 
 const avatarUrl = (id: number, hasPhoto: boolean) =>
   hasPhoto ? `/api/channels/${id}/avatar` : null
+
+// Deck geometry: the first card is "in focus" (flat, a bit larger); the rest fan out to the
+// right in half-profile, overlapping each other like a hand of cards.
+const CARD = 104
+const FOCUS_GAP = 100
+const STEP = 46
+
+function offsetOf(index: number): number {
+  return index === 0 ? 0 : FOCUS_GAP + (index - 1) * STEP
+}
+
+const deckWidth = computed(() => (shown.value.length ? offsetOf(shown.value.length - 1) + CARD : 0))
+
+function cardTransform(index: number, running: boolean): string {
+  // perspective() lives in the transform itself: a perspective on an ancestor gets flattened
+  // by the intermediate elements and turns the rotation into a plain squash.
+  if (index === 0) return `perspective(700px) translateY(${running ? -10 : 0}px) scale(1.1)`
+  return 'perspective(700px) rotateY(-42deg) scale(0.94)'
+}
+
+function statusOf(el: Element) {
+  const id = Number((el as HTMLElement).dataset.id)
+  return state.value.items.find((i) => i.channel_id === id)?.status
+}
+
+function onEnter(el: Element, done: () => void) {
+  el.animate(
+    [
+      { opacity: 0, translate: '28px 0' },
+      { opacity: 1, translate: '0 0' },
+    ],
+    { duration: 420, easing: 'cubic-bezier(.2,.8,.3,1)' },
+  ).onfinish = done
+}
+
+function onLeave(el: Element, done: () => void) {
+  const failed = statusOf(el) === 'failed'
+  const keyframes: Keyframe[] = failed
+    ? [
+        { opacity: 1, translate: '0 0', rotate: '0deg', filter: 'none' },
+        { opacity: 0, translate: '0 56px', rotate: '-10deg', filter: 'grayscale(1)' },
+      ]
+    : [
+        { opacity: 1, translate: '0 -10px', scale: '1', filter: 'blur(0)' },
+        { opacity: 0, translate: '0 -48px', scale: '0.82', filter: 'blur(3px)' },
+      ]
+  el.animate(keyframes, {
+    duration: failed ? 520 : 460,
+    easing: 'ease-in',
+    fill: 'forwards',
+  }).onfinish = done
+}
 </script>
 
 <template>
@@ -103,31 +155,28 @@ const avatarUrl = (id: number, hasPhoto: boolean) =>
     </div>
 
     <!-- the deck of avatars, in the order they will be processed -->
-    <div class="mt-14 flex h-48 w-full max-w-4xl items-center justify-center [perspective:900px]">
+    <div class="mt-14 flex h-48 w-full max-w-4xl items-center justify-center">
       <TransitionGroup
         tag="div"
-        class="flex items-center pl-12"
-        move-class="transition-transform duration-500 ease-out"
-        leave-active-class="transition-all duration-500 ease-out"
-        leave-to-class="opacity-0 -translate-y-10 scale-75 !w-0 !ml-0"
+        class="relative h-[124px] shrink-0 transition-[width] duration-500 ease-out"
+        :style="{ width: `${deckWidth}px` }"
+        :css="false"
+        @enter="onEnter"
+        @leave="onLeave"
       >
         <div
           v-for="(item, i) in shown"
           :key="item.channel_id"
-          class="relative -ml-12 w-[104px] shrink-0 [transform-style:preserve-3d]"
-          :style="{ zIndex: VISIBLE - i }"
+          :data-id="item.channel_id"
+          class="absolute top-2.5 left-0 w-[104px] transition-transform duration-500 ease-out"
+          :style="{ zIndex: VISIBLE - i, transform: `translateX(${offsetOf(i)}px)` }"
         >
           <div
             class="relative transition-transform duration-500 ease-out"
-            :style="{
-              transform:
-                item.status === 'running'
-                  ? 'translateY(-14px) rotateY(0deg) scale(1.12)'
-                  : `rotateY(38deg) translateZ(${-i * 4}px)`,
-            }"
+            :style="{ transform: cardTransform(i, item.status === 'running') }"
           >
             <div
-              class="overflow-hidden rounded-[22px] shadow-card ring-1 ring-black/10"
+              class="overflow-hidden rounded-[22px] shadow-card ring-1 ring-black/10 transition-shadow"
               :class="item.status === 'running' ? 'ring-4 !ring-accent' : ''"
             >
               <ChannelAvatar
@@ -153,7 +202,7 @@ const avatarUrl = (id: number, hasPhoto: boolean) =>
       </TransitionGroup>
       <span
         v-if="hidden"
-        class="ml-6 shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-muted tabular-nums"
+        class="ml-4 shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-muted tabular-nums"
         >+{{ hidden }}</span
       >
       <div v-if="finished && !queue.length" class="flex flex-col items-center gap-3 text-success">
