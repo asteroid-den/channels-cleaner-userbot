@@ -1,0 +1,117 @@
+"""Lazy per-channel extras: full info (GetFullChannel), avatars and post thumbnails."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+from channels_cleaner.config import Settings
+from channels_cleaner.db import ChannelRow, Database
+from channels_cleaner.telegram.gateway import TelegramGateway
+from channels_cleaner.telegram.types import ChannelFull
+
+log = logging.getLogger(__name__)
+
+_NONE_MARKER = ".none"
+
+
+class ChannelNotFoundError(LookupError):
+    pass
+
+
+class ChannelsService:
+    def __init__(self, gateway: TelegramGateway, db: Database, settings: Settings) -> None:
+        self._gw = gateway
+        self._db = db
+        self._settings = settings
+        # Telegram is touchy about GetFullChannel bursts: one at a time is plenty for a deck.
+        self._full_sem = asyncio.Semaphore(1)
+        self._media_sem = asyncio.Semaphore(2)
+        self._inflight: dict[tuple[str, int], asyncio.Future[object]] = {}
+
+    async def _row(self, account_id: int, channel_id: int) -> ChannelRow:
+        row = await self._db.get_channel(account_id, channel_id)
+        if row is None:
+            raise ChannelNotFoundError(channel_id)
+        return row
+
+    def _is_fresh(self, fetched_at: str | None) -> bool:
+        if not fetched_at:
+            return False
+        age = datetime.now(UTC) - datetime.fromisoformat(fetched_at)
+        return age < timedelta(hours=self._settings.full_info_ttl_hours)
+
+    async def get_full(self, account_id: int, channel_id: int) -> ChannelRow:
+        row = await self._row(account_id, channel_id)
+        if self._is_fresh(row.full_fetched_at):
+            return row
+        key = ("full", channel_id)
+        if key in self._inflight:
+            await self._inflight[key]
+        else:
+            future: asyncio.Future[object] = asyncio.get_running_loop().create_future()
+            self._inflight[key] = future
+            try:
+                async with self._full_sem:
+                    full: ChannelFull = await self._gw.get_full(channel_id)
+                await self._db.save_full(account_id, channel_id, full)
+            finally:
+                # Waiters just re-read the row; if this fetch failed they get it without extras.
+                future.set_result(None)
+                self._inflight.pop(key, None)
+        return await self._row(account_id, channel_id)
+
+    # --- media ---------------------------------------------------------------------------
+    def _media_dir(self, account_id: int) -> Path:
+        path = self._settings.media_dir / str(account_id)
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @staticmethod
+    def _cached(directory: Path, stem: str) -> Path | bool | None:
+        """Return the cached file, ``False`` for a remembered miss, ``None`` if unknown."""
+        for candidate in directory.glob(f"{stem}.*"):
+            if candidate.suffix == _NONE_MARKER:
+                return False
+            return candidate
+        return None
+
+    async def avatar(self, account_id: int, channel_id: int) -> Path | None:
+        row = await self._row(account_id, channel_id)
+        if not row.photo_file_id:
+            return None
+        directory = self._media_dir(account_id)
+        stem = f"avatar_{channel_id}_{row.photo_unique_id or 'x'}"
+        cached = self._cached(directory, stem)
+        if cached is False:
+            return None
+        if isinstance(cached, Path):
+            return cached
+        async with self._media_sem:
+            path = await self._gw.download_avatar(
+                channel_id, row.photo_file_id, directory / f"{stem}.jpg"
+            )
+        if path is None:
+            (directory / f"{stem}{_NONE_MARKER}").touch()
+        return path
+
+    async def post_thumb(self, account_id: int, channel_id: int) -> Path | None:
+        row = await self._row(account_id, channel_id)
+        if not row.last_post_id or row.last_post_media not in {"photo", "video", "animation"}:
+            return None
+        directory = self._media_dir(account_id)
+        stem = f"thumb_{channel_id}_{row.last_post_id}"
+        cached = self._cached(directory, stem)
+        if cached is False:
+            return None
+        if isinstance(cached, Path):
+            return cached
+        async with self._media_sem:
+            path = await self._gw.download_post_thumb(
+                channel_id, row.last_post_id, directory / f"{stem}.jpg"
+            )
+        if path is None:
+            (directory / f"{stem}{_NONE_MARKER}").touch()
+        return path
