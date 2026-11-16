@@ -17,9 +17,26 @@ export function relativeTime(iso: string, locale: string, now = Date.now()): str
   const seconds = (new Date(iso).getTime() - now) / 1000
   const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' })
   for (const [unit, size] of UNITS) {
-    if (Math.abs(seconds) >= size) return rtf.format(Math.round(seconds / size), unit)
+    if (Math.abs(seconds) >= size) return rtf.format(Math.trunc(seconds / size), unit)
   }
   return rtf.format(0, 'minute')
+}
+
+/** Age as a bare amount, e.g. "10 мес." / "10 mths" — for figures labelled elsewhere. */
+export function ageShort(iso: string, locale: string, now = Date.now()): string {
+  const seconds = Math.max(0, (now - new Date(iso).getTime()) / 1000)
+  const unitFmt = (unit: string, n: number) =>
+    new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: 'short' }).format(n)
+  for (const [unit, size] of UNITS) {
+    if (seconds >= size) return unitFmt(unit, Math.floor(seconds / size))
+  }
+  return unitFmt('minute', 1)
+}
+
+/** Short month names for the pulse axis: [26 weeks ago, 13 weeks ago, now]. */
+export function pulseAxis(locale: string, now = new Date()): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { month: 'short' })
+  return [26, 13, 0].map((w) => fmt.format(new Date(now.getTime() - w * 7 * 86_400_000)))
 }
 
 export function fullDate(iso: string, locale: string): string {

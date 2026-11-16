@@ -21,6 +21,14 @@ export type Decision = 'keep' | 'unsubscribe' | 'mute' | 'archive' | 'skip'
 export type ActionDecision = 'unsubscribe' | 'mute' | 'archive'
 export type SortMode = 'dead' | 'unread'
 
+export interface Pulse {
+  /** 26 weekly post counts, oldest first; null = week not covered by the fetched history. */
+  weeks: (number | null)[]
+  per_week: number
+  truncated: boolean
+  sample: number
+}
+
 export interface Channel {
   id: number
   title: string
@@ -40,6 +48,7 @@ export interface Channel {
   decision: Decision | null
   decision_status: 'pending' | 'applied' | 'failed' | null
   error: string | null
+  pulse: Pulse | null
 }
 
 export interface DeckCounts {
