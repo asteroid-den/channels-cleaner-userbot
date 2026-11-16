@@ -6,11 +6,11 @@ import argparse
 import logging
 import os
 import threading
-import webbrowser
 
 import uvicorn
 
 from channels_cleaner.app import STATIC_DIR, create_app
+from channels_cleaner.browser import open_url
 from channels_cleaner.config import Settings
 
 
@@ -51,7 +51,7 @@ def main(argv: list[str] | None = None) -> None:
     mode = " (mock mode)" if settings.mock else ""
     print(f"Channels Cleaner{mode} → {url}  (Ctrl+C to stop)")
     if not args.no_browser and not os.environ.get("CC_NO_BROWSER"):
-        threading.Timer(1.2, webbrowser.open, args=(url,)).start()
+        threading.Timer(1.2, open_url, args=(url,)).start()
 
     uvicorn.run(
         create_app(settings),
