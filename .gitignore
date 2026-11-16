@@ -22,3 +22,6 @@ src/channels_cleaner/static/
 .idea/
 .vscode/
 .DS_Store
+
+# Local tooling
+.claude/
