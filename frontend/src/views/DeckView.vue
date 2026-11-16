@@ -1,37 +1,52 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import type { Decision } from '@/api/types'
-import AppIcon, { type IconName } from '@/components/AppIcon.vue'
-import FilmStrip from '@/components/FilmStrip.vue'
+import AppIcon from '@/components/AppIcon.vue'
+import ChannelAvatar from '@/components/ChannelAvatar.vue'
+import PulseChart from '@/components/PulseChart.vue'
 import SwipeDeck from '@/components/SwipeDeck.vue'
+import { useChannelColor } from '@/composables/useChannelColor'
 import { useHotkeys } from '@/composables/useHotkeys'
 import { useApplyStore } from '@/stores/apply'
 import { useDeckStore } from '@/stores/deck'
+import { compactNumber, relativeTime } from '@/utils/format'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const deck = useDeckStore()
 const apply = useApplyStore()
 const router = useRouter()
 const swiper = useTemplateRef<InstanceType<typeof SwipeDeck>>('swiper')
 
+useChannelColor(computed(() => deck.current))
+
 onMounted(async () => {
   deck.watchSync()
   await deck.load()
-  // A job may still be running from before a page reload: show it.
   if (apply.running) void router.push('/apply')
 })
 onBeforeUnmount(() => deck.unwatchSync())
 
+// --- actions -------------------------------------------------------------------------------
+const pressed = ref<string | null>(null)
+const stamps: number[] = []
+
+function flash(key: string) {
+  pressed.value = key
+  setTimeout(() => (pressed.value = pressed.value === key ? null : pressed.value), 140)
+}
+
 function act(decision: Decision) {
   if (!deck.current) return
-  swiper.value?.fling(decision)
+  flash(decision)
+  if (swiper.value?.fling(decision)) stamps.push(Date.now())
 }
 
 async function undo() {
   if (swiper.value?.busy) return
+  flash('undo')
   await deck.undo()
 }
 
@@ -50,105 +65,157 @@ useHotkeys({
   Enter: review,
 })
 
+// --- derived ---------------------------------------------------------------------------------
 const showSync = computed(() => deck.syncing && deck.items.length === 0)
 const empty = computed(() => deck.loaded && !deck.syncing && deck.items.length === 0)
+const progress = computed(() =>
+  deck.counts.total ? ((deck.position - 1) / deck.counts.total) * 100 : 0,
+)
+const history = computed(() => deck.history.slice(-14).reverse())
+const queue = computed(() => deck.items.slice(1, 8))
+const keptInSession = computed(() => deck.history.filter((h) => h.decision === 'keep').length)
 
-const small: { decision: Decision | 'undo'; icon: IconName; label: string; kbd: string }[] = [
-  { decision: 'undo', icon: 'undo', label: 'actions.undo', kbd: 'Ctrl Z' },
-  { decision: 'skip', icon: 'skip', label: 'actions.skip', kbd: '↓' },
-  { decision: 'mute', icon: 'bellOff', label: 'actions.mute', kbd: 'M' },
-  { decision: 'archive', icon: 'archive', label: 'actions.archive', kbd: 'A' },
+/** Remaining time at the user's own pace (median gap between the last decisions). */
+const eta = computed(() => {
+  void deck.history.length // recompute after each decision
+  if (stamps.length < 4) return null
+  const gaps = stamps
+    .slice(-11)
+    .map((ts, i, arr) => (i ? ts - arr[i - 1]! : 0))
+    .slice(1)
+    .sort((a, b) => a - b)
+  const median = Math.min(gaps[Math.floor(gaps.length / 2)]!, 30_000)
+  return Math.round((median * deck.counts.undecided) / 60_000)
+})
+
+const TAG_CLASS: Record<Decision, string> = {
+  keep: 'bg-success-soft text-success',
+  unsubscribe: 'bg-danger-soft text-danger',
+  skip: 'bg-warn-soft text-warn',
+  mute: 'bg-warn-soft text-warn',
+  archive: 'bg-accent-soft text-accent',
+}
+
+const KEYS: { id: Decision; kbd: string; label: string; cls?: string; kbdAfter?: boolean }[] = [
+  { id: 'unsubscribe', kbd: '←', label: 'actions.unsubscribe', cls: 'text-danger' },
+  { id: 'skip', kbd: '↓', label: 'actions.skip' },
+  { id: 'mute', kbd: 'M', label: 'actions.mute' },
+  { id: 'archive', kbd: 'A', label: 'actions.archive' },
+  { id: 'keep', kbd: '→', label: 'actions.keep', cls: 'text-success', kbdAfter: true },
 ]
 </script>
 
 <template>
-  <section class="flex flex-1 flex-col items-center px-4 pb-6">
-    <!-- syncing -->
-    <div v-if="showSync" class="flex flex-1 flex-col items-center justify-center gap-5 text-center">
-      <div class="relative h-20 w-20">
-        <div class="absolute inset-0 animate-ping rounded-3xl bg-accent-soft" />
-        <div
-          class="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-accent text-white"
-        >
-          <AppIcon name="refresh" :size="30" class="animate-spin [animation-duration:2s]" />
-        </div>
-      </div>
-      <div>
-        <h1 class="text-xl font-semibold">{{ t('sync.title') }}</h1>
-        <p class="mt-1 text-muted tabular-nums">{{ t('sync.found', deck.sync?.fetched ?? 0) }}</p>
-        <p v-if="deck.sync?.flood_wait" class="mt-3 text-sm text-warn">
-          {{ t('sync.floodWait', { s: deck.sync.flood_wait }) }}
-        </p>
-      </div>
+  <!-- gathering the list -->
+  <section
+    v-if="showSync"
+    class="flex flex-1 flex-col items-center justify-center gap-4 text-center"
+  >
+    <div class="font-mono text-6xl font-bold tabular-nums">{{ deck.sync?.fetched ?? 0 }}</div>
+    <div>
+      <h1 class="text-lg font-semibold">{{ t('sync.title') }}</h1>
+      <p class="mt-1 text-muted">{{ t('sync.found', deck.sync?.fetched ?? 0) }}</p>
     </div>
+    <div class="skeleton h-1 w-64" />
+    <p v-if="deck.sync?.flood_wait" class="text-sm text-warn">
+      {{ t('sync.floodWait', { s: deck.sync.flood_wait }) }}
+    </p>
+  </section>
 
-    <!-- all done -->
+  <!-- everything decided -->
+  <section
+    v-else-if="empty"
+    class="flex flex-1 flex-col items-center justify-center gap-5 text-center"
+  >
     <div
-      v-else-if="empty"
-      class="flex flex-1 flex-col items-center justify-center gap-5 text-center"
+      class="flex h-16 w-16 items-center justify-center rounded-2xl bg-success-soft text-success"
     >
-      <div
-        class="flex h-20 w-20 items-center justify-center rounded-3xl bg-success-soft text-success"
-      >
-        <AppIcon name="check" :size="36" :stroke="2.5" />
-      </div>
-      <div>
-        <h1 class="text-2xl font-semibold">{{ t('deck.emptyTitle') }}</h1>
-        <p class="mt-1 text-muted">
-          {{ deck.counts.total ? t('deck.emptyText') : t('deck.emptyNoChannels') }}
-        </p>
-        <p v-if="deck.sync?.error" class="mt-3 text-sm text-danger">
-          {{ t('sync.error', { msg: deck.sync.error }) }}
-        </p>
-      </div>
-      <div class="flex gap-3">
+      <AppIcon name="check" :size="30" :stroke="2.5" />
+    </div>
+    <div>
+      <h1 class="text-2xl font-bold">{{ t('deck.emptyTitle') }}</h1>
+      <p class="mt-1 text-muted">
+        {{ deck.counts.total ? t('deck.emptyText') : t('deck.emptyNoChannels') }}
+      </p>
+      <p v-if="deck.sync?.error" class="mt-3 text-sm text-danger">
+        {{ t('sync.error', { msg: deck.sync.error }) }}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button v-if="deck.history.length" class="key" @click="undo">
+        <kbd>⌫</kbd>{{ t('actions.undo') }}
+      </button>
+      <RouterLink v-if="deck.counts.pending" to="/review" class="key">
+        {{ t('deck.applyCta', { n: deck.counts.pending }) }}<kbd>↵</kbd>
+      </RouterLink>
+      <RouterLink v-else to="/results" class="key">{{ t('account.results') }}</RouterLink>
+    </div>
+  </section>
+
+  <!-- the deck -->
+  <section
+    v-else-if="deck.loaded"
+    class="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]"
+  >
+    <!-- history -->
+    <aside
+      class="hidden min-h-0 overflow-hidden border-r border-border bg-surface p-[18px] xl:block"
+    >
+      <div class="label mb-3 flex items-center justify-between">
+        <span>{{ t('deck.historyTitle') }}</span>
         <button
-          v-if="deck.history.length"
-          class="flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-2.5 hover:bg-surface-2"
+          class="font-mono tracking-normal normal-case hover:text-text disabled:opacity-40"
+          :disabled="!deck.history.length"
           @click="undo"
         >
-          <AppIcon name="undo" :size="16" />{{ t('actions.undo') }}
+          ⌫ {{ t('actions.undo').toLowerCase() }}
         </button>
-        <RouterLink
-          v-if="deck.counts.pending"
-          to="/review"
-          class="flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-medium text-white"
-        >
-          {{ t('deck.reviewCount', { n: deck.counts.pending })
-          }}<AppIcon name="arrowRight" :size="16" />
-        </RouterLink>
-        <RouterLink
-          v-else
-          to="/results"
-          class="flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-2.5 hover:bg-surface-2"
-        >
-          <AppIcon name="chart" :size="16" />{{ t('account.results') }}
-        </RouterLink>
       </div>
-    </div>
+      <TransitionGroup
+        tag="ul"
+        enter-from-class="opacity-0 -translate-y-2"
+        enter-active-class="transition duration-300"
+        move-class="transition duration-300"
+      >
+        <li
+          v-for="h in history"
+          :key="`${h.channel.id}-${h.decision}`"
+          class="flex items-center gap-2.5 border-b border-dashed border-border py-2"
+        >
+          <ChannelAvatar
+            :id="h.channel.id"
+            :title="h.channel.title"
+            :src="h.channel.avatar_url"
+            :size="28"
+            rounded="8px"
+          />
+          <span class="min-w-0 flex-1 truncate">{{ h.channel.title }}</span>
+          <span class="tag" :class="TAG_CLASS[h.decision]">{{ t(`deck.tags.${h.decision}`) }}</span>
+        </li>
+      </TransitionGroup>
+      <p v-if="!deck.history.length" class="text-[13px] text-faint">
+        {{ t('deck.historyEmpty') }}
+      </p>
+    </aside>
 
-    <!-- deck -->
-    <template v-else-if="deck.loaded">
-      <div class="flex w-full max-w-3xl items-center justify-center gap-4">
-        <FilmStrip :items="deck.items" :history="deck.history" />
-      </div>
-      <div class="mt-1 flex items-center gap-3 text-sm text-muted tabular-nums">
-        <span>{{ t('deck.position', { pos: deck.position, total: deck.counts.total }) }}</span>
-        <span v-if="deck.syncing" class="flex items-center gap-1 text-xs">
+    <!-- centre -->
+    <div class="glow relative flex min-h-0 flex-col items-center overflow-hidden px-6 pt-5 pb-6">
+      <div class="relative flex w-full max-w-[480px] items-center gap-3 text-[12.5px] text-muted">
+        <span class="font-mono tabular-nums">{{ deck.position }}/{{ deck.counts.total }}</span>
+        <div class="h-1 flex-1 overflow-hidden rounded bg-border">
+          <div
+            class="h-full rounded bg-text transition-[width] duration-300"
+            :style="{ width: `${progress}%` }"
+          />
+        </div>
+        <span v-if="deck.syncing" class="flex items-center gap-1">
           <AppIcon name="refresh" :size="12" class="animate-spin" />{{ t('deck.syncing') }}
         </span>
-      </div>
-      <div class="mt-1 h-[3px] w-full max-w-[440px] overflow-hidden rounded-full bg-surface-2">
-        <div
-          class="h-full rounded-full bg-accent transition-[width] duration-300"
-          :style="{
-            width: `${deck.counts.total ? ((deck.position - 1) / deck.counts.total) * 100 : 0}%`,
-          }"
-        />
+        <span v-else-if="eta !== null">{{ t('deck.eta', { m: t('time.minutes', eta) }) }}</span>
       </div>
 
       <div
-        class="relative mt-5 h-[min(580px,calc(100vh-290px))] min-h-[420px] w-full max-w-[440px]"
+        class="relative mt-4 h-[min(610px,calc(100vh-200px))] min-h-[480px] w-full max-w-[480px]"
       >
         <SwipeDeck
           ref="swiper"
@@ -158,75 +225,115 @@ const small: { decision: Decision | 'undo'; icon: IconName; label: string; kbd: 
         />
       </div>
 
-      <!-- actions -->
-      <div class="mt-8 flex items-end gap-3 sm:gap-5">
+      <div class="relative mt-5 flex flex-wrap justify-center gap-2">
         <button
-          class="group flex flex-col items-center gap-1.5"
-          :aria-label="t('actions.unsubscribe')"
-          @click="act('unsubscribe')"
+          v-for="k in KEYS"
+          :key="k.id"
+          class="key"
+          :class="[k.cls, pressed === k.id ? 'pressed' : '']"
+          @click="act(k.id)"
         >
-          <span
-            class="flex h-16 w-16 items-center justify-center rounded-full bg-danger text-white shadow-card transition-transform group-hover:scale-105 group-active:scale-95"
-          >
-            <AppIcon name="x" :size="30" :stroke="2.6" />
-          </span>
-          <span class="text-xs text-muted"
-            >{{ t('actions.unsubscribe') }} <kbd class="opacity-60">←</kbd></span
-          >
-        </button>
-
-        <button
-          v-for="b in small"
-          :key="b.decision"
-          class="group flex flex-col items-center gap-1.5 disabled:opacity-35"
-          :disabled="b.decision === 'undo' && !deck.history.length"
-          :aria-label="t(b.label)"
-          @click="b.decision === 'undo' ? undo() : act(b.decision)"
-        >
-          <span
-            class="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface transition-transform group-hover:scale-105 group-hover:bg-surface-2 group-active:scale-95"
-          >
-            <AppIcon :name="b.icon" :size="20" />
-          </span>
-          <span class="text-[11px] text-muted">{{ t(b.label) }}</span>
-        </button>
-
-        <button
-          class="group flex flex-col items-center gap-1.5"
-          :aria-label="t('actions.keep')"
-          @click="act('keep')"
-        >
-          <span
-            class="flex h-16 w-16 items-center justify-center rounded-full bg-success text-white shadow-card transition-transform group-hover:scale-105 group-active:scale-95"
-          >
-            <AppIcon name="check" :size="30" :stroke="2.6" />
-          </span>
-          <span class="text-xs text-muted"
-            >{{ t('actions.keep') }} <kbd class="opacity-60">→</kbd></span
-          >
+          <kbd v-if="!k.kbdAfter">{{ k.kbd }}</kbd>{{ t(k.label)
+          }}<kbd v-if="k.kbdAfter">{{ k.kbd }}</kbd>
         </button>
       </div>
-
-      <Transition
-        enter-from-class="opacity-0 translate-y-4"
-        enter-active-class="transition duration-300"
-        leave-to-class="opacity-0 translate-y-4"
-        leave-active-class="transition duration-200"
-      >
-        <button
-          v-if="deck.counts.pending"
-          class="fixed right-6 bottom-6 z-20 flex items-center gap-2 rounded-full bg-accent py-3 pr-4 pl-5 text-sm font-medium text-white shadow-card transition hover:brightness-110"
-          @click="review"
-        >
-          {{ t('deck.reviewCount', { n: deck.counts.pending }) }}
-          <AppIcon name="arrowRight" :size="16" />
-          <kbd class="rounded-md bg-white/20 px-1.5 py-0.5 text-[10px] font-normal">Enter</kbd>
-        </button>
-      </Transition>
-    </template>
-
-    <div v-else class="flex flex-1 items-center justify-center">
-      <div class="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-accent" />
     </div>
+
+    <!-- queue + summary -->
+    <aside
+      class="hidden min-h-0 flex-col gap-[18px] overflow-hidden border-l border-border bg-surface p-[18px] xl:flex"
+    >
+      <div>
+        <div class="label mb-3">{{ t('deck.queueTitle') }}</div>
+        <TransitionGroup
+          tag="ul"
+          move-class="transition duration-300"
+          enter-from-class="opacity-0"
+          enter-active-class="transition duration-300"
+        >
+          <li
+            v-for="c in queue"
+            :key="c.id"
+            class="flex items-center gap-2.5 border-b border-dashed border-border py-2"
+          >
+            <ChannelAvatar
+              :id="c.id"
+              :title="c.title"
+              :src="c.avatar_url"
+              :size="28"
+              rounded="8px"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="truncate">{{ c.title }}</div>
+              <div class="truncate text-[11.5px] text-faint">
+                {{ c.last_post_at ? relativeTime(c.last_post_at, locale) : t('deck.neverPosted') }}
+                · {{ compactNumber(c.unread_count, locale) }} {{ t('deck.unread') }}
+              </div>
+            </div>
+            <div class="w-16 shrink-0 text-muted">
+              <PulseChart v-if="c.pulse" :weeks="c.pulse.weeks" :height="18" mini />
+              <div v-else class="skeleton h-[18px] w-full opacity-60" />
+            </div>
+          </li>
+        </TransitionGroup>
+      </div>
+
+      <dl class="grid grid-cols-2 gap-3 rounded-xl border border-border p-3.5">
+        <div>
+          <dd class="font-mono text-[22px] font-bold text-danger">{{ deck.counts.pending }}</dd>
+          <dt class="text-[11.5px] text-faint">{{ t('deck.toApply') }}</dt>
+        </div>
+        <div>
+          <dd class="font-mono text-[22px] font-bold text-success">{{ keptInSession }}</dd>
+          <dt class="text-[11.5px] text-faint">{{ t('deck.keptSession') }}</dt>
+        </div>
+        <div>
+          <dd class="font-mono text-[22px] font-bold">
+            {{ deck.counts.total - deck.counts.undecided }}
+          </dd>
+          <dt class="text-[11.5px] text-faint">{{ t('deck.decided') }}</dt>
+        </div>
+        <div>
+          <dd class="font-mono text-[22px] font-bold">{{ deck.counts.undecided }}</dd>
+          <dt class="text-[11.5px] text-faint">{{ t('deck.left') }}</dt>
+        </div>
+      </dl>
+
+      <button
+        class="rounded-[10px] bg-text px-3 py-3 font-semibold text-bg transition-opacity disabled:opacity-35"
+        :disabled="!deck.counts.pending"
+        @click="review"
+      >
+        {{ t('deck.applyCta', { n: deck.counts.pending }) }} ↵
+      </button>
+    </aside>
+
+    <!-- narrow screens: floating review button instead of the side panel -->
+    <button
+      v-if="deck.counts.pending"
+      class="fixed right-5 bottom-5 z-20 rounded-[10px] bg-text px-4 py-3 font-semibold text-bg shadow-card xl:hidden"
+      @click="review"
+    >
+      {{ t('deck.applyCta', { n: deck.counts.pending }) }} ↵
+    </button>
   </section>
+
+  <div v-else class="flex flex-1 items-center justify-center">
+    <div class="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-text" />
+  </div>
 </template>
+
+<style scoped>
+.glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    60% 45% at 50% 32%,
+    rgb(var(--ch) / var(--glow-strength)),
+    transparent 70%
+  );
+  transition: background 0.6s;
+}
+</style>

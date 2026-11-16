@@ -15,7 +15,7 @@ import { i18n } from '@/i18n'
 
 import { useUiStore } from './ui'
 
-const PREFETCH_AHEAD = 5
+const PREFETCH_AHEAD = 8
 const ACTIONS: Decision[] = ['unsubscribe', 'mute', 'archive']
 
 export interface HistoryEntry {
