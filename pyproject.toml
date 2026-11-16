@@ -1,0 +1,63 @@
+[project]
+name = "channels-cleaner"
+version = "0.1.0"
+description = "Tinder-like cleanup of your Telegram channel subscriptions, running locally"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.21",
+    "fastapi>=0.115",
+    "kurigram>=2.2.27",
+    "pydantic-settings>=2.6",
+    "tgcrypto>=1.2.5",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.scripts]
+channels-cleaner = "channels_cleaner.cli:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/channels_cleaner"]
+artifacts = ["src/channels_cleaner/static/**"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "ASYNC", "RUF", "PT", "C4", "RET"]
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/channels_cleaner/api/*.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["pyrogram", "pyrogram.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
