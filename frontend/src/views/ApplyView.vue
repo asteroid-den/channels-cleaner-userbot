@@ -120,14 +120,14 @@ function onLeave(el: Element, done: () => void) {
             </template>
           </p>
         </div>
-        <div class="text-right text-2xl font-semibold tabular-nums">
+        <div class="text-right font-mono text-2xl font-bold tabular-nums">
           {{ t('apply.progress', { done: state.done + state.failed, total: state.total }) }}
         </div>
       </div>
 
-      <div class="mt-4 h-2 overflow-hidden rounded-full bg-surface-2">
+      <div class="mt-4 h-1 overflow-hidden rounded bg-border">
         <div
-          class="h-full rounded-full transition-[width] duration-500 ease-out"
+          class="h-full rounded transition-[width] duration-500 ease-out"
           :class="state.failed ? 'bg-gradient-to-r from-success to-warn' : 'bg-success'"
           :style="{ width: `${apply.progress * 100}%` }"
         />
@@ -141,7 +141,7 @@ function onLeave(el: Element, done: () => void) {
       >
         <p
           v-if="floodLeft !== null"
-          class="mt-4 flex items-center gap-2 rounded-xl bg-warn-soft px-4 py-2.5 text-sm text-warn"
+          class="mt-4 flex items-center gap-2 rounded-lg bg-warn-soft px-4 py-2.5 text-sm text-warn"
         >
           <AppIcon name="clock" :size="16" />{{ t('apply.floodWait', { s: floodLeft }) }}
         </p>
@@ -176,7 +176,7 @@ function onLeave(el: Element, done: () => void) {
             :style="{ transform: cardTransform(i, item.status === 'running') }"
           >
             <div
-              class="overflow-hidden rounded-[22px] shadow-card ring-1 ring-black/10 transition-shadow"
+              class="overflow-hidden rounded-[18px] shadow-card ring-1 ring-black/10 transition-shadow"
               :class="item.status === 'running' ? 'ring-4 !ring-accent' : ''"
             >
               <ChannelAvatar
@@ -184,7 +184,7 @@ function onLeave(el: Element, done: () => void) {
                 :title="item.title"
                 :src="avatarUrl(item.channel_id, item.has_photo)"
                 :size="104"
-                rounded="22px"
+                rounded="18px"
               />
             </div>
             <span
@@ -200,13 +200,11 @@ function onLeave(el: Element, done: () => void) {
           </div>
         </div>
       </TransitionGroup>
-      <span
-        v-if="hidden"
-        class="ml-4 shrink-0 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-muted tabular-nums"
+      <span v-if="hidden" class="tag ml-4 shrink-0 border border-border-2 text-muted"
         >+{{ hidden }}</span
       >
       <div v-if="finished && !queue.length" class="flex flex-col items-center gap-3 text-success">
-        <div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-success-soft">
+        <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-success-soft">
           <AppIcon name="check" :size="38" :stroke="2.5" />
         </div>
       </div>
@@ -223,7 +221,7 @@ function onLeave(el: Element, done: () => void) {
         <div
           v-for="item in failedItems"
           :key="item.channel_id"
-          class="flex items-center gap-2 rounded-full border border-danger/40 bg-danger-soft py-1 pr-3 pl-1 text-xs"
+          class="flex items-center gap-2 rounded-lg border border-danger/40 bg-danger-soft py-1 pr-3 pl-1 text-xs"
           :title="item.error ?? ''"
         >
           <ChannelAvatar
@@ -238,24 +236,16 @@ function onLeave(el: Element, done: () => void) {
     </div>
 
     <div class="mt-10 flex gap-3">
-      <button
-        v-if="apply.running"
-        class="rounded-full border border-border bg-surface px-5 py-2.5 text-sm hover:bg-surface-2 disabled:opacity-50"
-        :disabled="apply.cancelling"
-        @click="apply.cancel()"
-      >
+      <button v-if="apply.running" class="key" :disabled="apply.cancelling" @click="apply.cancel()">
         {{ apply.cancelling ? t('apply.cancelling') : t('apply.cancel') }}
       </button>
       <template v-else>
-        <RouterLink
-          to="/"
-          class="flex items-center gap-2 rounded-full border border-border bg-surface px-5 py-2.5 text-sm hover:bg-surface-2"
-        >
+        <RouterLink to="/" class="key">
           <AppIcon name="arrowLeft" :size="16" />{{ t('results.backToDeck') }}
         </RouterLink>
         <RouterLink
           to="/results"
-          class="flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white"
+          class="flex items-center gap-2 rounded-[10px] bg-text px-4 py-2.5 text-[13px] font-semibold text-bg"
         >
           {{ t('apply.seeResults') }}<AppIcon name="arrowRight" :size="16" />
         </RouterLink>

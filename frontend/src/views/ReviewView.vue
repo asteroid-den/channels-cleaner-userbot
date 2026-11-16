@@ -100,11 +100,11 @@ onMounted(load)
     >
       <AppIcon name="arrowLeft" :size="16" />{{ t('review.backToDeck') }}
     </RouterLink>
-    <h1 class="text-3xl font-semibold tracking-tight">{{ t('review.title') }}</h1>
+    <h1 class="text-3xl font-bold tracking-tight">{{ t('review.title') }}</h1>
     <p class="mt-1 text-muted">{{ t('review.subtitle') }}</p>
 
     <div v-if="loading" class="mt-8 space-y-3">
-      <div v-for="i in 4" :key="i" class="skeleton h-16 w-full rounded-2xl" />
+      <div v-for="i in 4" :key="i" class="skeleton h-16 w-full rounded-xl" />
     </div>
 
     <template v-else>
@@ -113,7 +113,7 @@ onMounted(load)
       </p>
 
       <div v-for="group in grouped" :key="group.decision" class="mt-8">
-        <h2 class="mb-3 flex items-center gap-2 text-sm font-medium">
+        <h2 class="label mb-3 flex items-center gap-2">
           <span class="flex h-6 w-6 items-center justify-center rounded-full" :class="group.cls">
             <AppIcon :name="group.icon" :size="14" :stroke="2.5" />
           </span>
@@ -122,7 +122,7 @@ onMounted(load)
         </h2>
         <TransitionGroup
           tag="ul"
-          class="relative overflow-hidden rounded-2xl border border-border bg-surface"
+          class="relative overflow-hidden rounded-xl border border-border bg-surface"
           leave-active-class="transition duration-200 absolute inset-x-0"
           leave-to-class="opacity-0 translate-x-6"
           move-class="transition duration-200"
@@ -142,10 +142,7 @@ onMounted(load)
                 <span v-if="c.unread_count"> · {{ c.unread_count }} {{ t('deck.unread') }}</span>
               </div>
             </div>
-            <button
-              class="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs hover:bg-surface-2"
-              @click="putBack(c)"
-            >
+            <button class="key shrink-0 !px-2.5 !py-1 !text-xs" @click="putBack(c)">
               {{ t('review.putBack') }}
             </button>
           </li>
@@ -161,7 +158,7 @@ onMounted(load)
             {{ t('results.retryFailed') }}
           </button>
         </h2>
-        <ul class="overflow-hidden rounded-2xl border border-border bg-surface">
+        <ul class="overflow-hidden rounded-xl border border-border bg-surface">
           <li
             v-for="c in failed"
             :key="c.id"
@@ -172,10 +169,7 @@ onMounted(load)
               <div class="truncate text-sm font-medium">{{ c.title }}</div>
               <div class="truncate font-mono text-xs text-danger">{{ c.error }}</div>
             </div>
-            <button
-              class="shrink-0 rounded-full border border-border px-3 py-1.5 text-xs hover:bg-surface-2"
-              @click="putBack(c)"
-            >
+            <button class="key shrink-0 !px-2.5 !py-1 !text-xs" @click="putBack(c)">
               {{ t('review.putBack') }}
             </button>
           </li>
@@ -192,7 +186,7 @@ onMounted(load)
           {{ t('review.pacing', { m: t('time.minutes', minutes) }) }}
         </p>
         <button
-          class="flex shrink-0 items-center gap-2 rounded-full bg-danger px-6 py-3 font-medium text-white shadow-card hover:brightness-110 disabled:opacity-50"
+          class="flex shrink-0 items-center gap-2 rounded-[10px] bg-danger px-5 py-3 font-semibold text-white shadow-card hover:brightness-110 disabled:opacity-50"
           :disabled="starting"
           @click="start"
         >
