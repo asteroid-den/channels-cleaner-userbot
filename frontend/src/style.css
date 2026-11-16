@@ -1,50 +1,65 @@
+@import '@fontsource-variable/geologica/wght.css';
+@import '@fontsource-variable/onest/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
 @import 'tailwindcss';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
+/*
+ * "Tool" look: flat panels and hairlines, data first. The only colour that changes is
+ * the current channel's own (--ch / --ch2, taken from its avatar), used as an accent.
+ */
 :root,
 [data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0d0e12;
-  --bg-glow: #1a1d2b;
-  --surface: #16171d;
-  --surface-2: #1e2028;
-  --surface-3: #282a34;
-  --border: #2b2e39;
-  --text: #ecedf2;
-  --muted: #8a8d9a;
-  --faint: #5d606c;
-  --accent: #5b8cff;
-  --accent-soft: rgb(91 140 255 / 0.14);
-  --danger: #f0566a;
-  --danger-soft: rgb(240 86 106 / 0.14);
-  --success: #33c47e;
-  --success-soft: rgb(51 196 126 / 0.14);
-  --warn: #f4b04e;
-  --warn-soft: rgb(244 176 78 / 0.14);
-  --shadow: 0 24px 60px -20px rgb(0 0 0 / 0.65), 0 2px 6px rgb(0 0 0 / 0.3);
+  --bg: #0b0c0f;
+  --surface: #121318;
+  --surface-2: #16181e;
+  --surface-3: #1e2027;
+  --border: #23252d;
+  --border-2: #2e313b;
+  --text: #e9eaee;
+  --muted: #8b8e99;
+  --faint: #5b5e69;
+  --accent: #6aa2ff;
+  --accent-soft: rgb(106 162 255 / 0.14);
+  --danger: #ff5a6e;
+  --danger-soft: rgb(255 90 110 / 0.14);
+  --success: #3ddc97;
+  --success-soft: rgb(61 220 151 / 0.14);
+  --warn: #f5b14c;
+  --warn-soft: rgb(245 177 76 / 0.14);
+  --shadow: 0 30px 60px -30px rgb(0 0 0 / 0.6);
+  --glow-strength: 0.16;
 }
 
 [data-theme='light'] {
   color-scheme: light;
-  --bg: #f3f4f7;
-  --bg-glow: #e3e8f6;
+  --bg: #f3f4f6;
   --surface: #ffffff;
-  --surface-2: #f1f2f5;
-  --surface-3: #e5e7ec;
-  --border: #dfe1e7;
-  --text: #16171d;
-  --muted: #646876;
-  --faint: #9a9daa;
-  --accent: #3a6ff0;
-  --accent-soft: rgb(58 111 240 / 0.12);
-  --danger: #e03a50;
-  --danger-soft: rgb(224 58 80 / 0.1);
-  --success: #1f9e60;
-  --success-soft: rgb(31 158 96 / 0.12);
-  --warn: #c98213;
-  --warn-soft: rgb(201 130 19 / 0.12);
-  --shadow: 0 24px 50px -24px rgb(20 24 40 / 0.35), 0 2px 6px rgb(20 24 40 / 0.08);
+  --surface-2: #ffffff;
+  --surface-3: #f1f2f5;
+  --border: #e6e7eb;
+  --border-2: #d7d9df;
+  --text: #15161a;
+  --muted: #62656f;
+  --faint: #9a9da6;
+  --accent: #2f6fe8;
+  --accent-soft: rgb(47 111 232 / 0.1);
+  --danger: #e8364d;
+  --danger-soft: rgb(232 54 77 / 0.1);
+  --success: #10a866;
+  --success-soft: rgb(16 168 102 / 0.1);
+  --warn: #c9840f;
+  --warn-soft: rgb(201 132 15 / 0.1);
+  --shadow: 0 24px 50px -28px rgb(20 24 40 / 0.3);
+  --glow-strength: 0.12;
+}
+
+/* Current channel colour; the deck updates these as you swipe. */
+:root {
+  --ch: 106 162 255;
+  --ch2: 60 90 200;
 }
 
 @theme inline {
@@ -53,6 +68,7 @@
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
   --color-border: var(--border);
+  --color-border-2: var(--border-2);
   --color-text: var(--text);
   --color-muted: var(--muted);
   --color-faint: var(--faint);
@@ -64,10 +80,12 @@
   --color-success-soft: var(--success-soft);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
+  --color-ch: rgb(var(--ch));
+  --color-ch2: rgb(var(--ch2));
   --shadow-card: var(--shadow);
-  --font-sans:
-    'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+  --font-sans: 'Onest Variable', Onest, ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Geologica Variable', Geologica, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
 }
 
 html,
@@ -78,14 +96,20 @@ body,
 
 body {
   margin: 0;
-  background: radial-gradient(1200px 600px at 50% -10%, var(--bg-glow), transparent 70%), var(--bg);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--text);
   font-family: var(--font-sans);
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
   transition:
     background-color 0.25s,
     color 0.25s;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
 }
 
 button {
@@ -100,16 +124,75 @@ button:disabled {
   outline-offset: 2px;
 }
 
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--surface-2) 0%,
-    var(--surface-3) 50%,
-    var(--surface-2) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
-  border-radius: 6px;
+@layer components {
+  /* Section label: small caps in the panel headers. */
+  .label {
+    font-family: var(--font-display);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* Keyboard-shortcut button. */
+  .key {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--border-2);
+    border-bottom-width: 2px;
+    background: var(--surface-2);
+    border-radius: 9px;
+    padding: 0.55rem 0.8rem;
+    font-size: 13px;
+    color: var(--text);
+    transition:
+      transform 0.06s,
+      background-color 0.15s,
+      border-color 0.15s;
+  }
+  .key:hover:not(:disabled) {
+    background: var(--surface-3);
+  }
+  .key:active:not(:disabled),
+  .key.pressed {
+    transform: translateY(1px);
+    border-bottom-width: 1px;
+  }
+  .key:disabled {
+    opacity: 0.4;
+  }
+  .key kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--faint);
+    border: 1px solid var(--border-2);
+    border-radius: 5px;
+    padding: 0 0.35rem;
+    line-height: 1.5;
+  }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 0.2rem 0.45rem;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface-3) 0%,
+      color-mix(in srgb, var(--surface-3) 50%, var(--border-2)) 50%,
+      var(--surface-3) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+    border-radius: 6px;
+  }
 }
 
 @keyframes shimmer {
