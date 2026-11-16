@@ -101,7 +101,7 @@ watch(
 <template>
   <section class="flex flex-1 items-start justify-center px-4 pt-6 pb-16 sm:items-center sm:pt-0">
     <div
-      class="w-full max-w-[880px] overflow-hidden rounded-3xl border border-border bg-surface shadow-card"
+      class="w-full max-w-[880px] overflow-hidden rounded-[18px] border border-border-2 bg-surface shadow-card"
     >
       <div class="grid md:grid-cols-[1fr_1.05fr]">
         <!-- left: copy -->
@@ -141,7 +141,7 @@ watch(
         <div class="flex flex-col gap-6 p-8">
           <div
             v-if="step === 'method'"
-            class="flex rounded-full border border-border bg-surface-2 p-1 text-sm"
+            class="flex overflow-hidden rounded-lg border border-border-2 text-[13px]"
             role="tablist"
           >
             <button
@@ -149,10 +149,8 @@ watch(
               :key="m"
               role="tab"
               :aria-selected="method === m"
-              class="flex flex-1 items-center justify-center gap-2 rounded-full py-2 transition-colors"
-              :class="
-                method === m ? 'bg-surface text-text shadow-sm' : 'text-muted hover:text-text'
-              "
+              class="flex flex-1 items-center justify-center gap-2 py-2 transition-colors"
+              :class="method === m ? 'bg-text text-bg' : 'text-muted hover:text-text'"
               @click="chooseMethod(m)"
             >
               <AppIcon :name="m === 'qr' ? 'qr' : 'phone'" :size="16" />
@@ -185,14 +183,14 @@ watch(
                 type="tel"
                 autocomplete="tel"
                 :placeholder="t('login.phonePlaceholder')"
-                class="rounded-xl border border-border bg-surface-2 px-4 py-3 text-base outline-none focus:border-accent"
+                class="rounded-[10px] border border-border-2 bg-surface-3 px-4 py-3 text-base outline-none focus:border-accent"
                 autofocus
               />
             </label>
             <button
               type="submit"
               :disabled="busy || phone.replace(/\D/g, '').length < 6"
-              class="rounded-xl bg-accent py-3 font-medium text-white transition-opacity disabled:opacity-40"
+              class="rounded-[10px] bg-text py-3 font-semibold text-bg transition-opacity disabled:opacity-40"
             >
               {{ t('login.sendCode') }}
             </button>
@@ -207,14 +205,14 @@ watch(
                 inputmode="numeric"
                 autocomplete="one-time-code"
                 maxlength="8"
-                class="rounded-xl border border-border bg-surface-2 px-4 py-3 text-center font-mono text-2xl tracking-[0.5em] outline-none focus:border-accent"
+                class="rounded-[10px] border border-border-2 bg-surface-3 px-4 py-3 text-center font-mono text-2xl tracking-[0.5em] outline-none focus:border-accent"
                 autofocus
               />
             </label>
             <button
               type="submit"
               :disabled="busy || !code"
-              class="rounded-xl bg-accent py-3 font-medium text-white disabled:opacity-40"
+              class="rounded-[10px] bg-text py-3 font-semibold text-bg disabled:opacity-40"
             >
               {{ t('login.signIn') }}
             </button>
@@ -236,7 +234,7 @@ watch(
                   v-model="password"
                   :type="showPassword ? 'text' : 'password'"
                   autocomplete="current-password"
-                  class="w-full rounded-xl border border-border bg-surface-2 px-4 py-3 pr-12 text-base outline-none focus:border-accent"
+                  class="w-full rounded-[10px] border border-border-2 bg-surface-3 px-4 py-3 pr-12 text-base outline-none focus:border-accent"
                   autofocus
                 />
                 <button
@@ -255,7 +253,7 @@ watch(
             <button
               type="submit"
               :disabled="busy || !password"
-              class="rounded-xl bg-accent py-3 font-medium text-white disabled:opacity-40"
+              class="rounded-[10px] bg-text py-3 font-semibold text-bg disabled:opacity-40"
             >
               {{ t('login.submitPassword') }}
             </button>
