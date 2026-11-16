@@ -9,6 +9,7 @@ from pathlib import Path
 
 from channels_cleaner.config import Settings
 from channels_cleaner.db import ChannelRow, Database
+from channels_cleaner.pulse import HISTORY_LIMIT, compute_pulse
 from channels_cleaner.telegram.gateway import TelegramGateway
 from channels_cleaner.telegram.types import ChannelFull
 
@@ -45,7 +46,8 @@ class ChannelsService:
 
     async def get_full(self, account_id: int, channel_id: int) -> ChannelRow:
         row = await self._row(account_id, channel_id)
-        if self._is_fresh(row.full_fetched_at):
+        # Rows cached before the pulse existed are refreshed once to get it.
+        if self._is_fresh(row.full_fetched_at) and row.pulse is not None:
             return row
         key = ("full", channel_id)
         if key in self._inflight:
@@ -56,7 +58,10 @@ class ChannelsService:
             try:
                 async with self._full_sem:
                     full: ChannelFull = await self._gw.get_full(channel_id)
-                await self._db.save_full(account_id, channel_id, full)
+                    dates = await self._gw.recent_post_dates(channel_id, HISTORY_LIMIT)
+                await self._db.save_full(
+                    account_id, channel_id, full, compute_pulse(dates, limit=HISTORY_LIMIT)
+                )
             finally:
                 # Waiters just re-read the row; if this fetch failed they get it without extras.
                 future.set_result(None)

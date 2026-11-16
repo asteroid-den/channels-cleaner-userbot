@@ -295,6 +295,26 @@ class MockGateway:
             raise GatewayError("CHANNEL_INVALID")
         return entry[1]
 
+    async def recent_post_dates(self, channel_id: int, limit: int) -> list[datetime]:
+        self._require_auth()
+        entry = self._channels.get(channel_id)
+        last = entry[0].last_post_at if entry is not None else None
+        if last is None:
+            return []
+        rng = random.Random(channel_id)
+        # A posting rate that matches how "alive" the channel looks; dead channels get a
+        # slower rate so their pulse visibly fades out into the past.
+        quiet_days = (datetime.now(UTC) - last).days
+        rate = rng.choice([0.3, 0.8, 1.5, 3, 8]) if quiet_days < 14 else rng.choice([0.2, 0.5, 1])
+        dates = [last]
+        current = last
+        while len(dates) < limit:
+            current -= timedelta(days=rng.expovariate(rate) + 0.01)
+            if (last - current).days > 400:
+                break
+            dates.append(current)
+        return dates
+
     async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None:
         entry = self._channels.get(channel_id)
         if entry is None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -48,6 +49,9 @@ class TelegramGateway(Protocol):
         """
 
     async def get_full(self, channel_id: int) -> ChannelFull: ...
+
+    async def recent_post_dates(self, channel_id: int, limit: int) -> list[datetime]:
+        """Dates of the channel's latest ``limit`` posts (one history page), newest first."""
 
     async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None: ...
 
