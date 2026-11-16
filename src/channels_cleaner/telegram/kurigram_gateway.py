@@ -1,0 +1,358 @@
+"""Real Telegram backend built on Kurigram (a maintained Pyrogram fork)."""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import logging
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+from pyrogram import Client, enums, errors
+from pyrogram.qrlogin import QRLogin
+
+from channels_cleaner.config import Settings
+from channels_cleaner.telegram import device_profiles
+from channels_cleaner.telegram.device_profiles import DeviceProfile
+from channels_cleaner.telegram.types import (
+    ChannelFull,
+    ChannelInfo,
+    FloodWaitError,
+    GatewayError,
+    InvalidCodeError,
+    InvalidPasswordError,
+    InvalidPhoneError,
+    MediaKind,
+    NotAuthorizedError,
+    PasswordNeededError,
+    QrExpiredError,
+    QrToken,
+    TgUser,
+)
+
+log = logging.getLogger(__name__)
+
+SESSION_NAME = "account"
+
+_MEDIA_KINDS: dict[Any, MediaKind] = {
+    enums.MessageMediaType.PHOTO: "photo",
+    enums.MessageMediaType.LIVE_PHOTO: "photo",
+    enums.MessageMediaType.VIDEO: "video",
+    enums.MessageMediaType.VIDEO_NOTE: "video",
+    enums.MessageMediaType.ANIMATION: "animation",
+    enums.MessageMediaType.DOCUMENT: "document",
+    enums.MessageMediaType.AUDIO: "audio",
+    enums.MessageMediaType.VOICE: "voice",
+    enums.MessageMediaType.POLL: "poll",
+    enums.MessageMediaType.STICKER: "sticker",
+}
+
+# Telegram uses this as "muted forever".
+_MUTE_FOREVER = timedelta(days=365 * 10)
+
+
+def _to_user(user: Any) -> TgUser:
+    return TgUser(
+        id=user.id,
+        first_name=user.first_name or "",
+        last_name=user.last_name,
+        username=user.username,
+    )
+
+
+def _utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+
+
+class KurigramGateway:
+    def __init__(self, settings: Settings) -> None:
+        self._settings = settings
+        self._client: Client | None = None
+        self._profile: DeviceProfile | None = None
+        self._qr: QRLogin | None = None
+        self._phone: str | None = None
+        self._phone_code_hash: str | None = None
+        self._started = False
+
+    # --- lifecycle -------------------------------------------------------------
+    @property
+    def device_profile(self) -> DeviceProfile | None:
+        return self._profile
+
+    @property
+    def _profile_path(self) -> Path:
+        return self._settings.sessions_dir / f"{SESSION_NAME}.device.json"
+
+    def _make_client(self) -> Client:
+        self._profile = device_profiles.load_or_create(self._profile_path)
+        return Client(
+            SESSION_NAME,
+            api_id=self._settings.api_id,
+            api_hash=self._settings.api_hash,
+            workdir=self._settings.sessions_dir,
+            client_platform=enums.ClientPlatform.DESKTOP,
+            sleep_threshold=30,
+            **self._profile.client_kwargs(),
+        )
+
+    @property
+    def client(self) -> Client:
+        if self._client is None or not self._started:
+            raise NotAuthorizedError("Telegram client is not authorized")
+        return self._client
+
+    async def start(self) -> TgUser | None:
+        self._client = self._make_client()
+        # Mirror the first lines of ``Client.start`` so a bare ``connect`` works on our loop.
+        self._client._loop = asyncio.get_running_loop()
+        rebuild = getattr(self._client, "_rebuild_loop_bound_state", None)
+        if rebuild is not None:
+            rebuild()
+        authorized = await self._client.connect()
+        if not authorized:
+            return None
+        return await self._finish_login()
+
+    async def _finish_login(self) -> TgUser:
+        """Restart the connected-but-not-started client the regular way (now non-interactive)."""
+        assert self._client is not None
+        await self._client.disconnect()
+        try:
+            await self._client.start()
+        except (errors.AuthKeyUnregistered, errors.Unauthorized) as exc:
+            # Session revoked from another device: start from scratch.
+            log.warning("Stored session is no longer valid: %s", exc)
+            await self._reset_session()
+            raise NotAuthorizedError("Session was revoked, please log in again") from exc
+        self._started = True
+        self._qr = None
+        return _to_user(self._client.me)
+
+    async def stop(self) -> None:
+        if self._client is None:
+            return
+        with contextlib.suppress(Exception):
+            if self._started:
+                await self._client.stop()
+            elif self._client.is_connected:
+                await self._client.disconnect()
+        self._started = False
+
+    async def _reset_session(self) -> None:
+        await self.stop()
+        for path in self._settings.sessions_dir.glob(f"{SESSION_NAME}.*"):
+            path.unlink(missing_ok=True)
+        self._client = None
+
+    def _pending_client(self) -> Client:
+        if self._client is None or not self._client.is_connected:
+            raise GatewayError("Client is not connected")
+        if self._started:
+            raise GatewayError("Already authorized")
+        return self._client
+
+    # --- auth: QR ----------------------------------------------------------------
+    async def qr_export(self) -> QrToken:
+        client = self._pending_client()
+        if self._qr is None:
+            self._qr = QRLogin(client)
+        try:
+            await self._qr.recreate()
+        except errors.SessionPasswordNeeded as exc:
+            raise PasswordNeededError from exc
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        expires = datetime.fromtimestamp(self._qr.r.expires, tz=UTC)
+        return QrToken(url=self._qr.url, expires_at=expires)
+
+    async def qr_wait(self) -> TgUser:
+        if self._qr is None:
+            raise GatewayError("QR login was not started")
+        try:
+            user = await self._qr.wait()
+        except TimeoutError as exc:
+            raise QrExpiredError from exc
+        except errors.AuthTokenExpired as exc:
+            raise QrExpiredError from exc
+        except errors.SessionPasswordNeeded as exc:
+            raise PasswordNeededError from exc
+        if user is None:
+            raise QrExpiredError
+        return await self._finish_login()
+
+    # --- auth: phone -------------------------------------------------------------
+    async def send_code(self, phone: str) -> None:
+        client = self._pending_client()
+        self._qr = None
+        try:
+            sent = await client.send_code(phone)
+        except (errors.PhoneNumberInvalid, errors.PhoneNumberBanned) as exc:
+            raise InvalidPhoneError(str(exc.MESSAGE)) from exc
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        self._phone = phone
+        self._phone_code_hash = sent.phone_code_hash
+
+    async def sign_in_code(self, code: str) -> TgUser:
+        client = self._pending_client()
+        if not self._phone or not self._phone_code_hash:
+            raise GatewayError("Request a code first")
+        try:
+            result = await client.sign_in(self._phone, self._phone_code_hash, code)
+        except (errors.PhoneCodeInvalid, errors.PhoneCodeExpired) as exc:
+            raise InvalidCodeError(str(exc.MESSAGE)) from exc
+        except errors.SessionPasswordNeeded as exc:
+            raise PasswordNeededError from exc
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        if result is False or not hasattr(result, "id"):
+            raise GatewayError("This phone number has no Telegram account")
+        return await self._finish_login()
+
+    async def password_hint(self) -> str | None:
+        hint: str | None = await self._pending_client().get_password_hint()
+        return hint
+
+    async def check_password(self, password: str) -> TgUser:
+        client = self._pending_client()
+        try:
+            await client.check_password(password)
+        except errors.PasswordHashInvalid as exc:
+            raise InvalidPasswordError(str(exc.MESSAGE)) from exc
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        return await self._finish_login()
+
+    async def log_out(self) -> None:
+        if self._client is not None and self._started:
+            with contextlib.suppress(Exception):
+                await self._client.log_out()
+            self._started = False
+        await self._reset_session()
+        self._profile_path.unlink(missing_ok=True)
+        self._profile = None
+
+    # --- channels ------------------------------------------------------------------
+    async def iter_channels(self) -> AsyncIterator[ChannelInfo]:
+        client = self.client
+        now = datetime.now(UTC)
+        try:
+            async for dialog in client.get_dialogs():
+                chat = dialog.chat
+                if chat is None or chat.type != enums.ChatType.CHANNEL:
+                    continue
+                if chat.is_creator or chat.is_admin:
+                    continue
+                yield self._channel_info(dialog, now)
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+
+    @staticmethod
+    def _channel_info(dialog: Any, now: datetime) -> ChannelInfo:
+        chat = dialog.chat
+        top = dialog.top_message
+        muted = False
+        notify = getattr(getattr(dialog, "raw", None), "notify_settings", None)
+        if notify is not None:
+            mute_until = getattr(notify, "mute_until", None)
+            muted = bool(getattr(notify, "silent", False)) or bool(
+                mute_until and mute_until > now.timestamp()
+            )
+        text = None
+        media: MediaKind | None = None
+        if top is not None:
+            text = top.text or top.caption
+            if top.media is not None:
+                media = _MEDIA_KINDS.get(top.media, "other")
+        photo = chat.photo
+        return ChannelInfo(
+            id=chat.id,
+            title=chat.title or "",
+            username=chat.username,
+            unread_count=dialog.unread_messages_count or 0,
+            is_muted=muted,
+            is_archived=dialog.folder_id == 1,
+            members_count=chat.members_count,
+            photo_file_id=photo.small_file_id if photo else None,
+            photo_unique_id=photo.small_photo_unique_id if photo else None,
+            last_post_id=top.id if top is not None else None,
+            last_post_at=_utc(top.date) if top is not None else None,
+            last_post_text=str(text) if text else None,
+            last_post_media=media,
+        )
+
+    async def get_full(self, channel_id: int) -> ChannelFull:
+        try:
+            chat = await self.client.get_chat(channel_id, force_full=True)
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        if chat is None:
+            return ChannelFull(about=None, members_count=None)
+        return ChannelFull(about=chat.description, members_count=chat.members_count)
+
+    async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None:
+        try:
+            result = await self.client.download_media(file_id, file_name=str(dest))
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        except errors.RPCError as exc:
+            log.info("Avatar download failed for %s: %s", channel_id, exc)
+            return None
+        return Path(result) if isinstance(result, str) else None
+
+    async def download_post_thumb(
+        self, channel_id: int, message_id: int, dest: Path
+    ) -> Path | None:
+        try:
+            message = await self.client.get_messages(channel_id, message_id)
+            if message is None or getattr(message, "empty", False):
+                return None
+            thumbs = None
+            for attr in ("photo", "video", "animation", "document"):
+                media = getattr(message, attr, None)
+                if media is not None:
+                    thumbs = getattr(media, "thumbs", None)
+                    break
+            if not thumbs:
+                return None
+            biggest = max(thumbs, key=lambda t: (t.width or 0) * (t.height or 0))
+            result = await self.client.download_media(biggest, file_name=str(dest))
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        except errors.RPCError as exc:
+            log.info("Thumbnail download failed for %s/%s: %s", channel_id, message_id, exc)
+            return None
+        return Path(result) if isinstance(result, str) else None
+
+    # --- actions ---------------------------------------------------------------------
+    async def leave(self, channel_id: int) -> None:
+        try:
+            await self.client.leave_chat(channel_id)
+        except (errors.UserNotParticipant, errors.ChannelPrivate):
+            return  # already gone — that's the desired end state
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        except errors.RPCError as exc:
+            raise GatewayError(str(exc.MESSAGE or exc)) from exc
+
+    async def mute(self, channel_id: int) -> None:
+        try:
+            await self.client.update_chat_notifications(
+                channel_id, mute=True, mute_until=_MUTE_FOREVER
+            )
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        except errors.RPCError as exc:
+            raise GatewayError(str(exc.MESSAGE or exc)) from exc
+
+    async def archive(self, channel_id: int) -> None:
+        try:
+            await self.client.archive_chats(channel_id)
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        except errors.RPCError as exc:
+            raise GatewayError(str(exc.MESSAGE or exc)) from exc
