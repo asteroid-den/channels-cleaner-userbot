@@ -9,7 +9,11 @@ import AppIcon, { type IconName } from './AppIcon.vue'
 import ChannelCard from './ChannelCard.vue'
 
 const props = defineProps<{ items: Channel[]; returning: HistoryEntry | null }>()
-const emit = defineEmits<{ decide: [decision: Decision] }>()
+const emit = defineEmits<{
+  decide: [decision: Decision]
+  /** A card starts flying away (button, key, zone or drag); `from` is where it was. */
+  flinging: [decision: Decision, from: DOMRect]
+}>()
 const { t } = useI18n()
 
 const SWIPE_X = 110
@@ -67,6 +71,9 @@ function flyTarget(decision: Decision): string {
   }
 }
 
+/** Hovering a side zone leans the top card toward it, as a preview of the decision. */
+const preview = ref<'keep' | 'unsubscribe' | null>(null)
+
 const topStyle = computed(() => {
   if (flying.value) {
     return {
@@ -78,26 +85,48 @@ const topStyle = computed(() => {
   if (entering.value) {
     return { transform: flyTarget(props.returning?.decision ?? 'keep'), transition: 'none' }
   }
+  if (preview.value && !dragging.value) {
+    const dir = preview.value === 'keep' ? 1 : -1
+    return {
+      transform: `translate(${dir * 14}px, 0) rotate(${dir * 2}deg)`,
+      transition: 'transform 0.3s cubic-bezier(.2,.8,.2,1)',
+    }
+  }
   return {
     transform: `translate(${dx.value}px, ${dy.value}px) rotate(${dx.value / 18}deg)`,
     transition: dragging.value ? 'none' : 'transform 0.35s cubic-bezier(.2,.9,.3,1.2)',
   }
 })
 
+// The cards behind fan out to the left and right of the top one, so the deck has volume.
+const FAN = [
+  { x: 0, y: 0, r: 0 },
+  { x: -34, y: 10, r: -5 },
+  { x: 34, y: 10, r: 5 },
+]
+
+function fanAt(level: number) {
+  const lo = FAN[Math.floor(level)]!
+  const hi = FAN[Math.min(FAN.length - 1, Math.ceil(level))]!
+  const k = level - Math.floor(level)
+  return { x: lo.x + (hi.x - lo.x) * k, y: lo.y + (hi.y - lo.y) * k, r: lo.r + (hi.r - lo.r) * k }
+}
+
 function depthStyle(depth: number) {
-  // Cards behind grow toward the front as the top card is dragged away.
+  // Cards behind move toward the front as the top card is dragged away.
   const pull = Math.min(1, Math.hypot(dx.value, dy.value) / 220) * (flying.value ? 1 : 0.6)
-  const level = Math.max(0, depth - (flying.value ? 1 : pull))
+  const { x, y, r } = fanAt(Math.max(0, depth - (flying.value ? 1 : pull)))
   return {
-    transform: `translateY(${level * 16}px) scale(${1 - level * 0.05})`,
-    opacity: depth >= 2 && !flying.value ? 0.6 : 1,
-    transition: 'transform 0.3s ease, opacity 0.3s ease, height 0.3s ease-out',
+    transform: `translate(${x}px, ${y}px) rotate(${r}deg)`,
+    transformOrigin: '50% 85%',
+    transition: 'transform 0.35s cubic-bezier(.2,.8,.2,1), height 0.3s ease-out',
   }
 }
 
 /** Which stamp to show and how strongly (0..1). */
 const stamp = computed<{ decision: Decision; strength: number } | null>(() => {
   if (flying.value) return { decision: flying.value, strength: 1 }
+  if (preview.value && !dragging.value) return { decision: preview.value, strength: 0.35 }
   if (Math.abs(dx.value) > Math.abs(dy.value)) {
     if (dx.value > 12) return { decision: 'keep', strength: Math.min(1, dx.value / SWIPE_X) }
     if (dx.value < -12)
@@ -189,6 +218,9 @@ function onPointerUp(e: PointerEvent) {
 
 function fling(decision: Decision): boolean {
   if (busy.value || !visible.value.length) return false
+  const card = (observed as HTMLElement | null)?.closest('article')
+  if (card) emit('flinging', decision, card.getBoundingClientRect())
+  preview.value = null
   flying.value = decision
   setTimeout(() => {
     // Reset and shift the list in the same tick: one render, no flicker on the next card.
@@ -217,7 +249,7 @@ watch(
   },
 )
 
-defineExpose({ fling, busy })
+defineExpose({ fling, busy, preview })
 </script>
 
 <template>
@@ -238,6 +270,7 @@ defineExpose({ fling, busy })
         ...(depth === 0 ? {} : depthStyle(depth)),
       }"
       :aria-hidden="depth > 0"
+      :inert="depth > 0"
     >
       <div
         v-if="depth === 0"
@@ -261,7 +294,8 @@ defineExpose({ fling, busy })
           {{ t(STAMPS[stamp.decision].label) }}
         </div>
       </div>
-      <ChannelCard v-else :channel="channel" stacked />
+      <!-- the next card shows its content only once the top one starts leaving -->
+      <ChannelCard v-else :channel="channel" :stacked="!(depth === 1 && (dragging || flying))" />
     </div>
   </div>
 </template>
