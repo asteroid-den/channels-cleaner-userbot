@@ -112,8 +112,9 @@ Letter keys work on any keyboard layout. On macOS, <kbd>Cmd</kbd> works in place
 **Read this before logging in with your real account.**
 
 - **The session file is your Telegram account.** Anyone who copies it can read your messages
-  and act as you, without your password or 2FA. It lives in the data directory below. Don't
-  sync it to the cloud, don't share it.
+  and act as you, without your password or 2FA. It lives in the data directory below, which
+  the app keeps readable only by your user (on Linux and macOS). Don't sync it to the cloud,
+  don't share it.
 - **Everything stays on your machine.** The server listens on `127.0.0.1` only, talks to
   Telegram directly and nowhere else. There is no telemetry.
 - **The UI has no password**, because it's meant for one person on their own computer. Don't
