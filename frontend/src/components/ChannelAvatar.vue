@@ -16,7 +16,9 @@ watch(
 </script>
 
 <template>
+  <!-- the channel title is always printed next to the avatar, so it is decorative -->
   <div
+    aria-hidden="true"
     class="relative shrink-0 overflow-hidden select-none"
     :style="{
       width: `${size}px`,
@@ -28,7 +30,7 @@ watch(
     <img
       v-if="src && !failed"
       :src="src"
-      :alt="title"
+      alt=""
       class="h-full w-full object-cover"
       draggable="false"
       loading="lazy"

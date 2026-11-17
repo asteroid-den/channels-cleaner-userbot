@@ -31,6 +31,15 @@ export function useHotkeys(map: HotkeyMap) {
     )
       return
     if (e.altKey) return
+    // Enter/Space on a focused control must press that control, not trigger a shortcut.
+    if (
+      (e.key === 'Enter' || e.key === ' ') &&
+      target instanceof Element &&
+      target.closest('button, a, summary, [role="button"], [role="menuitem"], [role="tab"]')
+    )
+      return
+    // An open menu or dialog owns the keyboard.
+    if (document.querySelector('[data-hotkeys-off]')) return
     const handler = map[hotkeyName(e)]
     if (!handler) return
     e.preventDefault()
