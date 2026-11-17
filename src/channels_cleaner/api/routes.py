@@ -96,8 +96,13 @@ async def _deck_counts(ctx: AppContext, account: int) -> dict[str, Any]:
     total = await ctx.db.channel_count(account)
     undecided = len(await ctx.db.list_channels(account, undecided_only=True))
     pending = len(await ctx.db.list_decided(account, status="pending"))
-    by_decision = await ctx.db.decision_counts(account)
-    return {"total": total, "undecided": undecided, "pending": pending, "by_decision": by_decision}
+    return {
+        "total": total,
+        "undecided": undecided,
+        "pending": pending,
+        "by_decision": await ctx.db.decision_counts(account),
+        "trail": await ctx.db.decision_trail(account),
+    }
 
 
 @router.post("/channels/sync")
