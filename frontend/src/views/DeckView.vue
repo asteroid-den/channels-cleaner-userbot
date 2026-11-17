@@ -290,7 +290,7 @@ const ZONES = [
   opacity: 0;
   transition: opacity 0.2s;
   background: radial-gradient(
-    420px circle at var(--mx, 50%) var(--my, 50%),
+    420px circle at calc(var(--mx, 50%) + var(--glow-shift, 0px)) var(--my, 50%),
     var(--zone-color),
     transparent 70%
   );
@@ -299,7 +299,9 @@ const ZONES = [
   right: -320px;
 }
 .zone-r::before {
+  /* this layer starts 320px left of the zone, so the cursor point shifts by as much */
   left: -320px;
+  --glow-shift: 320px;
 }
 .zone-l {
   --zone-color: color-mix(in srgb, var(--danger) 20%, transparent);
