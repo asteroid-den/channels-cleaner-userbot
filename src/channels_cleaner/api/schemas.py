@@ -80,12 +80,8 @@ class ChannelOut(BaseModel):
             unread_count=row.unread_count,
             is_muted=row.is_muted,
             is_archived=row.is_archived,
-            avatar_url=f"/api/channels/{row.channel_id}/avatar?v={version}"
-            if row.has_photo
-            else None,
-            thumb_url=f"/api/channels/{row.channel_id}/thumb?v={row.last_post_id}"
-            if has_thumb
-            else None,
+            avatar_url=f"/api/channels/{row.channel_id}/avatar?v={version}" if row.has_photo else None,
+            thumb_url=f"/api/channels/{row.channel_id}/thumb?v={row.last_post_id}" if has_thumb else None,
             last_post_at=row.last_post_at,
             last_post_text=row.last_post_text,
             last_post_media=row.last_post_media,

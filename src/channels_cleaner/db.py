@@ -525,10 +525,7 @@ class Database:
     ) -> list[ChannelRow]:
         placeholders = ",".join("?" for _ in decisions)
         # Rows that undo an applied action are work for the apply job too, whatever the decision.
-        sql = (
-            f"{_CHANNEL_SELECT} WHERE c.account_id = ? "
-            f"AND (d.decision IN ({placeholders}) OR d.reverts IS NOT NULL)"
-        )
+        sql = f"{_CHANNEL_SELECT} WHERE c.account_id = ? AND (d.decision IN ({placeholders}) OR d.reverts IS NOT NULL)"
         params: list[Any] = [account_id, *decisions]
         if status is not None:
             sql += " AND d.status = ?"
@@ -568,8 +565,7 @@ class Database:
 
     async def reset_failed(self, account_id: int) -> None:
         await self.conn.execute(
-            "UPDATE decisions SET status = 'pending', error = NULL "
-            "WHERE account_id = ? AND status = 'failed'",
+            "UPDATE decisions SET status = 'pending', error = NULL WHERE account_id = ? AND status = 'failed'",
             (account_id,),
         )
         await self.conn.commit()
@@ -577,33 +573,26 @@ class Database:
     # --- apply jobs ----------------------------------------------------------------------
     async def create_job(self, account_id: int, total: int) -> int:
         cur = await self.conn.execute(
-            "INSERT INTO apply_jobs (account_id, status, total, started_at) "
-            "VALUES (?, 'running', ?, ?)",
+            "INSERT INTO apply_jobs (account_id, status, total, started_at) VALUES (?, 'running', ?, ?)",
             (account_id, total, now_iso()),
         )
         await self.conn.commit()
         assert cur.lastrowid is not None
         return cur.lastrowid
 
-    async def update_job(
-        self, job_id: int, *, done: int, failed: int, status: str | None = None
-    ) -> None:
+    async def update_job(self, job_id: int, *, done: int, failed: int, status: str | None = None) -> None:
         if status is None:
-            await self.conn.execute(
-                "UPDATE apply_jobs SET done = ?, failed = ? WHERE id = ?", (done, failed, job_id)
-            )
+            await self.conn.execute("UPDATE apply_jobs SET done = ?, failed = ? WHERE id = ?", (done, failed, job_id))
         else:
             await self.conn.execute(
-                "UPDATE apply_jobs SET done = ?, failed = ?, status = ?, finished_at = ? "
-                "WHERE id = ?",
+                "UPDATE apply_jobs SET done = ?, failed = ?, status = ?, finished_at = ? WHERE id = ?",
                 (done, failed, status, now_iso(), job_id),
             )
         await self.conn.commit()
 
     async def interrupt_running_jobs(self) -> None:
         await self.conn.execute(
-            "UPDATE apply_jobs SET status = 'interrupted', finished_at = ? "
-            "WHERE status = 'running'",
+            "UPDATE apply_jobs SET status = 'interrupted', finished_at = ? WHERE status = 'running'",
             (now_iso(),),
         )
         await self.conn.commit()

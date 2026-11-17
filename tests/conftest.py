@@ -49,9 +49,7 @@ async def client(ctx: AppContext) -> AsyncIterator[httpx.AsyncClient]:
             yield c
 
 
-async def wait_for(
-    predicate: Callable[[], Awaitable[bool]], timeout: float = 5.0, step: float = 0.02
-) -> None:
+async def wait_for(predicate: Callable[[], Awaitable[bool]], timeout: float = 5.0, step: float = 0.02) -> None:
     async with asyncio.timeout(timeout):
         while not await predicate():
             await asyncio.sleep(step)

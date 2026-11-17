@@ -7,9 +7,7 @@ from channels_cleaner.context import AppContext
 from .conftest import get_json, login, wait_for
 
 
-async def test_sort_dead_puts_never_posted_first(
-    client: httpx.AsyncClient, ctx: AppContext
-) -> None:
+async def test_sort_dead_puts_never_posted_first(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     items = (await get_json(client, "/api/channels", params={"sort": "dead"}))["items"]
     dates = [item["last_post_at"] for item in items]
@@ -127,9 +125,7 @@ async def test_changed_decision_keeps_its_place(client: httpx.AsyncClient, ctx: 
     assert [t["decision"] for t in trail] == ["mute", "unsubscribe"]
 
 
-async def test_changing_an_applied_mute_queues_the_way_back(
-    client: httpx.AsyncClient, ctx: AppContext
-) -> None:
+async def test_changing_an_applied_mute_queues_the_way_back(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     account = ctx.auth.account_id
     db = ctx.db

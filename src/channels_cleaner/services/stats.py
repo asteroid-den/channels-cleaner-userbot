@@ -22,8 +22,7 @@ AGE_BUCKETS: list[tuple[str, float]] = [
 async def collect(db: Database, account_id: int) -> dict[str, Any]:
     conn = db.conn
     async with conn.execute(
-        "SELECT decision, status, COUNT(*) FROM decisions WHERE account_id = ? "
-        "GROUP BY decision, status",
+        "SELECT decision, status, COUNT(*) FROM decisions WHERE account_id = ? GROUP BY decision, status",
         (account_id,),
     ) as cur:
         by_decision: dict[str, dict[str, int]] = {}

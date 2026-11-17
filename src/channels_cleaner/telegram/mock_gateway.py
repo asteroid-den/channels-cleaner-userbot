@@ -324,9 +324,7 @@ class MockGateway:
         path.write_text(_avatar_svg(entry[0].title, color), "utf-8")
         return path
 
-    async def download_post_thumb(
-        self, channel_id: int, message_id: int, dest: Path
-    ) -> Path | None:
+    async def download_post_thumb(self, channel_id: int, message_id: int, dest: Path) -> Path | None:
         entry = self._channels.get(channel_id)
         if entry is None or entry[0].last_post_media not in {"photo", "video"}:
             return None

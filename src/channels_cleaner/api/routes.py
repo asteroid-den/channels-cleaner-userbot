@@ -124,9 +124,7 @@ async def channels_list(
     reverse: bool = False,
     state: Literal["undecided", "all"] = "undecided",
 ) -> dict[str, Any]:
-    rows = await ctx.db.list_channels(
-        account, sort=sort, reverse=reverse, undecided_only=state == "undecided"
-    )
+    rows = await ctx.db.list_channels(account, sort=sort, reverse=reverse, undecided_only=state == "undecided")
     return {
         "items": [schemas.ChannelOut.from_row(row) for row in rows],
         "counts": await _deck_counts(ctx, account),
@@ -160,9 +158,7 @@ async def channel_thumb(channel_id: int, ctx: Ctx, account: AccountId) -> Respon
 
 # --- decisions -------------------------------------------------------------------------
 @router.put("/decisions/{channel_id}")
-async def decision_set(
-    channel_id: int, body: schemas.DecisionBody, ctx: Ctx, account: AccountId
-) -> dict[str, Any]:
+async def decision_set(channel_id: int, body: schemas.DecisionBody, ctx: Ctx, account: AccountId) -> dict[str, Any]:
     if await ctx.db.get_channel(account, channel_id) is None:
         raise HTTPException(404, "Unknown channel")
     await ctx.db.set_decision(account, channel_id, body.decision)
@@ -250,9 +246,7 @@ async def stats_get(ctx: Ctx, account: AccountId) -> dict[str, Any]:
 
 
 @router.get("/export")
-async def export(
-    ctx: Ctx, account: AccountId, format: Annotated[Literal["csv", "json"], Query()] = "csv"
-) -> Response:
+async def export(ctx: Ctx, account: AccountId, format: Annotated[Literal["csv", "json"], Query()] = "csv") -> Response:
     rows = await stats.export_rows(ctx.db, account)
     filename = f"unsubscribed-channels.{format}"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}

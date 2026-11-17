@@ -259,9 +259,7 @@ class KurigramGateway:
         notify = getattr(getattr(dialog, "raw", None), "notify_settings", None)
         if notify is not None:
             mute_until = getattr(notify, "mute_until", None)
-            muted = bool(getattr(notify, "silent", False)) or bool(
-                mute_until and mute_until > now.timestamp()
-            )
+            muted = bool(getattr(notify, "silent", False)) or bool(mute_until and mute_until > now.timestamp())
         text = None
         media: MediaKind | None = None
         if top is not None:
@@ -333,9 +331,7 @@ class KurigramGateway:
             return None
         return Path(result) if isinstance(result, str) else None
 
-    async def download_post_thumb(
-        self, channel_id: int, message_id: int, dest: Path
-    ) -> Path | None:
+    async def download_post_thumb(self, channel_id: int, message_id: int, dest: Path) -> Path | None:
         try:
             message = await self.client.get_messages(channel_id, message_id)
             if message is None or getattr(message, "empty", False):
@@ -370,9 +366,7 @@ class KurigramGateway:
 
     async def mute(self, channel_id: int) -> None:
         try:
-            await self.client.update_chat_notifications(
-                channel_id, mute=True, mute_until=_MUTE_FOREVER
-            )
+            await self.client.update_chat_notifications(channel_id, mute=True, mute_until=_MUTE_FOREVER)
         except errors.FloodWait as exc:
             raise FloodWaitError(int(exc.value or 0)) from exc
         except errors.RPCError as exc:

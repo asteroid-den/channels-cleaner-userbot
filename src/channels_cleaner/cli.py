@@ -73,9 +73,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--port", type=int, help="port (default 8765)")
     parser.add_argument("--mock", action="store_true", help="use fake Telegram data")
     parser.add_argument("--no-browser", action="store_true", help="don't open a browser tab")
-    parser.add_argument(
-        "--dev", action="store_true", help="API only; open the Vite dev server instead"
-    )
+    parser.add_argument("--dev", action="store_true", help="API only; open the Vite dev server instead")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -104,10 +102,7 @@ def main(argv: list[str] | None = None) -> None:
 
     url = "http://localhost:5173" if args.dev else api_url
     if not args.dev and not (STATIC_DIR / "index.html").exists():
-        print(
-            "⚠  Frontend is not built yet. Run:\n"
-            "   npm --prefix frontend ci && npm --prefix frontend run build\n"
-        )
+        print("⚠  Frontend is not built yet. Run:\n   npm --prefix frontend ci && npm --prefix frontend run build\n")
     mode = " (mock mode)" if settings.mock else ""
     print(f"Channels Cleaner{mode} → {url}  (Ctrl+C to stop)")
     print(f"Data: {settings.data_dir.resolve()}")

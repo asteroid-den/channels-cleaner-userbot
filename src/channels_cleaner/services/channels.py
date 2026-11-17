@@ -59,9 +59,7 @@ class ChannelsService:
                 async with self._full_sem:
                     full: ChannelFull = await self._gw.get_full(channel_id)
                     dates = await self._gw.recent_post_dates(channel_id, HISTORY_LIMIT)
-                await self._db.save_full(
-                    account_id, channel_id, full, compute_pulse(dates, limit=HISTORY_LIMIT)
-                )
+                await self._db.save_full(account_id, channel_id, full, compute_pulse(dates, limit=HISTORY_LIMIT))
             finally:
                 # Waiters just re-read the row; if this fetch failed they get it without extras.
                 future.set_result(None)
@@ -95,9 +93,7 @@ class ChannelsService:
         if isinstance(cached, Path):
             return cached
         async with self._media_sem:
-            path = await self._gw.download_avatar(
-                channel_id, row.photo_file_id, directory / f"{stem}.jpg"
-            )
+            path = await self._gw.download_avatar(channel_id, row.photo_file_id, directory / f"{stem}.jpg")
         if path is None:
             (directory / f"{stem}{_NONE_MARKER}").touch()
         return path
@@ -114,9 +110,7 @@ class ChannelsService:
         if isinstance(cached, Path):
             return cached
         async with self._media_sem:
-            path = await self._gw.download_post_thumb(
-                channel_id, row.last_post_id, directory / f"{stem}.jpg"
-            )
+            path = await self._gw.download_post_thumb(channel_id, row.last_post_id, directory / f"{stem}.jpg")
         if path is None:
             (directory / f"{stem}{_NONE_MARKER}").touch()
         return path

@@ -58,9 +58,7 @@ class ApplyBusyError(RuntimeError):
 
 
 class ApplyService:
-    def __init__(
-        self, gateway: TelegramGateway, db: Database, bus: EventBus, settings: Settings
-    ) -> None:
+    def __init__(self, gateway: TelegramGateway, db: Database, bus: EventBus, settings: Settings) -> None:
         self._gw = gateway
         self._db = db
         self._bus = bus
@@ -144,9 +142,7 @@ class ApplyService:
                 # The pause between actions happens while the item is already "running", so
                 # the UI shows the card being worked on rather than idling, then leaving.
                 if index > 0:
-                    delay = self._rng.uniform(
-                        self._settings.apply_delay_min, self._settings.apply_delay_max
-                    )
+                    delay = self._rng.uniform(self._settings.apply_delay_min, self._settings.apply_delay_max)
                     if await self._sleep(delay):
                         break
                 result = await self._apply_one(account_id, item)
@@ -179,9 +175,7 @@ class ApplyService:
             for item in state.items:
                 if item.status == "running":
                     item.status = "queued"
-            await self._db.update_job(
-                state.job_id, done=state.done, failed=state.failed, status=state.status
-            )
+            await self._db.update_job(state.job_id, done=state.done, failed=state.failed, status=state.status)
             self._bus.publish(TOPIC, "finished", **state.snapshot())
 
     async def _apply_one(self, account_id: int, item: ApplyItem) -> ItemStatus:
