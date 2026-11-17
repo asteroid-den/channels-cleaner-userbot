@@ -59,6 +59,8 @@ export interface DeckCounts {
   pending: number
   /** Final decisions per kind for channels still in the list. */
   by_decision: Record<FinalDecision, number>
+  /** Final decisions in the order they were made: k(eep) u(nsubscribe) m(ute) a(rchive). */
+  trail: string
 }
 
 export interface SyncState {

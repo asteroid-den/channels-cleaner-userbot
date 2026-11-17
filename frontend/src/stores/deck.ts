@@ -17,6 +17,7 @@ import { useUiStore } from './ui'
 
 const PREFETCH_AHEAD = 8
 const ACTIONS: Decision[] = ['unsubscribe', 'mute', 'archive']
+const TRAIL_CODE = { keep: 'k', unsubscribe: 'u', mute: 'm', archive: 'a' } as const
 
 export interface HistoryEntry {
   channel: Channel
@@ -33,6 +34,7 @@ export const useDeckStore = defineStore('deck', () => {
     undecided: 0,
     pending: 0,
     by_decision: { keep: 0, unsubscribe: 0, mute: 0, archive: 0 },
+    trail: '',
   })
   const sync = ref<SyncState | null>(null)
   const prefs = ref<Prefs>({ sort: 'dead', reverse: false })
@@ -127,6 +129,7 @@ export const useDeckStore = defineStore('deck', () => {
     if (decision !== 'skip') {
       counts.value.undecided -= 1
       counts.value.by_decision[decision] += 1
+      counts.value.trail += TRAIL_CODE[decision]
       if (ACTIONS.includes(decision)) counts.value.pending += 1
       stamps.value.push(Date.now())
     }
