@@ -3,13 +3,10 @@ from __future__ import annotations
 import httpx
 
 from channels_cleaner.context import AppContext
+from tests.conftest import get_json, login, wait_for
 
-from .conftest import get_json, login, wait_for
 
-
-async def test_sort_dead_puts_never_posted_first(
-    client: httpx.AsyncClient, ctx: AppContext
-) -> None:
+async def test_sort_dead_puts_never_posted_first(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     items = (await get_json(client, "/api/channels", params={"sort": "dead"}))["items"]
     dates = [item["last_post_at"] for item in items]
@@ -79,6 +76,7 @@ async def test_apply_review_stats_export(client: httpx.AsyncClient, ctx: AppCont
     await login(client, ctx)
     items = (await get_json(client, "/api/channels"))["items"]
     plan = {"unsubscribe": items[:6], "mute": items[6:8], "archive": items[8:9]}
+
     for decision, chosen in plan.items():
         for item in chosen:
             await client.put(f"/api/decisions/{item['id']}", json={"decision": decision})
@@ -127,9 +125,7 @@ async def test_changed_decision_keeps_its_place(client: httpx.AsyncClient, ctx: 
     assert [t["decision"] for t in trail] == ["mute", "unsubscribe"]
 
 
-async def test_changing_an_applied_mute_queues_the_way_back(
-    client: httpx.AsyncClient, ctx: AppContext
-) -> None:
+async def test_changing_an_applied_mute_queues_the_way_back(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     account = ctx.auth.account_id
     db = ctx.db

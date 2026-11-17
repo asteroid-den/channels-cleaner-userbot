@@ -28,5 +28,6 @@ def test_data_dir_is_private(tmp_path: Path) -> None:
     (data / "sessions").mkdir(parents=True, mode=0o755)
     data.chmod(0o755)  # left by an older version
     Settings(data_dir=data).ensure_dirs()
+
     for path in (data, data / "sessions"):
         assert stat.S_IMODE(path.stat().st_mode) == 0o700

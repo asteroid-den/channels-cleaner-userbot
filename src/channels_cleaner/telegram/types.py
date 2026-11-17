@@ -6,9 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-MediaKind = Literal[
-    "photo", "video", "animation", "document", "audio", "voice", "poll", "sticker", "other"
-]
+MediaKind = Literal["photo", "video", "animation", "document", "audio", "voice", "poll", "sticker", "other"]
 
 
 @dataclass(slots=True, frozen=True)

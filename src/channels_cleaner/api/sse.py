@@ -25,14 +25,18 @@ def sse_response(
     async def stream() -> AsyncIterator[str]:
         with bus.subscribe(topic) as queue:
             yield _format("snapshot", snapshot())
+
             while True:
                 if await request.is_disconnected():
                     return
+
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=PING_INTERVAL)
+
                 except TimeoutError:
                     yield ": ping\n\n"
                     continue
+
                 yield _format(event.type, event.data)
 
     return StreamingResponse(

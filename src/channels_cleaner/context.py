@@ -20,11 +20,13 @@ log = logging.getLogger(__name__)
 
 
 def make_gateway(settings: Settings) -> TelegramGateway:
+    # Only the backend in use is imported: mock mode does not load Kurigram at all
     if settings.mock:
-        from channels_cleaner.telegram.mock_gateway import MockGateway
+        from channels_cleaner.telegram.mock_gateway import MockGateway  # noqa: PLC0415
 
         return MockGateway(settings)
-    from channels_cleaner.telegram.kurigram_gateway import KurigramGateway
+
+    from channels_cleaner.telegram.kurigram_gateway import KurigramGateway  # noqa: PLC0415
 
     return KurigramGateway(settings)
 
@@ -68,6 +70,7 @@ class AppContext:
     async def _boot(self) -> None:
         try:
             await self.auth.start()
+
         except Exception as exc:
             log.exception("Could not connect to Telegram")
             self.auth.state.status = "unauthorized"
@@ -75,6 +78,7 @@ class AppContext:
 
     async def _after_login(self, user: TgUser) -> None:
         await self.sync.load(user.id)
+
         if await self.db.channel_count(user.id) == 0:
             self.sync.start(user.id)
 
@@ -85,6 +89,7 @@ class AppContext:
     async def shutdown(self) -> None:
         if self._boot_task is not None and not self._boot_task.done():
             self._boot_task.cancel()
+
         await self.apply.stop()
         await self.sync.stop()
         await self.auth.stop()

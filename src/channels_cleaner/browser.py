@@ -17,15 +17,18 @@ _OPENERS = {"darwin": "open"}
 
 def _spawn_detached(command: list[str]) -> bool:
     try:
-        subprocess.Popen(
+        # A fixed opener and a URL we built ourselves, no shell involved
+        subprocess.Popen(  # noqa: S603
             command,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,  # survives Ctrl+C on the server
         )
+
     except OSError:
         return False
+
     return True
 
 
@@ -34,12 +37,16 @@ def open_url(url: str) -> bool:
     if sys.platform == "win32":
         # The shell association handles it; nothing is printed to our console.
         try:
-            os.startfile(url)
+            os.startfile(url)  # noqa: S606 - the shell association, as a double-click would
+
         except OSError:
             return webbrowser.open(url)
+
         return True
 
     opener = shutil.which(_OPENERS.get(sys.platform, "xdg-open"))
+
     if opener and _spawn_detached([opener, url]):
         return True
+
     return webbrowser.open(url)

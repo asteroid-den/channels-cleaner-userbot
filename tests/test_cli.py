@@ -26,8 +26,10 @@ def listening_port() -> Iterator[int]:
     sock = socket.socket()
     sock.bind(("127.0.0.1", 0))
     sock.listen()
+
     try:
         yield sock.getsockname()[1]
+
     finally:
         sock.close()
 
@@ -40,11 +42,12 @@ def test_free_port_is_not_in_use() -> None:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
+
     assert not cli.port_in_use("127.0.0.1", port)
 
 
 def test_busy_message_recognises_our_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "running_instance", lambda url: {"ok": True, "mock": True})
+    monkeypatch.setattr(cli, "running_instance", lambda _url: {"ok": True, "mock": True})
     msg = cli.port_busy_message("127.0.0.1", 8765, "http://127.0.0.1:8765")
     assert "already running" in msg
     assert "mock mode" in msg
@@ -52,7 +55,7 @@ def test_busy_message_recognises_our_app(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_busy_message_for_foreign_program(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "running_instance", lambda url: None)
+    monkeypatch.setattr(cli, "running_instance", lambda _url: None)
     msg = cli.port_busy_message("127.0.0.1", 8765, "http://127.0.0.1:8765")
     assert "another program" in msg
 
@@ -61,6 +64,7 @@ def test_running_instance_none_when_nothing_listens() -> None:
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
+
     assert cli.running_instance(f"http://127.0.0.1:{port}") is None
 
 
@@ -90,7 +94,9 @@ def test_main_exits_with_message_when_port_busy(
     listening_port: int, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("CC_NO_BROWSER", "1")
+
     with pytest.raises(SystemExit) as exc:
         cli.main(["--mock", "--port", str(listening_port), "--no-browser"])
+
     assert exc.value.code == 1
     assert f"--port {listening_port + 1}" in capsys.readouterr().err

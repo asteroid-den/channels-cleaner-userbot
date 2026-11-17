@@ -22,7 +22,7 @@ def settings(tmp_path: Path) -> Settings:
         mock_channels=40,
         apply_delay_min=0,
         apply_delay_max=0.01,
-        _env_file=None,
+        _env_file=None,  # pyright: ignore[reportCallIssue] - pydantic-settings init option, not a field
     )
 
 
@@ -42,22 +42,23 @@ async def ctx(settings: Settings, gateway: MockGateway) -> AppContext:
 @pytest.fixture
 async def client(ctx: AppContext) -> AsyncIterator[httpx.AsyncClient]:
     app = create_app(ctx.settings, ctx)
+
     async with app.router.lifespan_context(app):
         await ctx.wait_ready()
         transport = httpx.ASGITransport(app=app)
+
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
             yield c
 
 
-async def wait_for(
-    predicate: Callable[[], Awaitable[bool]], timeout: float = 5.0, step: float = 0.02
-) -> None:
+# Polls state the app exposes over HTTP: there is no event to wait on from the outside
+async def wait_for(predicate: Callable[[], Awaitable[bool]], timeout: float = 5.0, step: float = 0.02) -> None:  # noqa: ASYNC109
     async with asyncio.timeout(timeout):
-        while not await predicate():
+        while not await predicate():  # noqa: ASYNC110
             await asyncio.sleep(step)
 
 
-async def get_json(client: httpx.AsyncClient, url: str, **kw: Any) -> Any:
+async def get_json(client: httpx.AsyncClient, url: str, **kw: Any) -> Any:  # noqa: ANN401 - JSON of any shape
     response = await client.get(url, **kw)
     assert response.status_code == 200, response.text
     return response.json()

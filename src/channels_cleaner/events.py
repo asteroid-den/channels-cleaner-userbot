@@ -7,7 +7,6 @@ from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any
 
 Topic = str
 
@@ -15,7 +14,7 @@ Topic = str
 @dataclass(slots=True, frozen=True)
 class Event:
     type: str
-    data: dict[str, Any] = field(default_factory=dict)
+    data: dict[str, object] = field(default_factory=dict)
 
 
 class EventBus:
@@ -27,16 +26,20 @@ class EventBus:
     def subscribe(self, topic: Topic) -> Iterator[asyncio.Queue[Event]]:
         queue: asyncio.Queue[Event] = asyncio.Queue(self._max_queue)
         self._subscribers[topic].add(queue)
+
         try:
             yield queue
+
         finally:
             self._subscribers[topic].discard(queue)
 
-    def publish(self, topic: Topic, type_: str, **data: Any) -> None:
+    def publish(self, topic: Topic, type_: str, **data: object) -> None:
         event = Event(type_, data)
+
         for queue in list(self._subscribers.get(topic, ())):
             try:
                 queue.put_nowait(event)
+
             except asyncio.QueueFull:
                 # A stalled client; drop the oldest event rather than block producers.
                 queue.get_nowait()

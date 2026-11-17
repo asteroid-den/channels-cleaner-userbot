@@ -195,7 +195,7 @@ npm --prefix frontend run dev          # UI with hot reload on :5173, proxies /a
 Checks, the same as CI:
 
 ```bash
-uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest
+uv run ruff check && uv run ruff format --check && uv run pyright && uv run pytest
 cd frontend && npm run lint && npm run format:check && npm run test && npm run build
 ```
 

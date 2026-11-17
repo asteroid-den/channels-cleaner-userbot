@@ -25,23 +25,24 @@ def default_data_dir() -> Path:
     database go to the platform's per-user data location instead of the current directory.
     """
     local = Path("data")
-    if local.is_dir() or (
-        Path("pyproject.toml").is_file() and Path("src/channels_cleaner").is_dir()
-    ):
+
+    if local.is_dir() or (Path("pyproject.toml").is_file() and Path("src/channels_cleaner").is_dir()):
         return local
+
     if sys.platform == "win32":
         base = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+
     elif sys.platform == "darwin":
         base = Path.home() / "Library" / "Application Support"
+
     else:
         base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+
     return base / "channels-cleaner"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_prefix="CC_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_prefix="CC_", env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     api_id: int = TDESKTOP_API_ID
     api_hash: str = TDESKTOP_API_HASH
@@ -77,11 +78,13 @@ class Settings(BaseSettings):
     def ensure_dirs(self) -> None:
         for path in (self.data_dir, self.sessions_dir, self.media_dir):
             path.mkdir(parents=True, exist_ok=True)
+
         # The session file is the whole Telegram account: keep the data dir private to the
         # user, including dirs created by an older version with the default umask.
         if os.name == "posix":
             for path in (self.data_dir, self.sessions_dir):
                 try:
                     path.chmod(0o700)
+
                 except OSError as e:
                     log.warning("Could not make %s private: %s", path, e)

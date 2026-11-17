@@ -86,8 +86,9 @@ async def auth_cancel(ctx: Ctx) -> dict[str, Any]:
 async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
     if ctx.apply.running:
         raise HTTPException(409, "Wait for the running apply job to finish")
+
     await ctx.sync.stop()
-    await ctx.auth.log_out(body.wipe_data)
+    await ctx.auth.log_out(wipe_data=body.wipe_data)
     return ctx.auth.state.snapshot()
 
 
@@ -120,13 +121,12 @@ async def channels_sync_events(request: Request, ctx: Ctx) -> StreamingResponse:
 async def channels_list(
     ctx: Ctx,
     account: AccountId,
+    *,
     sort: Literal["dead", "unread"] = "dead",
     reverse: bool = False,
     state: Literal["undecided", "all"] = "undecided",
 ) -> dict[str, Any]:
-    rows = await ctx.db.list_channels(
-        account, sort=sort, reverse=reverse, undecided_only=state == "undecided"
-    )
+    rows = await ctx.db.list_channels(account, sort=sort, reverse=reverse, undecided_only=state == "undecided")
     return {
         "items": [schemas.ChannelOut.from_row(row) for row in rows],
         "counts": await _deck_counts(ctx, account),
@@ -145,26 +145,29 @@ _IMMUTABLE = {"Cache-Control": "private, max-age=604800, immutable"}
 @router.get("/channels/{channel_id}/avatar")
 async def channel_avatar(channel_id: int, ctx: Ctx, account: AccountId) -> Response:
     path = await ctx.channels.avatar(account, channel_id)
+
     if path is None:
         return Response(status_code=404)
+
     return FileResponse(path, headers=_IMMUTABLE)
 
 
 @router.get("/channels/{channel_id}/thumb")
 async def channel_thumb(channel_id: int, ctx: Ctx, account: AccountId) -> Response:
     path = await ctx.channels.post_thumb(account, channel_id)
+
     if path is None:
         return Response(status_code=404)
+
     return FileResponse(path, headers=_IMMUTABLE)
 
 
 # --- decisions -------------------------------------------------------------------------
 @router.put("/decisions/{channel_id}")
-async def decision_set(
-    channel_id: int, body: schemas.DecisionBody, ctx: Ctx, account: AccountId
-) -> dict[str, Any]:
+async def decision_set(channel_id: int, body: schemas.DecisionBody, ctx: Ctx, account: AccountId) -> dict[str, Any]:
     if await ctx.db.get_channel(account, channel_id) is None:
         raise HTTPException(404, "Unknown channel")
+
     await ctx.db.set_decision(account, channel_id, body.decision)
     return {"ok": True, "counts": await _deck_counts(ctx, account)}
 
@@ -173,6 +176,7 @@ async def decision_set(
 async def decision_undo(channel_id: int, ctx: Ctx, account: AccountId) -> dict[str, Any]:
     if ctx.apply.running:
         raise HTTPException(409, "Decisions are locked while applying")
+
     removed = await ctx.db.delete_decision(account, channel_id)
     return {"ok": removed, "counts": await _deck_counts(ctx, account)}
 
@@ -198,6 +202,7 @@ async def decisions_list(
 async def decisions_reset(body: schemas.ResetIn, ctx: Ctx, account: AccountId) -> dict[str, Any]:
     if ctx.apply.running:
         raise HTTPException(409, "Decisions are locked while applying")
+
     removed = await ctx.db.reset_decisions(account, body.only)
     return {"removed": removed, "counts": await _deck_counts(ctx, account)}
 
@@ -251,11 +256,13 @@ async def stats_get(ctx: Ctx, account: AccountId) -> dict[str, Any]:
 
 @router.get("/export")
 async def export(
-    ctx: Ctx, account: AccountId, format: Annotated[Literal["csv", "json"], Query()] = "csv"
+    ctx: Ctx, account: AccountId, format_: Annotated[Literal["csv", "json"], Query(alias="format")] = "csv"
 ) -> Response:
     rows = await stats.export_rows(ctx.db, account)
-    filename = f"unsubscribed-channels.{format}"
+    filename = f"unsubscribed-channels.{format_}"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    if format == "json":
+
+    if format_ == "json":
         return JSONResponse(json.loads(json.dumps(rows, default=str)), headers=headers)
+
     return Response(stats.to_csv(rows), media_type="text/csv; charset=utf-8", headers=headers)

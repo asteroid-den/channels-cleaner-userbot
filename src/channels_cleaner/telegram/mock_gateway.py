@@ -110,19 +110,26 @@ def _generate(count: int, seed: int = 42) -> dict[int, tuple[ChannelInfo, Channe
     rng = random.Random(seed)
     now = datetime.now(UTC)
     channels: dict[int, tuple[ChannelInfo, ChannelFull]] = {}
+
     for i in range(count):
         channel_id = -1001000000000 - i
         title = rng.choice(_RU) if rng.random() < 0.3 else f"{rng.choice(_ADJ)} {rng.choice(_NOUN)}"
+
         if any(info.title == title for info, _ in channels.values()):
             title = f"{title} #{i}"
+
         # Skewed activity: lots of fresh channels, a long tail of dead ones, some never posted.
         roll = rng.random()
+
         if roll < 0.04:
             last_post_at = None
+
         elif roll < 0.5:
             last_post_at = now - timedelta(hours=rng.uniform(0.2, 24 * 7))
+
         else:
             last_post_at = now - timedelta(days=rng.expovariate(1 / 160) + 7)
+
         unread = 0 if rng.random() < 0.25 else int(rng.expovariate(1 / 120))
         media = rng.choice(_MEDIA) if last_post_at else None
         members = int(rng.lognormvariate(8, 1.6))
@@ -141,10 +148,13 @@ def _generate(count: int, seed: int = 42) -> dict[int, tuple[ChannelInfo, Channe
             last_post_text=rng.choice(_TEXTS) if last_post_at and rng.random() < 0.9 else None,
             last_post_media=media,
         )
+
         if info.photo_file_id is None:
             info = replace(info, photo_unique_id=None)
+
         full = ChannelFull(about=rng.choice(_ABOUT), members_count=members)
         channels[channel_id] = (info, full)
+
     return channels
 
 
@@ -210,6 +220,7 @@ class MockGateway:
             self._authorized = bool(state.get("authorized"))
             gone = set(state.get("gone", []))
             self._channels = {k: v for k, v in self._channels.items() if k not in gone}
+
         return MOCK_USER if self._authorized else None
 
     async def stop(self) -> None:
@@ -217,8 +228,10 @@ class MockGateway:
 
     def _save(self, gone: set[int] | None = None) -> None:
         state = {"authorized": self._authorized, "gone": sorted(gone or set())}
+
         if self._state_path.exists() and gone is None:
             state["gone"] = json.loads(self._state_path.read_text("utf-8")).get("gone", [])
+
         self._state_path.parent.mkdir(parents=True, exist_ok=True)
         self._state_path.write_text(json.dumps(state), "utf-8")
 
@@ -226,18 +239,22 @@ class MockGateway:
         if self._settings.mock_2fa:
             self._awaiting_password = True
             raise PasswordNeededError
+
         self._authorized = True
         self._save()
         return MOCK_USER
 
     def _require_auth(self) -> None:
         if not self._authorized:
-            raise NotAuthorizedError("Not authorized")
+            msg = "Not authorized"
+            raise NotAuthorizedError(msg)
 
     # --- auth ----------------------------------------------------------------------
     async def qr_export(self) -> QrToken:
         if self._authorized:
-            raise GatewayError("Already authorized")
+            msg = "Already authorized"
+            raise GatewayError(msg)
+
         self._qr_round += 1
         return QrToken(
             url=f"tg://login?token=mock-{self._qr_round}",
@@ -250,15 +267,22 @@ class MockGateway:
 
     async def send_code(self, phone: str) -> None:
         digits = "".join(ch for ch in phone if ch.isdigit())
+
         if len(digits) < 7:
-            raise InvalidPhoneError("PHONE_NUMBER_INVALID")
+            msg = "PHONE_NUMBER_INVALID"
+            raise InvalidPhoneError(msg)
+
         self._phone = phone
 
     async def sign_in_code(self, code: str) -> TgUser:
         if not self._phone:
-            raise GatewayError("Request a code first")
+            msg = "Request a code first"
+            raise GatewayError(msg)
+
         if code.strip() != MOCK_CODE:
-            raise InvalidCodeError("PHONE_CODE_INVALID")
+            msg = "PHONE_CODE_INVALID"
+            raise InvalidCodeError(msg)
+
         return self._login()
 
     async def password_hint(self) -> str | None:
@@ -266,9 +290,13 @@ class MockGateway:
 
     async def check_password(self, password: str) -> TgUser:
         if not self._awaiting_password:
-            raise GatewayError("Password is not expected now")
+            msg = "Password is not expected now"
+            raise GatewayError(msg)
+
         if password != MOCK_PASSWORD:
-            raise InvalidPasswordError("PASSWORD_HASH_INVALID")
+            msg = "PASSWORD_HASH_INVALID"
+            raise InvalidPasswordError(msg)
+
         self._awaiting_password = False
         self._authorized = True
         self._save()
@@ -282,25 +310,32 @@ class MockGateway:
     # --- channels --------------------------------------------------------------------
     async def iter_channels(self) -> AsyncIterator[ChannelInfo]:
         self._require_auth()
+
         for index, (info, _) in enumerate(list(self._channels.values())):
             if index % 25 == 0:
                 await asyncio.sleep(0.05)  # pretend to paginate
+
             yield info
 
     async def get_full(self, channel_id: int) -> ChannelFull:
         self._require_auth()
         await asyncio.sleep(0.15)
         entry = self._channels.get(channel_id)
+
         if entry is None:
-            raise GatewayError("CHANNEL_INVALID")
+            msg = "CHANNEL_INVALID"
+            raise GatewayError(msg)
+
         return entry[1]
 
     async def recent_post_dates(self, channel_id: int, limit: int) -> list[datetime]:
         self._require_auth()
         entry = self._channels.get(channel_id)
         last = entry[0].last_post_at if entry is not None else None
+
         if last is None:
             return []
+
         rng = random.Random(channel_id)
         # A posting rate that matches how "alive" the channel looks; dead channels get a
         # slower rate so their pulse visibly fades out into the past.
@@ -308,28 +343,34 @@ class MockGateway:
         rate = rng.choice([0.3, 0.8, 1.5, 3, 8]) if quiet_days < 14 else rng.choice([0.2, 0.5, 1])
         dates = [last]
         current = last
+
         while len(dates) < limit:
             current -= timedelta(days=rng.expovariate(rate) + 0.01)
+
             if (last - current).days > 400:
                 break
+
             dates.append(current)
+
         return dates
 
-    async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None:
+    async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None:  # noqa: ARG002 - draws its own
         entry = self._channels.get(channel_id)
+
         if entry is None:
             return None
+
         path = dest.with_suffix(".svg")
         color = _COLORS[abs(channel_id) % len(_COLORS)]
         path.write_text(_avatar_svg(entry[0].title, color), "utf-8")
         return path
 
-    async def download_post_thumb(
-        self, channel_id: int, message_id: int, dest: Path
-    ) -> Path | None:
+    async def download_post_thumb(self, channel_id: int, message_id: int, dest: Path) -> Path | None:
         entry = self._channels.get(channel_id)
+
         if entry is None or entry[0].last_post_media not in {"photo", "video"}:
             return None
+
         path = dest.with_suffix(".svg")
         path.write_text(_thumb_svg(channel_id + message_id), "utf-8")
         return path
@@ -338,24 +379,30 @@ class MockGateway:
     async def _maybe_fail(self) -> None:
         await asyncio.sleep(self.action_delay)
         roll = self._rng.random()
+
         if roll < 0.05:
             raise FloodWaitError(self._rng.randint(3, 6))
+
         if roll < 0.08:
-            raise GatewayError("CHANNEL_PRIVATE")
+            msg = "CHANNEL_PRIVATE"
+            raise GatewayError(msg)
 
     async def leave(self, channel_id: int) -> None:
         self._require_auth()
         await self._maybe_fail()
         self._channels.pop(channel_id, None)
         gone: set[int] = set()
+
         if self._state_path.exists():
             gone = set(json.loads(self._state_path.read_text("utf-8")).get("gone", []))
+
         gone.add(channel_id)
         self._save(gone)
 
     async def mute(self, channel_id: int) -> None:
         self._require_auth()
         await self._maybe_fail()
+
         if channel_id in self._channels:
             info, full = self._channels[channel_id]
             self._channels[channel_id] = (replace(info, is_muted=True), full)
@@ -363,6 +410,7 @@ class MockGateway:
     async def archive(self, channel_id: int) -> None:
         self._require_auth()
         await self._maybe_fail()
+
         if channel_id in self._channels:
             info, full = self._channels[channel_id]
             self._channels[channel_id] = (replace(info, is_archived=True), full)
@@ -370,6 +418,7 @@ class MockGateway:
     async def unmute(self, channel_id: int) -> None:
         self._require_auth()
         await self._maybe_fail()
+
         if channel_id in self._channels:
             info, full = self._channels[channel_id]
             self._channels[channel_id] = (replace(info, is_muted=False), full)
@@ -377,6 +426,7 @@ class MockGateway:
     async def unarchive(self, channel_id: int) -> None:
         self._require_auth()
         await self._maybe_fail()
+
         if channel_id in self._channels:
             info, full = self._channels[channel_id]
             self._channels[channel_id] = (replace(info, is_archived=False), full)
