@@ -17,6 +17,20 @@ const { t, locale } = useI18n()
 const pluralCount = (n: number) => (n >= 1000 ? 1000 : n)
 
 const verdict = computed(() => verdictOf(props.channel))
+
+/** A card met again while rewinding shows what was decided for it. */
+const earlier = computed(() => {
+  const d = props.channel.decision
+  if (!d || d === 'skip') return null
+  const applied = props.channel.decision_status === 'applied' && (d === 'mute' || d === 'archive')
+  return { decision: d, applied }
+})
+const EARLIER_CLASS: Record<string, string> = {
+  keep: 'bg-success-soft text-success',
+  unsubscribe: 'bg-danger-soft text-danger',
+  mute: 'bg-warn-soft text-warn',
+  archive: 'bg-accent-soft text-accent',
+}
 const members = computed(() =>
   props.channel.members_count === null
     ? null
@@ -50,6 +64,13 @@ const rate = computed(() =>
       class="flex min-h-0 flex-1 flex-col gap-4 px-6 pt-5 pb-5 transition-opacity duration-200"
       :class="stacked ? 'invisible opacity-0' : ''"
     >
+      <!-- met again while rewinding: what was decided for it -->
+      <div v-if="earlier" class="-mb-1.5 flex">
+        <span class="tag" :class="EARLIER_CLASS[earlier.decision]">
+          {{ t('deck.was') }}: {{ t(`deck.tags.${earlier.decision}`)
+          }}<template v-if="earlier.applied"> · {{ t('deck.appliedMark') }}</template>
+        </span>
+      </div>
       <!-- head -->
       <div class="flex items-start gap-4">
         <ChannelAvatar

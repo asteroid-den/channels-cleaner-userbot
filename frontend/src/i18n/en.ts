@@ -85,6 +85,13 @@ export default {
     progressLabel: 'Channels sorted',
     zoneLeave: 'Unsubscribe',
     zoneKeep: 'Keep',
+    rewinding: 'Decision {n} of {total}',
+    toEnd: 'Back to undecided · {n}',
+    was: 'Was',
+    loupePosition: '#{n} of {total}',
+    loupeClick: 'click to go back here',
+    loupeWheel: 'scroll to browse',
+    appliedMark: 'applied',
     pulseTitle: 'Activity · 26 weeks',
     pulseTruncated: 'last {n} posts',
     historyTitle: 'History',
@@ -144,6 +151,8 @@ export default {
     mute: 'Mute forever',
     archive: 'Move to archive',
     putBack: 'Put back',
+    revert: 'Undo earlier changes',
+    reverts: { mute: 'unmute', archive: 'take out of archive' },
     empty: 'No actions queued yet.',
     apply: 'Apply {n} action | Apply {n} actions',
     pacing:
@@ -154,6 +163,7 @@ export default {
       unsubscribe:
         'You will leave these channels. Public ones can be rejoined by link, private ones only with an invite.',
       mute: 'The channels stay in your list, but notifications are switched off for good.',
+      keep: 'These were muted or archived earlier. That will be taken back.',
       archive:
         'The channels move to the Telegram archive. If not muted, a channel comes back with its next post.',
     },
