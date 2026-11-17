@@ -94,6 +94,9 @@ def _iso(value: datetime | None) -> str | None:
     return value.astimezone(UTC).isoformat() if value else None
 
 
+_TRAIL_CODES = {"keep": "k", "unsubscribe": "u", "mute": "m", "archive": "a"}
+
+
 @dataclass(slots=True)
 class ChannelRow:
     channel_id: int
@@ -442,6 +445,20 @@ class Database:
         counts = {"keep": 0, "unsubscribe": 0, "mute": 0, "archive": 0}
         counts.update({str(decision): int(n) for decision, n in rows})
         return counts
+
+    async def decision_trail(self, account_id: int) -> str:
+        """Final decisions in the order they were made, one letter each (k/u/m/a)."""
+        async with self.conn.execute(
+            """
+            SELECT d.decision FROM decisions d
+            JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
+            WHERE d.account_id = ? AND c.gone = 0 AND d.decision != 'skip'
+            ORDER BY d.decided_at, d.rowid
+            """,
+            (account_id,),
+        ) as cur:
+            rows = list(await cur.fetchall())
+        return "".join(_TRAIL_CODES[str(row[0])] for row in rows)
 
     async def list_decided(
         self,
