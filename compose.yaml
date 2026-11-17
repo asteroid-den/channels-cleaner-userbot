@@ -1,0 +1,16 @@
+services:
+  channels-cleaner:
+    build: .
+    image: channels-cleaner
+    ports:
+      # localhost only: the app has no login of its own
+      - "127.0.0.1:8765:8765"
+    volumes:
+      # Telegram session, decisions and media cache survive container rebuilds
+      - cleaner-data:/data
+    env_file:
+      - path: .env
+        required: false
+
+volumes:
+  cleaner-data:
