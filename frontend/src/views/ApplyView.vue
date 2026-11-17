@@ -70,7 +70,12 @@ function statusOf(el: Element) {
   return state.value.items.find((i) => i.channel_id === id)?.status
 }
 
+// Only transform and opacity here: filters (blur, grayscale) on these 3D-rotated cards made
+// Firefox stop painting the rest of the deck after a failed item left.
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+
 function onEnter(el: Element, done: () => void) {
+  if (reduceMotion.matches) return done()
   el.animate(
     [
       { opacity: 0, translate: '28px 0' },
@@ -82,17 +87,19 @@ function onEnter(el: Element, done: () => void) {
 
 function onLeave(el: Element, done: () => void) {
   const failed = statusOf(el) === 'failed'
-  const keyframes: Keyframe[] = failed
-    ? [
-        { opacity: 1, translate: '0 0', rotate: '0deg', filter: 'none' },
-        { opacity: 0, translate: '0 56px', rotate: '-10deg', filter: 'grayscale(1)' },
-      ]
-    : [
-        { opacity: 1, translate: '0 -10px', scale: '1', filter: 'blur(0)' },
-        { opacity: 0, translate: '0 -48px', scale: '0.82', filter: 'blur(3px)' },
-      ]
+  const keyframes: Keyframe[] = reduceMotion.matches
+    ? [{ opacity: 1 }, { opacity: 0 }]
+    : failed
+      ? [
+          { opacity: 1, translate: '0 0', rotate: '0deg' },
+          { opacity: 0, translate: '0 56px', rotate: '-10deg' },
+        ]
+      : [
+          { opacity: 1, translate: '0 -10px', scale: '1' },
+          { opacity: 0, translate: '0 -48px', scale: '0.82' },
+        ]
   el.animate(keyframes, {
-    duration: failed ? 520 : 460,
+    duration: reduceMotion.matches ? 150 : failed ? 520 : 460,
     easing: 'ease-in',
     fill: 'forwards',
   }).onfinish = done
