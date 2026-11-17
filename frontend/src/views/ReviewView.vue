@@ -25,7 +25,12 @@ const failed = ref<Channel[]>([])
 const loading = ref(true)
 const starting = ref(false)
 
-const GROUPS: { decision: ActionDecision; icon: IconName; label: string; cls: string }[] = [
+const GROUPS: {
+  decision: ActionDecision | 'keep'
+  icon: IconName
+  label: string
+  cls: string
+}[] = [
   {
     decision: 'unsubscribe',
     icon: 'x',
@@ -39,6 +44,8 @@ const GROUPS: { decision: ActionDecision; icon: IconName; label: string; cls: st
     label: 'review.archive',
     cls: 'bg-accent-soft text-accent',
   },
+  // "keep" only shows up here when it takes back a mute/archive applied earlier
+  { decision: 'keep', icon: 'undo', label: 'review.revert', cls: 'bg-surface-3 text-muted' },
 ]
 
 const grouped = computed(() =>
@@ -152,6 +159,9 @@ useHotkeys({
             <div class="min-w-0 flex-1">
               <div class="truncate font-medium">{{ c.title }}</div>
               <div class="truncate text-xs text-muted">
+                <span v-if="c.reverts && group.decision !== 'unsubscribe'" class="text-text"
+                  >↺ {{ t(`review.reverts.${c.reverts}`) }} ·
+                </span>
                 <span v-if="c.username">@{{ c.username }} · </span>
                 <span
                   v-else

@@ -37,8 +37,14 @@ const floodLeft = computed(() =>
     : null,
 )
 
-const BADGE: Record<ActionDecision, { icon: IconName; cls: string; verb: string }> = {
+const BADGE: Record<
+  ActionDecision | 'keep' | 'skip',
+  { icon: IconName; cls: string; verb: string }
+> = {
   unsubscribe: { icon: 'x', cls: 'bg-danger', verb: 'actions.unsubscribe' },
+  // a changed decision that only takes back an applied mute/archive
+  keep: { icon: 'undo', cls: 'bg-faint', verb: 'review.revert' },
+  skip: { icon: 'undo', cls: 'bg-faint', verb: 'review.revert' },
   mute: { icon: 'bellOff', cls: 'bg-warn', verb: 'actions.mute' },
   archive: { icon: 'archive', cls: 'bg-accent', verb: 'actions.archive' },
 }
