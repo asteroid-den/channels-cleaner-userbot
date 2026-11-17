@@ -91,7 +91,7 @@ const eta = computed(() => {
 const TAG_CLASS: Record<Decision, string> = {
   keep: 'bg-success-soft text-success',
   unsubscribe: 'bg-danger-soft text-danger',
-  skip: 'bg-warn-soft text-warn',
+  skip: 'bg-surface-3 text-muted',
   mute: 'bg-warn-soft text-warn',
   archive: 'bg-accent-soft text-accent',
 }
@@ -213,6 +213,12 @@ const KEYS: { id: Decision; kbd: string; label: string; cls?: string; kbdAfter?:
         </span>
         <span v-else-if="eta !== null">{{ t('deck.eta', { m: t('time.minutes', eta) }) }}</span>
       </div>
+      <p class="sr-only" aria-live="polite">
+        <template v-if="deck.current">
+          {{ deck.current.title }} ·
+          {{ t('deck.position', { pos: deck.position, total: deck.counts.total }) }}
+        </template>
+      </p>
 
       <div
         class="relative mt-4 h-[min(610px,calc(100vh-200px))] min-h-[480px] w-full max-w-[480px]"

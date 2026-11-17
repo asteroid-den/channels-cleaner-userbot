@@ -113,7 +113,7 @@ function onLeave(el: Element, done: () => void) {
                   : t('apply.title')
             }}
           </h1>
-          <p class="mt-1 h-5 truncate text-sm text-muted">
+          <p class="mt-1 h-5 truncate text-sm text-muted" aria-live="polite">
             <template v-if="current">
               {{ t(BADGE[current.decision].verb) }} ·
               <span class="text-text">{{ current.title }}</span>

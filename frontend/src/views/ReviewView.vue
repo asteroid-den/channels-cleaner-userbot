@@ -7,9 +7,11 @@ import { api } from '@/api/client'
 import type { ActionDecision, Channel } from '@/api/types'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
 import ChannelAvatar from '@/components/ChannelAvatar.vue'
+import { useHotkeys } from '@/composables/useHotkeys'
 import { useApplyStore } from '@/stores/apply'
 import { useDeckStore } from '@/stores/deck'
 import { useUiStore } from '@/stores/ui'
+import { actionErrorKind } from '@/utils/errors'
 import { relativeTime } from '@/utils/format'
 
 const { t, locale } = useI18n()
@@ -46,6 +48,11 @@ const grouped = computed(() =>
   })).filter((g) => g.items.length),
 )
 const minutes = computed(() => Math.round((pending.value.length * 2.6) / 60))
+/** Private channels being left: without an invite link there is no way back. */
+const noWayBack = computed(
+  () => pending.value.filter((c) => c.decision === 'unsubscribe' && !c.username).length,
+)
+const modKey = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'
 
 async function load() {
   loading.value = true
@@ -90,6 +97,13 @@ async function start() {
 }
 
 onMounted(load)
+
+useHotkeys({
+  Escape: () => void router.push('/'),
+  'mod+Enter': () => {
+    if (pending.value.length && !starting.value) void start()
+  },
+})
 </script>
 
 <template>
@@ -99,6 +113,7 @@ onMounted(load)
       class="mb-4 inline-flex w-fit items-center gap-1.5 text-sm text-muted hover:text-text"
     >
       <AppIcon name="arrowLeft" :size="16" />{{ t('review.backToDeck') }}
+      <kbd class="font-mono text-[11px] text-faint">Esc</kbd>
     </RouterLink>
     <h1 class="text-3xl font-bold tracking-tight">{{ t('review.title') }}</h1>
     <p class="mt-1 text-muted">{{ t('review.subtitle') }}</p>
@@ -120,6 +135,7 @@ onMounted(load)
           {{ t(group.label) }}
           <span class="text-muted tabular-nums">· {{ group.items.length }}</span>
         </h2>
+        <p class="mb-3 text-[13px] text-muted">{{ t(`review.hints.${group.decision}`) }}</p>
         <TransitionGroup
           tag="ul"
           class="relative overflow-hidden rounded-xl border border-border bg-surface"
@@ -137,6 +153,14 @@ onMounted(load)
               <div class="truncate font-medium">{{ c.title }}</div>
               <div class="truncate text-xs text-muted">
                 <span v-if="c.username">@{{ c.username }} · </span>
+                <span
+                  v-else
+                  class="inline-flex items-center gap-1"
+                  :class="group.decision === 'unsubscribe' ? 'font-medium text-danger' : ''"
+                  ><AppIcon name="lock" :size="11" />{{
+                    group.decision === 'unsubscribe' ? t('review.noWayBack') : t('deck.private')
+                  }}</span
+                ><span v-if="!c.username"> · </span>
                 <span v-if="c.last_post_at">{{ relativeTime(c.last_post_at, locale) }}</span>
                 <span v-else>{{ t('deck.neverPosted') }}</span>
                 <span v-if="c.unread_count"> · {{ c.unread_count }} {{ t('deck.unread') }}</span>
@@ -167,7 +191,9 @@ onMounted(load)
             <ChannelAvatar :id="c.id" :title="c.title" :src="c.avatar_url" :size="36" />
             <div class="min-w-0 flex-1">
               <div class="truncate text-sm font-medium">{{ c.title }}</div>
-              <div class="truncate font-mono text-xs text-danger">{{ c.error }}</div>
+              <div class="truncate text-xs text-danger" :title="c.error ?? ''">
+                {{ t(`review.errors.${actionErrorKind(c.error)}`) }}
+              </div>
             </div>
             <button class="key shrink-0 !px-2.5 !py-1 !text-xs" @click="putBack(c)">
               {{ t('review.putBack') }}
@@ -182,16 +208,19 @@ onMounted(load)
       class="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-bg/85 px-4 py-4 backdrop-blur-md"
     >
       <div class="mx-auto flex max-w-2xl items-center gap-4">
-        <p class="flex-1 text-xs leading-relaxed text-muted">
-          {{ t('review.pacing', { m: t('time.minutes', minutes) }) }}
-        </p>
+        <div class="flex-1 text-xs leading-relaxed text-muted">
+          <p v-if="noWayBack" class="mb-0.5 flex items-center gap-1.5 font-medium text-danger">
+            <AppIcon name="lock" :size="12" />{{ t('review.noWayBackCount', noWayBack) }}
+          </p>
+          <p>{{ t('review.pacing', { m: t('time.minutes', minutes) }) }}</p>
+        </div>
         <button
-          class="flex shrink-0 items-center gap-2 rounded-[10px] bg-danger px-5 py-3 font-semibold text-white shadow-card hover:brightness-110 disabled:opacity-50"
+          class="flex shrink-0 items-center gap-2 rounded-[10px] bg-danger-strong px-5 py-3 font-semibold text-white shadow-card hover:brightness-110 disabled:opacity-50"
           :disabled="starting"
           @click="start"
         >
           {{ t('review.apply', pending.length) }}
-          <AppIcon name="arrowRight" :size="16" />
+          <kbd class="font-mono text-[11px] font-medium opacity-75">{{ modKey }} ↵</kbd>
         </button>
       </div>
     </div>
