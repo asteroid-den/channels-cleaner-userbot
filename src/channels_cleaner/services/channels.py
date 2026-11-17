@@ -34,36 +34,47 @@ class ChannelsService:
 
     async def _row(self, account_id: int, channel_id: int) -> ChannelRow:
         row = await self._db.get_channel(account_id, channel_id)
+
         if row is None:
             raise ChannelNotFoundError(channel_id)
+
         return row
 
     def _is_fresh(self, fetched_at: str | None) -> bool:
         if not fetched_at:
             return False
+
         age = datetime.now(UTC) - datetime.fromisoformat(fetched_at)
         return age < timedelta(hours=self._settings.full_info_ttl_hours)
 
     async def get_full(self, account_id: int, channel_id: int) -> ChannelRow:
         row = await self._row(account_id, channel_id)
+
         # Rows cached before the pulse existed are refreshed once to get it.
         if self._is_fresh(row.full_fetched_at) and row.pulse is not None:
             return row
+
         key = ("full", channel_id)
+
         if key in self._inflight:
             await self._inflight[key]
+
         else:
             future: asyncio.Future[object] = asyncio.get_running_loop().create_future()
             self._inflight[key] = future
+
             try:
                 async with self._full_sem:
                     full: ChannelFull = await self._gw.get_full(channel_id)
                     dates = await self._gw.recent_post_dates(channel_id, HISTORY_LIMIT)
+
                 await self._db.save_full(account_id, channel_id, full, compute_pulse(dates, limit=HISTORY_LIMIT))
+
             finally:
                 # Waiters just re-read the row; if this fetch failed they get it without extras.
                 future.set_result(None)
                 self._inflight.pop(key, None)
+
         return await self._row(account_id, channel_id)
 
     # --- media ---------------------------------------------------------------------------
@@ -78,39 +89,55 @@ class ChannelsService:
         for candidate in directory.glob(f"{stem}.*"):
             if candidate.suffix == _NONE_MARKER:
                 return False
+
             return candidate
+
         return None
 
     async def avatar(self, account_id: int, channel_id: int) -> Path | None:
         row = await self._row(account_id, channel_id)
+
         if not row.photo_file_id:
             return None
+
         directory = self._media_dir(account_id)
         stem = f"avatar_{channel_id}_{row.photo_unique_id or 'x'}"
         cached = self._cached(directory, stem)
+
         if cached is False:
             return None
+
         if isinstance(cached, Path):
             return cached
+
         async with self._media_sem:
             path = await self._gw.download_avatar(channel_id, row.photo_file_id, directory / f"{stem}.jpg")
+
         if path is None:
             (directory / f"{stem}{_NONE_MARKER}").touch()
+
         return path
 
     async def post_thumb(self, account_id: int, channel_id: int) -> Path | None:
         row = await self._row(account_id, channel_id)
+
         if not row.last_post_id or row.last_post_media not in {"photo", "video", "animation"}:
             return None
+
         directory = self._media_dir(account_id)
         stem = f"thumb_{channel_id}_{row.last_post_id}"
         cached = self._cached(directory, stem)
+
         if cached is False:
             return None
+
         if isinstance(cached, Path):
             return cached
+
         async with self._media_sem:
             path = await self._gw.download_post_thumb(channel_id, row.last_post_id, directory / f"{stem}.jpg")
+
         if path is None:
             (directory / f"{stem}{_NONE_MARKER}").touch()
+
         return path

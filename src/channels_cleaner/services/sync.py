@@ -46,6 +46,7 @@ class SyncService:
     def start(self, account_id: int) -> bool:
         if self._task is not None and not self._task.done():
             return False
+
         self.state = SyncState(running=True, last_synced_at=self.state.last_synced_at)
         self._publish("progress")
         self._task = asyncio.create_task(self._run(account_id), name="channels-sync")
@@ -64,23 +65,28 @@ class SyncService:
                 try:
                     await self._fetch(account_id)
                     break
+
                 except FloodWaitError as exc:
                     if attempt == _MAX_FLOOD_RETRIES:
                         raise
+
                     self.state.flood_wait = exc.seconds
                     self._publish("flood_wait")
                     await asyncio.sleep(exc.seconds)
                     self.state.flood_wait = None
                     self.state.fetched = 0
+
             synced_at = now_iso()
             await self._db.set_setting(account_id, "synced_at", synced_at)
             self.state.running = False
             self.state.last_synced_at = synced_at
             self.state.total = self.state.fetched
             self._publish("done")
+
         except asyncio.CancelledError:
             self.state.running = False
             raise
+
         except Exception as exc:
             log.exception("Channel sync failed")
             self.state.running = False
@@ -90,16 +96,21 @@ class SyncService:
     async def _fetch(self, account_id: int) -> None:
         seen: set[int] = set()
         batch: list[ChannelInfo] = []
+
         async for channel in self._gw.iter_channels():
             if channel.id in seen:
                 continue
+
             seen.add(channel.id)
             batch.append(channel)
             self.state.fetched = len(seen)
+
             if len(batch) >= _BATCH:
                 await self._db.upsert_channels(account_id, batch)
                 batch.clear()
                 self._publish("progress")
+
         if batch:
             await self._db.upsert_channels(account_id, batch)
+
         await self._db.mark_gone_except(account_id, seen)

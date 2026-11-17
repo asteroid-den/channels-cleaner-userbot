@@ -21,11 +21,13 @@ AGE_BUCKETS: list[tuple[str, float]] = [
 
 async def collect(db: Database, account_id: int) -> dict[str, Any]:
     conn = db.conn
+
     async with conn.execute(
         "SELECT decision, status, COUNT(*) FROM decisions WHERE account_id = ? GROUP BY decision, status",
         (account_id,),
     ) as cur:
         by_decision: dict[str, dict[str, int]] = {}
+
         async for decision, status, count in cur:
             by_decision.setdefault(decision, {})[status] = count
 
@@ -49,12 +51,16 @@ async def collect(db: Database, account_id: int) -> dict[str, Any]:
     now = datetime.now(UTC)
     age = {name: 0 for name, _ in AGE_BUCKETS} | {"never": 0}
     unread_total = 0
+
     for last_post_at, unread in rows:
         unread_total += unread
+
         if last_post_at is None:
             age["never"] += 1
             continue
+
         days = (now - datetime.fromisoformat(last_post_at)).total_seconds() / 86400
+
         for name, limit in AGE_BUCKETS:
             if days <= limit:
                 age[name] += 1

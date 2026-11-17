@@ -9,6 +9,7 @@ def test_profiles_are_complete_and_unique() -> None:
     profiles = all_profiles()
     assert len(profiles) >= 30
     assert len({p.name for p in profiles}) == len(profiles)
+
     for profile in profiles:
         kwargs = profile.client_kwargs()
         assert all(kwargs.values()), profile

@@ -192,6 +192,7 @@ class Database:
         if self._conn is None:
             msg = "Database is not open"
             raise RuntimeError(msg)
+
         return self._conn
 
     async def open(self) -> None:
@@ -207,14 +208,19 @@ class Database:
 
     async def _migrate(self) -> None:
         await self.conn.execute("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER)")
+
         async with self.conn.execute("SELECT MAX(version) FROM schema_version") as cur:
             row = await cur.fetchone()
+
         current = (row[0] if row else None) or 0
+
         for version, script in enumerate(MIGRATIONS, start=1):
             if version <= current:
                 continue
+
             await self.conn.executescript(script)
             await self.conn.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
+
         await self.conn.commit()
 
     # --- accounts ----------------------------------------------------------------------
@@ -245,6 +251,7 @@ class Database:
         ):
             # Table and column names come from the tuple above, the value is a parameter
             await self.conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (account_id,))  # noqa: S608
+
         await self.conn.commit()
 
     # --- channels ----------------------------------------------------------------------
@@ -295,13 +302,16 @@ class Database:
             "SELECT channel_id FROM channels WHERE account_id = ? AND gone = 0", (account_id,)
         ) as cur:
             existing = {row[0] async for row in cur}
+
         missing = existing - keep_ids
+
         if missing:
             await self.conn.executemany(
                 "UPDATE channels SET gone = 1 WHERE account_id = ? AND channel_id = ?",
                 [(account_id, cid) for cid in missing],
             )
             await self.conn.commit()
+
         return len(missing)
 
     async def set_channel_gone(self, account_id: int, channel_id: int) -> None:
@@ -324,11 +334,13 @@ class Database:
                 "UPDATE channels SET is_muted = ? WHERE account_id = ? AND channel_id = ?",
                 (int(muted), account_id, channel_id),
             )
+
         if archived is not None:
             await self.conn.execute(
                 "UPDATE channels SET is_archived = ? WHERE account_id = ? AND channel_id = ?",
                 (int(archived), account_id, channel_id),
             )
+
         await self.conn.commit()
 
     async def save_full(
@@ -360,6 +372,7 @@ class Database:
             "SELECT COUNT(*) FROM channels WHERE account_id = ? AND gone = 0", (account_id,)
         ) as cur:
             row = await cur.fetchone()
+
         return int(row[0]) if row else 0
 
     async def get_channel(self, account_id: int, channel_id: int) -> ChannelRow | None:
@@ -368,6 +381,7 @@ class Database:
             (account_id, channel_id),
         ) as cur:
             row = await cur.fetchone()
+
         return _row_to_channel(row) if row else None
 
     async def list_channels(
@@ -379,17 +393,22 @@ class Database:
         undecided_only: bool = True,
     ) -> list[ChannelRow]:
         where = ["c.account_id = ?", "c.gone = 0"]
+
         if undecided_only:
             where.append("(d.decision IS NULL OR d.decision = 'skip')")
+
         if sort == "dead":
             # Never-posted channels are the deadest of all.
             key = "c.last_post_at IS NOT NULL, c.last_post_at"
             key_desc = "c.last_post_at IS NULL, c.last_post_at DESC"
+
         else:
             key = "c.unread_count DESC"
             key_desc = "c.unread_count ASC"
+
         order = f"(d.decision = 'skip') ASC, {key_desc if reverse else key}, c.title COLLATE NOCASE"
         sql = f"{_CHANNEL_SELECT} WHERE {' AND '.join(where)} ORDER BY {order}"
+
         async with self.conn.execute(sql, (account_id,)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
@@ -408,26 +427,33 @@ class Database:
         row = await self._decision_row(account_id, channel_id)
         # What the app has already done to this channel in Telegram (a later change undoes it).
         in_telegram: str | None = None
+
         if row is not None:
             if row[2]:
                 in_telegram = row[2]
+
             elif row[1] == "applied" and row[0] in REVERSIBLE_ACTIONS:
                 in_telegram = row[0]
+
         if decision == "skip" and in_telegram:
             decision = cast("Decision", in_telegram)  # "later" can't take an applied action back
 
         ts = now_iso()
         reverts: str | None = None
         applied_at: str | None
+
         if in_telegram == decision:
             status: DecisionStatus = "applied"  # back to what Telegram already has
             applied_at = row[4] if row is not None else ts
+
         elif in_telegram is not None:
             status, reverts, applied_at = "pending", in_telegram, None
+
         else:
             # "keep" and "skip" need no Telegram call, so they are final right away.
             status = "pending" if decision in ACTION_DECISIONS else "applied"
             applied_at = None if status == "pending" else ts
+
         # A changed decision keeps its place in the order of the pass; "later" never had one.
         keep_place = row is not None and row[0] != "skip" and decision != "skip"
         decided_at = row[3] if keep_place and row is not None else ts
@@ -447,6 +473,7 @@ class Database:
 
     async def delete_decision(self, account_id: int, channel_id: int) -> bool:
         row = await self._decision_row(account_id, channel_id)
+
         if row is not None and row[2]:
             # Undoing a change of an applied action restores that action as it is in Telegram.
             await self.conn.execute(
@@ -459,6 +486,7 @@ class Database:
             )
             await self.conn.commit()
             return True
+
         cur = await self.conn.execute(
             """
             DELETE FROM decisions
@@ -477,9 +505,11 @@ class Database:
               AND NOT (status = 'applied' AND decision IN ('unsubscribe', 'mute', 'archive'))
         """
         params: tuple[Any, ...] = (account_id,)
+
         if only is not None:
             sql += " AND decision = ?"
             params = (account_id, only)
+
         cur = await self.conn.execute(sql, params)
         await self.conn.commit()
         return cur.rowcount
@@ -500,6 +530,7 @@ class Database:
             (account_id,),
         ) as cur:
             rows = list(await cur.fetchall())
+
         counts = {"keep": 0, "unsubscribe": 0, "mute": 0, "archive": 0}
         counts.update({str(decision): int(n) for decision, n in rows})
         return counts
@@ -516,6 +547,7 @@ class Database:
             (account_id,),
         ) as cur:
             rows = list(await cur.fetchall())
+
         return "".join(_TRAIL_CODES[str(row[0])] for row in rows)
 
     async def list_decided(
@@ -529,10 +561,13 @@ class Database:
         # Rows that undo an applied action are work for the apply job too, whatever the decision.
         sql = f"{_CHANNEL_SELECT} WHERE c.account_id = ? AND (d.decision IN ({placeholders}) OR d.reverts IS NOT NULL)"
         params: list[Any] = [account_id, *decisions]
+
         if status is not None:
             sql += " AND d.status = ?"
             params.append(status)
+
         sql += " ORDER BY d.decided_at, d.rowid"
+
         async with self.conn.execute(sql, params) as cur:
             return [_row_to_channel(row) async for row in cur]
 
@@ -542,6 +577,7 @@ class Database:
             WHERE c.account_id = ? AND c.gone = 0 AND d.decision IS NOT NULL
               AND d.decision != 'skip'
             ORDER BY d.decided_at, d.rowid"""
+
         async with self.conn.execute(sql, (account_id,)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
@@ -579,19 +615,23 @@ class Database:
             (account_id, total, now_iso()),
         )
         await self.conn.commit()
+
         if cur.lastrowid is None:
             msg = "INSERT returned no row id"
             raise RuntimeError(msg)
+
         return cur.lastrowid
 
     async def update_job(self, job_id: int, *, done: int, failed: int, status: str | None = None) -> None:
         if status is None:
             await self.conn.execute("UPDATE apply_jobs SET done = ?, failed = ? WHERE id = ?", (done, failed, job_id))
+
         else:
             await self.conn.execute(
                 "UPDATE apply_jobs SET done = ?, failed = ?, status = ?, finished_at = ? WHERE id = ?",
                 (done, failed, status, now_iso(), job_id),
             )
+
         await self.conn.commit()
 
     async def interrupt_running_jobs(self) -> None:
@@ -608,6 +648,7 @@ class Database:
             (account_id,),
         ) as cur:
             row = await cur.fetchone()
+
         return JobRow(*row) if row else None
 
     # --- settings ------------------------------------------------------------------------
@@ -616,6 +657,7 @@ class Database:
             "SELECT value FROM settings WHERE account_id = ? AND key = ?", (account_id, key)
         ) as cur:
             row = await cur.fetchone()
+
         return json.loads(row[0]) if row else None
 
     async def set_setting(self, account_id: int, key: str, value: object) -> None:

@@ -76,6 +76,7 @@ async def test_apply_review_stats_export(client: httpx.AsyncClient, ctx: AppCont
     await login(client, ctx)
     items = (await get_json(client, "/api/channels"))["items"]
     plan = {"unsubscribe": items[:6], "mute": items[6:8], "archive": items[8:9]}
+
     for decision, chosen in plan.items():
         for item in chosen:
             await client.put(f"/api/decisions/{item['id']}", json={"decision": decision})

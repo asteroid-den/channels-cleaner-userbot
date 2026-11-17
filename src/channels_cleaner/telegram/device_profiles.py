@@ -69,8 +69,10 @@ def load_or_create(path: Path) -> DeviceProfile:
     if path.exists():
         try:
             return DeviceProfile.from_dict(json.loads(path.read_text("utf-8")))
+
         except (ValueError, KeyError, TypeError):
             pass  # corrupted file: fall through and re-roll
+
     profile = random_profile()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(profile.to_json(), "utf-8")

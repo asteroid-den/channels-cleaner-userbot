@@ -72,6 +72,7 @@ class AuthService:
         if self.state.status != "authorized" or self.state.user is None:
             msg = "Not authorized"
             raise NotAuthorizedError(msg)
+
         return self.state.user.id
 
     def _publish(self) -> None:
@@ -85,10 +86,13 @@ class AuthService:
     async def start(self) -> None:
         try:
             user = await self._gw.start()
+
         except NotAuthorizedError:
             user = await self._gw.start()  # stored session was revoked; retry fresh
+
         if user is not None:
             await self._logged_in(user)
+
         else:
             self._set("unauthorized")
 
@@ -100,9 +104,11 @@ class AuthService:
         await self._db.upsert_account(user, profile.to_json() if profile else None)
         self.state = AuthState(status="authorized", user=user)
         self._publish()
+
         for callback in self._on_login:
             try:
                 await callback(user)
+
             except Exception:
                 log.exception("on_login callback failed")
 
@@ -116,8 +122,10 @@ class AuthService:
 
     async def _cancel_qr(self) -> None:
         task, self._qr_task = self._qr_task, None
+
         if task is not None and not task.done():
             task.cancel()
+
             with contextlib.suppress(asyncio.CancelledError):
                 await task
 
@@ -126,23 +134,31 @@ class AuthService:
             while True:
                 try:
                     token = await self._gw.qr_export()
+
                 except FloodWaitError as exc:
                     self._set("qr", error=f"flood_wait:{exc.seconds}")
                     await asyncio.sleep(exc.seconds)
                     continue
+
                 self._set("qr", qr_url=token.url, qr_expires_at=token.expires_at)
+
                 try:
                     user = await self._gw.qr_wait()
+
                 except QrExpiredError:
                     continue
+
                 self._qr_task = None  # we're about to finish; don't let anyone cancel us
                 await self._logged_in(user)
                 return
+
         except PasswordNeededError:
             self._qr_task = None
             await self._to_password()
+
         except asyncio.CancelledError:
             raise
+
         except Exception as exc:
             log.exception("QR login failed")
             self._set("unauthorized", error=str(exc) or type(exc).__name__)
@@ -152,47 +168,62 @@ class AuthService:
         async with self._lock:
             self._require_unauthorized()
             await self._cancel_qr()
+
             try:
                 await self._gw.send_code(phone)
+
             except FloodWaitError as exc:
                 raise AuthError(code="flood_wait", message=str(exc), retry_after=exc.seconds) from exc
+
             except GatewayError as exc:
                 raise AuthError(code="invalid_phone", message=str(exc)) from exc
+
             self._set("code", phone=phone)
 
     async def sign_in(self, code: str) -> None:
         async with self._lock:
             if self.state.status != "code":
                 raise AuthError(code="bad_state", message="No code was requested")
+
             try:
                 user = await self._gw.sign_in_code(code)
+
             except PasswordNeededError:
                 await self._to_password()
                 return
+
             except FloodWaitError as exc:
                 raise AuthError(code="flood_wait", message=str(exc), retry_after=exc.seconds) from exc
+
             except GatewayError as exc:
                 raise AuthError(code="invalid_code", message=str(exc)) from exc
+
             await self._logged_in(user)
 
     # --- 2FA -----------------------------------------------------------------------------
     async def _to_password(self) -> None:
         hint = None
+
         with contextlib.suppress(Exception):
             hint = await self._gw.password_hint()
+
         self._set("password", password_hint=hint)
 
     async def check_password(self, password: str) -> None:
         async with self._lock:
             if self.state.status != "password":
                 raise AuthError(code="bad_state", message="Password is not expected now")
+
             try:
                 user = await self._gw.check_password(password)
+
             except FloodWaitError as exc:
                 raise AuthError(code="flood_wait", message=str(exc), retry_after=exc.seconds) from exc
+
             except GatewayError as exc:
                 self._set("password", password_hint=self.state.password_hint)
                 raise AuthError(code="invalid_password", message=str(exc)) from exc
+
             await self._logged_in(user)
 
     # --- logout --------------------------------------------------------------------------
@@ -201,12 +232,16 @@ class AuthService:
             await self._cancel_qr()
             user = self.state.user
             await self._gw.log_out()
+
             if wipe_data and user is not None:
                 await self._db.wipe_account(user.id)
+
             self.state = AuthState(status="starting")
             user_after = await self._gw.start()
+
             if user_after is not None:  # should not happen, but keep state honest
                 await self._logged_in(user_after)
+
             else:
                 self._set("unauthorized")
 
@@ -215,6 +250,7 @@ class AuthService:
         async with self._lock:
             if self.state.status == "authorized":
                 return
+
             await self._cancel_qr()
             self._set("unauthorized")
 

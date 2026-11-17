@@ -56,12 +56,17 @@ async def _spa(path: str) -> Response:
     """The built UI: files as they are, any other path gets index.html for the client-side router."""
     if path.startswith("api/"):
         return _error(404, "not_found", "Unknown endpoint")
+
     index = STATIC_DIR / "index.html"
+
     if not index.exists():
         return HTMLResponse(_NOT_BUILT, status_code=503)
+
     candidate = (STATIC_DIR / path).resolve()
+
     if path and candidate.is_file() and STATIC_DIR.resolve() in candidate.parents:
         return FileResponse(candidate)
+
     return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
@@ -73,14 +78,18 @@ def create_app(settings: Settings | None = None, ctx: AppContext | None = None) 
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await context.startup()
         app.state.ctx = context
+
         try:
             yield
+
         finally:
             await context.shutdown()
 
     app = FastAPI(title="Channels Cleaner", version=__version__, lifespan=lifespan)
     app.include_router(router)
+
     for error in _DOMAIN_ERRORS:
         app.add_exception_handler(error, _domain_error)
+
     app.add_api_route("/{path:path}", _spa, methods=["GET"], include_in_schema=False)
     return app
