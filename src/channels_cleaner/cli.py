@@ -95,7 +95,9 @@ def main(argv: list[str] | None = None) -> None:
     if not args.verbose:
         logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
-    api_url = f"http://{settings.host}:{settings.port}"
+    # In a container the server listens on all interfaces; the browser still uses localhost.
+    shown_host = "127.0.0.1" if settings.host in {"0.0.0.0", "::"} else settings.host
+    api_url = f"http://{shown_host}:{settings.port}"
     if port_in_use(settings.host, settings.port):
         print(port_busy_message(settings.host, settings.port, api_url), file=sys.stderr)
         sys.exit(1)
@@ -108,6 +110,7 @@ def main(argv: list[str] | None = None) -> None:
         )
     mode = " (mock mode)" if settings.mock else ""
     print(f"Channels Cleaner{mode} → {url}  (Ctrl+C to stop)")
+    print(f"Data: {settings.data_dir.resolve()}")
 
     server = uvicorn.Server(
         uvicorn.Config(
