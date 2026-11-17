@@ -117,12 +117,27 @@ const STAMPS: Record<Decision, { label: string; icon: IconName; cls: string; pos
 }
 
 function onPointerDown(e: PointerEvent) {
-  if (busy.value || e.button !== 0) return
+  if (e.button !== 0) return
   if ((e.target as HTMLElement).closest('a,button')) return
+  // Always swallow the browser default here, even while a card is still flying away:
+  // otherwise the press starts a text selection (in Firefox — of the hidden cards below),
+  // and the next press becomes a native drag of that selection, which cancels our pointer.
+  e.preventDefault()
+  window.getSelection()?.removeAllRanges()
+  if (busy.value) return
   pointerId = e.pointerId
   ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   dragging.value = true
   start = { x: e.clientX, y: e.clientY, t: performance.now() }
+}
+
+/** The browser took the pointer away (native gesture, alt-tab…): put the card back. */
+function onPointerCancel(e: PointerEvent) {
+  if (!dragging.value || e.pointerId !== pointerId) return
+  dragging.value = false
+  pointerId = null
+  dx.value = 0
+  dy.value = 0
 }
 
 function onPointerMove(e: PointerEvent) {
@@ -181,7 +196,7 @@ defineExpose({ fling, busy })
 </script>
 
 <template>
-  <div class="relative h-full w-full">
+  <div class="relative h-full w-full select-none" @dragstart.prevent @selectstart.prevent>
     <div
       v-for="(channel, depth) in visible"
       :key="channel.id"
@@ -197,7 +212,8 @@ defineExpose({ fling, busy })
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
-        @pointercancel="onPointerUp"
+        @pointercancel="onPointerCancel"
+        @lostpointercapture="onPointerCancel"
       >
         <ChannelCard :channel="channel" />
         <div
