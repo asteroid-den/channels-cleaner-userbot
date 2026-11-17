@@ -7,7 +7,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 import aiosqlite
 
@@ -18,6 +18,8 @@ DecisionStatus = Literal["pending", "applied", "failed"]
 SortMode = Literal["dead", "unread"]
 
 ACTION_DECISIONS: tuple[Decision, ...] = ("unsubscribe", "mute", "archive")
+#: applied actions the app can take back (a left channel is gone for good)
+REVERSIBLE_ACTIONS = ("mute", "archive")
 
 MIGRATIONS: list[str] = [
     # 1 — initial schema
@@ -83,6 +85,10 @@ MIGRATIONS: list[str] = [
     """
     ALTER TABLE channels ADD COLUMN pulse TEXT;
     """,
+    # 3 — an action the app already applied that a changed decision has to undo
+    """
+    ALTER TABLE decisions ADD COLUMN reverts TEXT;
+    """,
 ]
 
 
@@ -122,13 +128,15 @@ class ChannelRow:
     applied_at: str | None = None
     error: str | None = None
     pulse: dict[str, Any] | None = None
+    #: mute/archive the app already applied and the current decision will undo
+    reverts: str | None = None
 
 
 _CHANNEL_SELECT = """
     SELECT c.channel_id, c.title, c.username, c.about, c.members_count, c.unread_count,
            c.is_muted, c.is_archived, c.photo_file_id, c.photo_unique_id, c.last_post_id,
            c.last_post_at, c.last_post_text, c.last_post_media, c.full_fetched_at, c.gone,
-           d.decision, d.status, d.decided_at, d.applied_at, d.error, c.pulse
+           d.decision, d.status, d.decided_at, d.applied_at, d.error, c.pulse, d.reverts
     FROM channels c
     LEFT JOIN decisions d ON d.account_id = c.account_id AND d.channel_id = c.channel_id
 """
@@ -159,6 +167,7 @@ def _row_to_channel(row: Sequence[Any]) -> ChannelRow:
         applied_at=row[19],
         error=row[20],
         pulse=json.loads(row[21]) if row[21] else None,
+        reverts=row[22],
     )
 
 
@@ -383,24 +392,71 @@ class Database:
             return [_row_to_channel(row) async for row in cur]
 
     # --- decisions ---------------------------------------------------------------------
+    async def _decision_row(self, account_id: int, channel_id: int) -> Sequence[Any] | None:
+        async with self.conn.execute(
+            """
+            SELECT decision, status, reverts, decided_at, applied_at FROM decisions
+            WHERE account_id = ? AND channel_id = ?
+            """,
+            (account_id, channel_id),
+        ) as cur:
+            return await cur.fetchone()
+
     async def set_decision(self, account_id: int, channel_id: int, decision: Decision) -> None:
-        # "keep" and "skip" need no Telegram call, so they are final right away.
-        status: DecisionStatus = "pending" if decision in ACTION_DECISIONS else "applied"
+        row = await self._decision_row(account_id, channel_id)
+        # What the app has already done to this channel in Telegram (a later change undoes it).
+        in_telegram: str | None = None
+        if row is not None:
+            if row[2]:
+                in_telegram = row[2]
+            elif row[1] == "applied" and row[0] in REVERSIBLE_ACTIONS:
+                in_telegram = row[0]
+        if decision == "skip" and in_telegram:
+            decision = cast(Decision, in_telegram)  # "later" can't take an applied action back
+
         ts = now_iso()
+        reverts: str | None = None
+        applied_at: str | None
+        if in_telegram == decision:
+            status: DecisionStatus = "applied"  # back to what Telegram already has
+            applied_at = row[4] if row is not None else ts
+        elif in_telegram is not None:
+            status, reverts, applied_at = "pending", in_telegram, None
+        else:
+            # "keep" and "skip" need no Telegram call, so they are final right away.
+            status = "pending" if decision in ACTION_DECISIONS else "applied"
+            applied_at = None if status == "pending" else ts
+        # A changed decision keeps its place in the order of the pass; "later" never had one.
+        keep_place = row is not None and row[0] != "skip" and decision != "skip"
+        decided_at = row[3] if keep_place and row is not None else ts
         await self.conn.execute(
             """
             INSERT INTO decisions (account_id, channel_id, decision, status, decided_at,
-                                   applied_at, error)
-            VALUES (?, ?, ?, ?, ?, ?, NULL)
+                                   applied_at, error, reverts)
+            VALUES (?, ?, ?, ?, ?, ?, NULL, ?)
             ON CONFLICT (account_id, channel_id) DO UPDATE SET
                 decision = excluded.decision, status = excluded.status,
-                decided_at = excluded.decided_at, applied_at = excluded.applied_at, error = NULL
+                decided_at = excluded.decided_at, applied_at = excluded.applied_at,
+                error = NULL, reverts = excluded.reverts
             """,
-            (account_id, channel_id, decision, status, ts, None if status == "pending" else ts),
+            (account_id, channel_id, decision, status, decided_at, applied_at, reverts),
         )
         await self.conn.commit()
 
     async def delete_decision(self, account_id: int, channel_id: int) -> bool:
+        row = await self._decision_row(account_id, channel_id)
+        if row is not None and row[2]:
+            # Undoing a change of an applied action restores that action as it is in Telegram.
+            await self.conn.execute(
+                """
+                UPDATE decisions SET decision = reverts, status = 'applied', reverts = NULL,
+                       error = NULL
+                WHERE account_id = ? AND channel_id = ?
+                """,
+                (account_id, channel_id),
+            )
+            await self.conn.commit()
+            return True
         cur = await self.conn.execute(
             """
             DELETE FROM decisions
@@ -468,13 +524,26 @@ class Database:
         decisions: Sequence[Decision] = ACTION_DECISIONS,
     ) -> list[ChannelRow]:
         placeholders = ",".join("?" for _ in decisions)
-        sql = f"{_CHANNEL_SELECT} WHERE c.account_id = ? AND d.decision IN ({placeholders})"
+        # Rows that undo an applied action are work for the apply job too, whatever the decision.
+        sql = (
+            f"{_CHANNEL_SELECT} WHERE c.account_id = ? "
+            f"AND (d.decision IN ({placeholders}) OR d.reverts IS NOT NULL)"
+        )
         params: list[Any] = [account_id, *decisions]
         if status is not None:
             sql += " AND d.status = ?"
             params.append(status)
-        sql += " ORDER BY d.decided_at"
+        sql += " ORDER BY d.decided_at, d.rowid"
         async with self.conn.execute(sql, params) as cur:
+            return [_row_to_channel(row) async for row in cur]
+
+    async def list_trail(self, account_id: int) -> list[ChannelRow]:
+        """Channels with a final decision, in the order decided (same order as the trail)."""
+        sql = f"""{_CHANNEL_SELECT}
+            WHERE c.account_id = ? AND c.gone = 0 AND d.decision IS NOT NULL
+              AND d.decision != 'skip'
+            ORDER BY d.decided_at, d.rowid"""
+        async with self.conn.execute(sql, (account_id,)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
     async def mark_decision(
@@ -482,10 +551,18 @@ class Database:
     ) -> None:
         await self.conn.execute(
             """
-            UPDATE decisions SET status = ?, error = ?, applied_at = ?
+            UPDATE decisions SET status = ?, error = ?, applied_at = ?,
+                   reverts = CASE WHEN ? = 'applied' THEN NULL ELSE reverts END
             WHERE account_id = ? AND channel_id = ?
             """,
-            (status, error, now_iso() if status == "applied" else None, account_id, channel_id),
+            (
+                status,
+                error,
+                now_iso() if status == "applied" else None,
+                status,
+                account_id,
+                channel_id,
+            ),
         )
         await self.conn.commit()
 

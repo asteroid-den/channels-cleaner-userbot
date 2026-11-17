@@ -385,3 +385,19 @@ class KurigramGateway:
             raise FloodWaitError(int(exc.value or 0)) from exc
         except errors.RPCError as exc:
             raise GatewayError(str(exc.MESSAGE or exc)) from exc
+
+    async def unmute(self, channel_id: int) -> None:
+        try:
+            await self.client.update_chat_notifications(channel_id, mute=False)
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        except errors.RPCError as exc:
+            raise GatewayError(str(exc.MESSAGE or exc)) from exc
+
+    async def unarchive(self, channel_id: int) -> None:
+        try:
+            await self.client.unarchive_chats(channel_id)
+        except errors.FloodWait as exc:
+            raise FloodWaitError(int(exc.value or 0)) from exc
+        except errors.RPCError as exc:
+            raise GatewayError(str(exc.MESSAGE or exc)) from exc
