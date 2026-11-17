@@ -1,59 +1,107 @@
 name: Release
 
 # Push a tag like v1.0.0 to publish the package to PyPI and the image to GHCR.
-# PyPI uses trusted publishing: add this repository as a publisher for the
-# "channels-cleaner" project on pypi.org (workflow: release.yml, environment: pypi).
+# PyPI uses trusted publishing: this repository is a publisher of the "channels-cleaner" project on pypi.org
+# (workflow: release.yml, environment: pypi).
 on:
   push:
-    tags: ["v*"]
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
 
 jobs:
   pypi:
-    runs-on: ubuntu-latest
+    name: Publish to PyPI
+    runs-on: ubuntu-24.04
     environment: pypi
     permissions:
+      contents: read
       id-token: write
+
     steps:
-      - uses: actions/checkout@v4
-      # the version on PyPI comes from __init__.py, so it must match the tag
-      - run: |
+      - name: Checkout repository
+        # v5.1.0 (Node 24)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Check the tag matches the version
+        # The version on PyPI comes from __init__.py, not from the tag
+        run: |
           version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/channels_cleaner/__init__.py)
           test "v$version" = "$GITHUB_REF_NAME" || { echo "::error::tag $GITHUB_REF_NAME != version $version"; exit 1; }
-      - uses: actions/setup-node@v4
+
+      - name: Set up Node 22
+        # v7.1.0 (Node 24)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - uses: astral-sh/setup-uv@v6
-      - run: npm --prefix frontend ci && npm --prefix frontend run build
-      - run: uv build
-      - run: unzip -l dist/*.whl | grep -q 'channels_cleaner/static/index.html'
-      - uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Set up uv
+        # v10.2.0 (Node 24)
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          version: "0.13.6"
+
+      - name: Build the UI
+        run: npm --prefix frontend ci && npm --prefix frontend run build
+
+      - name: Build wheel and sdist
+        run: uv build
+
+      - name: Check the wheel carries the UI
+        run: unzip -l dist/*.whl | grep -q 'channels_cleaner/static/index.html'
+
+      - name: Publish
+        # v1.14.3
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086
 
   ghcr:
-    needs: pypi # no image for a tag that failed the version check
-    runs-on: ubuntu-latest
+    name: Publish image to GHCR
+    # No image for a tag that failed the version check
+    needs: pypi
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - name: Checkout repository
+        # v5.1.0 (Node 24)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Set up QEMU
+        # v4.4.0. For the arm64 image
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1
+
+      - name: Set up Buildx
+        # v4.4.1
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+
+      - name: Log in to GHCR
+        # v4.6.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v5
+
+      - name: Image tags
+        id: meta
+        # v6.2.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
-      - uses: docker/build-push-action@v6
+
+      - name: Build and push
+        # v7.4.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
         with:
           context: .
           platforms: linux/amd64,linux/arm64
