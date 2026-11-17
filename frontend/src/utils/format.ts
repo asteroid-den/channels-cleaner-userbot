@@ -43,17 +43,6 @@ export function fullDate(iso: string, locale: string): string {
   return new Date(iso).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-export type Activity = 'fresh' | 'slow' | 'stale' | 'dead'
-
-export function activityOf(lastPostAt: string | null, now = Date.now()): Activity {
-  if (!lastPostAt) return 'dead'
-  const days = (now - new Date(lastPostAt).getTime()) / 86_400_000
-  if (days <= 7) return 'fresh'
-  if (days <= 60) return 'slow'
-  if (days <= 180) return 'stale'
-  return 'dead'
-}
-
 export function initials(title: string): string {
   const words = title.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w[0] ?? ''))
   return (

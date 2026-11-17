@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { Channel, Decision } from '@/api/types'
@@ -26,6 +26,31 @@ let start = { x: 0, y: 0, t: 0 }
 let pointerId: number | null = null
 
 const busy = computed(() => flying.value !== null || entering.value)
+
+// The stack is as tall as the front card's content (capped by the stage), so short cards
+// don't carry an empty band; the cards behind take the same height to stay aligned.
+const root = ref<HTMLElement | null>(null)
+const cardHeight = ref<number | null>(null)
+let observed: Element | null = null
+const resize = new ResizeObserver(() => measure())
+
+function measure() {
+  const body = observed as HTMLElement | null
+  const stage = root.value?.clientHeight ?? 0
+  if (!body || !stage) return
+  // + accent stripe (4px) and the card border (2px)
+  cardHeight.value = Math.min(stage, Math.ceil(body.offsetHeight) + 6)
+}
+
+function observeFront(el: Element) {
+  const body = el.querySelector('[data-card-body]')
+  if (body === observed) return
+  if (observed) resize.unobserve(observed)
+  observed = body
+  if (body) resize.observe(body)
+  measure()
+}
+onBeforeUnmount(() => resize.disconnect())
 
 function flyTarget(decision: Decision): string {
   const w = window.innerWidth
@@ -66,7 +91,7 @@ function depthStyle(depth: number) {
   return {
     transform: `translateY(${level * 16}px) scale(${1 - level * 0.05})`,
     opacity: depth >= 2 && !flying.value ? 0.6 : 1,
-    transition: 'transform 0.3s ease, opacity 0.3s ease',
+    transition: 'transform 0.3s ease, opacity 0.3s ease, height 0.3s ease-out',
   }
 }
 
@@ -196,12 +221,22 @@ defineExpose({ fling, busy })
 </script>
 
 <template>
-  <div class="relative h-full w-full select-none" @dragstart.prevent @selectstart.prevent>
+  <div
+    ref="root"
+    class="relative h-full w-full select-none"
+    @dragstart.prevent
+    @selectstart.prevent
+  >
     <div
       v-for="(channel, depth) in visible"
       :key="channel.id"
-      class="absolute inset-0"
-      :style="{ zIndex: 10 - depth, ...(depth === 0 ? {} : depthStyle(depth)) }"
+      :ref="(el) => depth === 0 && el && observeFront(el as Element)"
+      class="absolute inset-x-0 top-0 transition-[height] duration-300 ease-out"
+      :style="{
+        zIndex: 10 - depth,
+        height: cardHeight ? `${cardHeight}px` : '100%',
+        ...(depth === 0 ? {} : depthStyle(depth)),
+      }"
       :aria-hidden="depth > 0"
     >
       <div
@@ -226,7 +261,7 @@ defineExpose({ fling, busy })
           {{ t(STAMPS[stamp.decision].label) }}
         </div>
       </div>
-      <ChannelCard v-else :channel="channel" />
+      <ChannelCard v-else :channel="channel" stacked />
     </div>
   </div>
 </template>

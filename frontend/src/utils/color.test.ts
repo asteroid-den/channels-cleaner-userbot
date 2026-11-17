@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { companion, normalize } from './color'
+import { companion, contrast, ink, normalize } from './color'
 
 const lightness = ([r, g, b]: number[]) => (Math.max(r!, g!, b!) + Math.min(r!, g!, b!)) / 2 / 255
 
@@ -12,6 +12,14 @@ describe('normalize', () => {
   it('keeps greys neutral', () => {
     const [r, g, b] = normalize([128, 128, 130])
     expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThan(30)
+  })
+})
+
+describe('ink', () => {
+  it('makes a pale channel colour readable on white and on the dark card', () => {
+    const yellow = normalize([230, 200, 90])
+    expect(contrast(ink(yellow, [255, 255, 255]), [255, 255, 255])).toBeGreaterThanOrEqual(4.5)
+    expect(contrast(ink(yellow, [22, 24, 30]), [22, 24, 30])).toBeGreaterThanOrEqual(4.5)
   })
 })
 

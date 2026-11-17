@@ -1,7 +1,7 @@
 import { ref, watch, type Ref } from 'vue'
 
 import type { Channel } from '@/api/types'
-import { companion, css, hexToRgb, normalize, sampleImage, type Rgb } from '@/utils/color'
+import { companion, css, hexToRgb, ink, normalize, sampleImage, type Rgb } from '@/utils/color'
 import { colorFor } from '@/utils/format'
 
 /**
@@ -21,6 +21,9 @@ export function useChannelColor(channel: Ref<Channel | null>) {
     const root = document.documentElement.style
     root.setProperty('--ch', css(base))
     root.setProperty('--ch2', css(companion(base)))
+    // text-safe variants, picked by the theme in style.css
+    root.setProperty('--ch-ink-dark', css(ink(base, [22, 24, 30])))
+    root.setProperty('--ch-ink-light', css(ink(base, [255, 255, 255])))
   }
 
   watch(

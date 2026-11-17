@@ -62,6 +62,15 @@
 :root {
   --ch: 106 162 255;
   --ch2: 60 90 200;
+  --ch-ink-dark: 106 162 255;
+  --ch-ink-light: 47 99 210;
+}
+:root,
+[data-theme='dark'] {
+  --ch-ink: var(--ch-ink-dark);
+}
+[data-theme='light'] {
+  --ch-ink: var(--ch-ink-light);
 }
 
 @theme inline {
@@ -85,6 +94,7 @@
   --color-warn-soft: var(--warn-soft);
   --color-ch: rgb(var(--ch));
   --color-ch2: rgb(var(--ch2));
+  --color-ch-ink: rgb(var(--ch-ink));
   --shadow-card: var(--shadow);
   --font-sans: 'Onest Variable', Onest, ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Geologica Variable', Geologica, ui-sans-serif, system-ui, sans-serif;

@@ -47,6 +47,35 @@ export function normalize(rgb: Rgb): Rgb {
   return hslToRgb(h, Math.max(0.5, Math.min(s, 0.85)), Math.max(0.48, Math.min(l, 0.62)))
 }
 
+function luminance(rgb: Rgb): number {
+  const [r, g, b] = rgb.map((v) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }) as Rgb
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+}
+
+export function contrast(a: Rgb, b: Rgb): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number]
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/**
+ * The channel colour adjusted to be readable as text on `surface` (WCAG 4.5:1): lighter on
+ * dark surfaces, darker on light ones. Hue and saturation are kept.
+ */
+export function ink(rgb: Rgb, surface: Rgb): Rgb {
+  const [h, s, l0] = rgbToHsl(rgb)
+  const step = luminance(surface) > 0.5 ? -0.02 : 0.02
+  let l = l0
+  let out = rgb
+  while (contrast(out, surface) < 4.5 && l > 0.05 && l < 0.95) {
+    l += step
+    out = hslToRgb(h, s, l)
+  }
+  return out
+}
+
 /** A darker, slightly hue-shifted partner for gradients. */
 export function companion(rgb: Rgb): Rgb {
   const [h, s, l] = rgbToHsl(rgb)
