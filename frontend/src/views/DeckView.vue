@@ -59,6 +59,9 @@ useHotkeys({
   'mod+z': () => void undo(),
   Backspace: () => void undo(),
   Enter: review,
+  // Ctrl+←/→ walk through the deck one card at a time, back into decisions already made.
+  'mod+ArrowLeft': () => !swiper.value?.busy && deck.stepBack(),
+  'mod+ArrowRight': () => !swiper.value?.busy && deck.stepForward(),
 })
 
 // --- "+1" chip: flies from the leaving card into the progress bar in the header -------------
@@ -71,7 +74,8 @@ const CHIP_CLASS: Record<Exclude<Decision, 'skip'>, string> = {
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
 function onFlinging(decision: Decision, from: DOMRect) {
-  if (decision === 'skip') return // "later" doesn't move the deck forward
+  // "later" doesn't move the deck forward, and neither does changing an earlier decision
+  if (decision === 'skip' || deck.rewinding) return
   const target = document.querySelector('[data-progress-edge]')?.getBoundingClientRect()
   deck.chipsInFlight += 1
   const land = () => {
@@ -215,6 +219,13 @@ const ZONES = [
     </p>
 
     <div class="relative w-full flex-1 pt-8">
+      <p
+        v-if="deck.rewinding && deck.cursor !== null"
+        class="absolute top-2 left-1/2 z-10 -translate-x-1/2 text-[12.5px] whitespace-nowrap text-muted"
+      >
+        {{ t('deck.rewinding', { n: deck.cursor + 1, total: deck.trail.length }) }}
+        <span class="text-faint">· Ctrl ← / →</span>
+      </p>
       <!-- clickable side zones: the same as swiping toward them -->
       <button
         v-for="z in ZONES"
@@ -258,6 +269,22 @@ const ZONES = [
         }}<kbd v-if="k.kbdAfter">{{ k.kbd }}</kbd>
       </button>
     </div>
+    <!-- like "back to top" on a long page: back to where the undecided channels start -->
+    <Transition
+      enter-from-class="opacity-0 translate-y-2"
+      leave-to-class="opacity-0 translate-y-2"
+      enter-active-class="transition duration-200 ease-out"
+      leave-active-class="transition duration-150"
+    >
+      <button
+        v-if="deck.rewinding"
+        class="fixed right-6 bottom-6 z-20 flex items-center gap-2 rounded-full bg-text px-4 py-2.5 text-[13px] font-semibold text-bg shadow-card"
+        @click="deck.toEnd()"
+      >
+        {{ t('deck.toEnd', { n: deck.counts.undecided }) }}
+        <AppIcon name="arrowRight" :size="15" />
+      </button>
+    </Transition>
   </section>
 
   <div v-else class="flex flex-1 items-center justify-center">
