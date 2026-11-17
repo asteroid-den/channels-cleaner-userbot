@@ -1,0 +1,15 @@
+.git
+.venv
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.claude
+.impeccable
+data
+dist
+mockups
+frontend/node_modules
+src/channels_cleaner/static
+**/__pycache__
+*.session
+.env
