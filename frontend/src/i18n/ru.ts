@@ -46,7 +46,7 @@ const ru: typeof en = {
     qrRefreshing: 'Обновляем код…',
     qrExpiresIn: 'Код обновится через {s} с',
     phoneLabel: 'Номер телефона',
-    phonePlaceholder: '+7 900 123-45-67',
+    phonePlaceholder: '+12345678901',
     sendCode: 'Получить код',
     codeLabel: 'Код',
     codeSentTo: 'Код отправлен на {phone} — проверьте Telegram на другом устройстве.',

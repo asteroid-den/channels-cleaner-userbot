@@ -44,7 +44,7 @@ export default {
     qrRefreshing: 'Refreshing code…',
     qrExpiresIn: 'Code refreshes in {s}s',
     phoneLabel: 'Phone number',
-    phonePlaceholder: '+1 555 123 4567',
+    phonePlaceholder: '+12345678901',
     sendCode: 'Send code',
     codeLabel: 'Code',
     codeSentTo: 'We sent a code to {phone} — check Telegram on another device.',

@@ -26,7 +26,7 @@ async def test_phone_login_with_2fa(client: httpx.AsyncClient, ctx: AppContext) 
     bad_phone = await client.post("/api/auth/phone/send-code", json={"phone": "+1 23"})
     assert bad_phone.status_code == 422 or bad_phone.json()["error"]["code"] == "invalid_phone"
 
-    sent = await client.post("/api/auth/phone/send-code", json={"phone": "+7 900 000 00 00"})
+    sent = await client.post("/api/auth/phone/send-code", json={"phone": "+12345678901"})
     assert sent.json()["status"] == "code"
 
     wrong = await client.post("/api/auth/phone/sign-in", json={"code": "00000"})
