@@ -427,6 +427,22 @@ class Database:
         await self.conn.execute("DELETE FROM decisions WHERE decision = 'skip'")
         await self.conn.commit()
 
+    async def decision_counts(self, account_id: int) -> dict[str, int]:
+        """Final decisions per kind for channels still in the list ("skip" is not one)."""
+        async with self.conn.execute(
+            """
+            SELECT d.decision, COUNT(*) FROM decisions d
+            JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
+            WHERE d.account_id = ? AND c.gone = 0 AND d.decision != 'skip'
+            GROUP BY d.decision
+            """,
+            (account_id,),
+        ) as cur:
+            rows = list(await cur.fetchall())
+        counts = {"keep": 0, "unsubscribe": 0, "mute": 0, "archive": 0}
+        counts.update({str(decision): int(n) for decision, n in rows})
+        return counts
+
     async def list_decided(
         self,
         account_id: int,
