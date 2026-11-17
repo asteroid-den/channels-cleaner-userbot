@@ -141,7 +141,8 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   async function prefetch(channel: Channel) {
-    if (channel.full_loaded || inflight.has(channel.id)) return
+    // Rows cached before the pulse existed are "loaded" but still need the pulse.
+    if ((channel.full_loaded && channel.pulse) || inflight.has(channel.id)) return
     inflight.add(channel.id)
     try {
       const full = await api.get<Channel>(`/api/channels/${channel.id}/full`)
