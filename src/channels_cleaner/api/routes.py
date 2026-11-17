@@ -92,11 +92,12 @@ async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
 
 
 # --- channels --------------------------------------------------------------------------
-async def _deck_counts(ctx: AppContext, account: int) -> dict[str, int]:
+async def _deck_counts(ctx: AppContext, account: int) -> dict[str, Any]:
     total = await ctx.db.channel_count(account)
     undecided = len(await ctx.db.list_channels(account, undecided_only=True))
     pending = len(await ctx.db.list_decided(account, status="pending"))
-    return {"total": total, "undecided": undecided, "pending": pending}
+    by_decision = await ctx.db.decision_counts(account)
+    return {"total": total, "undecided": undecided, "pending": pending, "by_decision": by_decision}
 
 
 @router.post("/channels/sync")
