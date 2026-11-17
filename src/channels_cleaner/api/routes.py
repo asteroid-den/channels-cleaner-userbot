@@ -87,7 +87,7 @@ async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
     if ctx.apply.running:
         raise HTTPException(409, "Wait for the running apply job to finish")
     await ctx.sync.stop()
-    await ctx.auth.log_out(body.wipe_data)
+    await ctx.auth.log_out(wipe_data=body.wipe_data)
     return ctx.auth.state.snapshot()
 
 
@@ -120,6 +120,7 @@ async def channels_sync_events(request: Request, ctx: Ctx) -> StreamingResponse:
 async def channels_list(
     ctx: Ctx,
     account: AccountId,
+    *,
     sort: Literal["dead", "unread"] = "dead",
     reverse: bool = False,
     state: Literal["undecided", "all"] = "undecided",
@@ -246,10 +247,12 @@ async def stats_get(ctx: Ctx, account: AccountId) -> dict[str, Any]:
 
 
 @router.get("/export")
-async def export(ctx: Ctx, account: AccountId, format: Annotated[Literal["csv", "json"], Query()] = "csv") -> Response:
+async def export(
+    ctx: Ctx, account: AccountId, format_: Annotated[Literal["csv", "json"], Query(alias="format")] = "csv"
+) -> Response:
     rows = await stats.export_rows(ctx.db, account)
-    filename = f"unsubscribed-channels.{format}"
+    filename = f"unsubscribed-channels.{format_}"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
-    if format == "json":
+    if format_ == "json":
         return JSONResponse(json.loads(json.dumps(rows, default=str)), headers=headers)
     return Response(stats.to_csv(rows), media_type="text/csv; charset=utf-8", headers=headers)

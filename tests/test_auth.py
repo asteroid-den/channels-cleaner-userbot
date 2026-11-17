@@ -4,8 +4,7 @@ import httpx
 
 from channels_cleaner.context import AppContext
 from channels_cleaner.telegram.mock_gateway import MOCK_CODE, MOCK_PASSWORD
-
-from .conftest import get_json, login, wait_for
+from tests.conftest import get_json, login, wait_for
 
 
 async def test_starts_unauthorized(client: httpx.AsyncClient) -> None:

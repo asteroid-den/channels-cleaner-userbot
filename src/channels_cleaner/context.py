@@ -20,11 +20,12 @@ log = logging.getLogger(__name__)
 
 
 def make_gateway(settings: Settings) -> TelegramGateway:
+    # Only the backend in use is imported: mock mode does not load Kurigram at all
     if settings.mock:
-        from channels_cleaner.telegram.mock_gateway import MockGateway
+        from channels_cleaner.telegram.mock_gateway import MockGateway  # noqa: PLC0415
 
         return MockGateway(settings)
-    from channels_cleaner.telegram.kurigram_gateway import KurigramGateway
+    from channels_cleaner.telegram.kurigram_gateway import KurigramGateway  # noqa: PLC0415
 
     return KurigramGateway(settings)
 

@@ -17,7 +17,8 @@ _OPENERS = {"darwin": "open"}
 
 def _spawn_detached(command: list[str]) -> bool:
     try:
-        subprocess.Popen(
+        # A fixed opener and a URL we built ourselves, no shell involved
+        subprocess.Popen(  # noqa: S603
             command,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -34,7 +35,7 @@ def open_url(url: str) -> bool:
     if sys.platform == "win32":
         # The shell association handles it; nothing is printed to our console.
         try:
-            os.startfile(url)
+            os.startfile(url)  # noqa: S606 - the shell association, as a double-click would
         except OSError:
             return webbrowser.open(url)
         return True

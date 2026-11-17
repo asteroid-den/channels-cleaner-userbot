@@ -44,7 +44,7 @@ def test_free_port_is_not_in_use() -> None:
 
 
 def test_busy_message_recognises_our_app(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "running_instance", lambda url: {"ok": True, "mock": True})
+    monkeypatch.setattr(cli, "running_instance", lambda _url: {"ok": True, "mock": True})
     msg = cli.port_busy_message("127.0.0.1", 8765, "http://127.0.0.1:8765")
     assert "already running" in msg
     assert "mock mode" in msg
@@ -52,7 +52,7 @@ def test_busy_message_recognises_our_app(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_busy_message_for_foreign_program(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "running_instance", lambda url: None)
+    monkeypatch.setattr(cli, "running_instance", lambda _url: None)
     msg = cli.port_busy_message("127.0.0.1", 8765, "http://127.0.0.1:8765")
     assert "another program" in msg
 

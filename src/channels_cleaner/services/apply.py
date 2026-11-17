@@ -66,7 +66,7 @@ class ApplyService:
         self.state = ApplyState()
         self._task: asyncio.Task[None] | None = None
         self._cancel = asyncio.Event()
-        self._rng = random.Random()
+        self._rng = random.Random()  # noqa: S311 - pause jitter, not cryptography
 
     @property
     def running(self) -> bool:
@@ -74,7 +74,8 @@ class ApplyService:
 
     async def start(self, account_id: int) -> ApplyState:
         if self.running:
-            raise ApplyBusyError("An apply job is already running")
+            msg = "An apply job is already running"
+            raise ApplyBusyError(msg)
         pending = await self._db.list_decided(account_id, status="pending")
         if not pending:
             self.state = ApplyState(status="finished")
@@ -131,7 +132,10 @@ class ApplyService:
 
     async def _run(self, account_id: int) -> None:
         state = self.state
-        assert state.job_id is not None
+        job_id = state.job_id
+        if job_id is None:
+            msg = "The apply job has no id"
+            raise RuntimeError(msg)
         try:
             for index, item in enumerate(state.items):
                 if self._cancel.is_set():
@@ -145,27 +149,8 @@ class ApplyService:
                     delay = self._rng.uniform(self._settings.apply_delay_min, self._settings.apply_delay_max)
                     if await self._sleep(delay):
                         break
-                result = await self._apply_one(account_id, item)
-                if result == "done":
-                    state.done += 1
-                    self._bus.publish(
-                        TOPIC,
-                        "item_done",
-                        channel_id=item.channel_id,
-                        done=state.done,
-                        failed=state.failed,
-                    )
-                elif result == "failed":
-                    state.failed += 1
-                    self._bus.publish(
-                        TOPIC,
-                        "item_failed",
-                        channel_id=item.channel_id,
-                        error=item.error,
-                        done=state.done,
-                        failed=state.failed,
-                    )
-                await self._db.update_job(state.job_id, done=state.done, failed=state.failed)
+                self._report(item, await self._apply_one(account_id, item))
+                await self._db.update_job(job_id, done=state.done, failed=state.failed)
             state.current = None
             state.status = "cancelled" if self._cancel.is_set() else "finished"
         except Exception:
@@ -175,8 +160,25 @@ class ApplyService:
             for item in state.items:
                 if item.status == "running":
                     item.status = "queued"
-            await self._db.update_job(state.job_id, done=state.done, failed=state.failed, status=state.status)
+            await self._db.update_job(job_id, done=state.done, failed=state.failed, status=state.status)
             self._bus.publish(TOPIC, "finished", **state.snapshot())
+
+    def _report(self, item: ApplyItem, result: ItemStatus) -> None:
+        """Count the item's outcome and tell the UI."""
+        state = self.state
+        if result == "done":
+            state.done += 1
+            self._bus.publish(TOPIC, "item_done", channel_id=item.channel_id, done=state.done, failed=state.failed)
+        elif result == "failed":
+            state.failed += 1
+            self._bus.publish(
+                TOPIC,
+                "item_failed",
+                channel_id=item.channel_id,
+                error=item.error,
+                done=state.done,
+                failed=state.failed,
+            )
 
     async def _apply_one(self, account_id: int, item: ApplyItem) -> ItemStatus:
         for _ in range(_MAX_FLOOD_RETRIES + 1):

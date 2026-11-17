@@ -232,12 +232,14 @@ class MockGateway:
 
     def _require_auth(self) -> None:
         if not self._authorized:
-            raise NotAuthorizedError("Not authorized")
+            msg = "Not authorized"
+            raise NotAuthorizedError(msg)
 
     # --- auth ----------------------------------------------------------------------
     async def qr_export(self) -> QrToken:
         if self._authorized:
-            raise GatewayError("Already authorized")
+            msg = "Already authorized"
+            raise GatewayError(msg)
         self._qr_round += 1
         return QrToken(
             url=f"tg://login?token=mock-{self._qr_round}",
@@ -251,14 +253,17 @@ class MockGateway:
     async def send_code(self, phone: str) -> None:
         digits = "".join(ch for ch in phone if ch.isdigit())
         if len(digits) < 7:
-            raise InvalidPhoneError("PHONE_NUMBER_INVALID")
+            msg = "PHONE_NUMBER_INVALID"
+            raise InvalidPhoneError(msg)
         self._phone = phone
 
     async def sign_in_code(self, code: str) -> TgUser:
         if not self._phone:
-            raise GatewayError("Request a code first")
+            msg = "Request a code first"
+            raise GatewayError(msg)
         if code.strip() != MOCK_CODE:
-            raise InvalidCodeError("PHONE_CODE_INVALID")
+            msg = "PHONE_CODE_INVALID"
+            raise InvalidCodeError(msg)
         return self._login()
 
     async def password_hint(self) -> str | None:
@@ -266,9 +271,11 @@ class MockGateway:
 
     async def check_password(self, password: str) -> TgUser:
         if not self._awaiting_password:
-            raise GatewayError("Password is not expected now")
+            msg = "Password is not expected now"
+            raise GatewayError(msg)
         if password != MOCK_PASSWORD:
-            raise InvalidPasswordError("PASSWORD_HASH_INVALID")
+            msg = "PASSWORD_HASH_INVALID"
+            raise InvalidPasswordError(msg)
         self._awaiting_password = False
         self._authorized = True
         self._save()
@@ -292,7 +299,8 @@ class MockGateway:
         await asyncio.sleep(0.15)
         entry = self._channels.get(channel_id)
         if entry is None:
-            raise GatewayError("CHANNEL_INVALID")
+            msg = "CHANNEL_INVALID"
+            raise GatewayError(msg)
         return entry[1]
 
     async def recent_post_dates(self, channel_id: int, limit: int) -> list[datetime]:
@@ -315,7 +323,7 @@ class MockGateway:
             dates.append(current)
         return dates
 
-    async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None:
+    async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None:  # noqa: ARG002 - draws its own
         entry = self._channels.get(channel_id)
         if entry is None:
             return None
@@ -339,7 +347,8 @@ class MockGateway:
         if roll < 0.05:
             raise FloodWaitError(self._rng.randint(3, 6))
         if roll < 0.08:
-            raise GatewayError("CHANNEL_PRIVATE")
+            msg = "CHANNEL_PRIVATE"
+            raise GatewayError(msg)
 
     async def leave(self, channel_id: int) -> None:
         self._require_auth()

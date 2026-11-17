@@ -18,6 +18,7 @@ class TelegramGateway(Protocol):
     # --- lifecycle -------------------------------------------------------------
     async def start(self) -> TgUser | None:
         """Connect. Returns the logged-in user, or ``None`` if a login is required."""
+        ...
 
     async def stop(self) -> None: ...
 
@@ -29,6 +30,7 @@ class TelegramGateway(Protocol):
 
         Raises ``QrExpiredError`` on expiry and ``PasswordNeededError`` if 2FA is on.
         """
+        ...
 
     async def send_code(self, phone: str) -> None: ...
 
@@ -40,6 +42,7 @@ class TelegramGateway(Protocol):
 
     async def log_out(self) -> None:
         """Terminate the session on Telegram's side, delete it locally, reset the client."""
+        ...
 
     # --- channels ----------------------------------------------------------------
     def iter_channels(self) -> AsyncIterator[ChannelInfo]:
@@ -47,11 +50,13 @@ class TelegramGateway(Protocol):
 
         excluding ones the user owns or administers.
         """
+        ...
 
     async def get_full(self, channel_id: int) -> ChannelFull: ...
 
     async def recent_post_dates(self, channel_id: int, limit: int) -> list[datetime]:
         """Dates of the channel's latest ``limit`` posts (one history page), newest first."""
+        ...
 
     async def download_avatar(self, channel_id: int, file_id: str, dest: Path) -> Path | None: ...
 

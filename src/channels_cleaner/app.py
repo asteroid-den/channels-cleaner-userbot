@@ -31,6 +31,40 @@ def _error(status: int, code: str, message: str, **extra: object) -> JSONRespons
     return JSONResponse({"error": {"code": code, "message": message, **extra}}, status)
 
 
+async def _domain_error(_: Request, exc: Exception) -> JSONResponse:
+    """Our exceptions as JSON errors the UI understands."""
+    match exc:
+        case AuthError():
+            return _error(400, exc.code, str(exc), retry_after=exc.retry_after)
+        case NotAuthorizedError():
+            return _error(401, "not_authorized", str(exc))
+        case ChannelNotFoundError():
+            return _error(404, "channel_not_found", f"Unknown channel {exc}")
+        case FloodWaitError():
+            return _error(429, "flood_wait", str(exc), retry_after=exc.seconds)
+        case ApplyBusyError():
+            return _error(409, "apply_running", str(exc))
+        case _:
+            return _error(502, "telegram_error", str(exc) or type(exc).__name__)
+
+
+# FloodWaitError and NotAuthorizedError are GatewayErrors too: Starlette picks the closest class
+_DOMAIN_ERRORS = (AuthError, NotAuthorizedError, ChannelNotFoundError, FloodWaitError, ApplyBusyError, GatewayError)
+
+
+async def _spa(path: str) -> Response:
+    """The built UI: files as they are, any other path gets index.html for the client-side router."""
+    if path.startswith("api/"):
+        return _error(404, "not_found", "Unknown endpoint")
+    index = STATIC_DIR / "index.html"
+    if not index.exists():
+        return HTMLResponse(_NOT_BUILT, status_code=503)
+    candidate = (STATIC_DIR / path).resolve()
+    if path and candidate.is_file() and STATIC_DIR.resolve() in candidate.parents:
+        return FileResponse(candidate)
+    return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+
 def create_app(settings: Settings | None = None, ctx: AppContext | None = None) -> FastAPI:
     settings = settings or Settings()
     context = ctx or AppContext.create(settings)
@@ -46,41 +80,7 @@ def create_app(settings: Settings | None = None, ctx: AppContext | None = None) 
 
     app = FastAPI(title="Channels Cleaner", version=__version__, lifespan=lifespan)
     app.include_router(router)
-
-    @app.exception_handler(AuthError)
-    async def _auth_error(_: Request, exc: AuthError) -> JSONResponse:
-        return _error(400, exc.code, str(exc), retry_after=exc.retry_after)
-
-    @app.exception_handler(NotAuthorizedError)
-    async def _not_authorized(_: Request, exc: NotAuthorizedError) -> JSONResponse:
-        return _error(401, "not_authorized", str(exc))
-
-    @app.exception_handler(ChannelNotFoundError)
-    async def _not_found(_: Request, exc: ChannelNotFoundError) -> JSONResponse:
-        return _error(404, "channel_not_found", f"Unknown channel {exc}")
-
-    @app.exception_handler(FloodWaitError)
-    async def _flood(_: Request, exc: FloodWaitError) -> JSONResponse:
-        return _error(429, "flood_wait", str(exc), retry_after=exc.seconds)
-
-    @app.exception_handler(ApplyBusyError)
-    async def _busy(_: Request, exc: ApplyBusyError) -> JSONResponse:
-        return _error(409, "apply_running", str(exc))
-
-    @app.exception_handler(GatewayError)
-    async def _gateway(_: Request, exc: GatewayError) -> JSONResponse:
-        return _error(502, "telegram_error", str(exc) or type(exc).__name__)
-
-    @app.get("/{path:path}", include_in_schema=False)
-    async def spa(path: str) -> Response:
-        if path.startswith("api/"):
-            return _error(404, "not_found", "Unknown endpoint")
-        index = STATIC_DIR / "index.html"
-        if not index.exists():
-            return HTMLResponse(_NOT_BUILT, status_code=503)
-        candidate = (STATIC_DIR / path).resolve()
-        if path and candidate.is_file() and STATIC_DIR.resolve() in candidate.parents:
-            return FileResponse(candidate)
-        return FileResponse(index, headers={"Cache-Control": "no-cache"})
-
+    for error in _DOMAIN_ERRORS:
+        app.add_exception_handler(error, _domain_error)
+    app.add_api_route("/{path:path}", _spa, methods=["GET"], include_in_schema=False)
     return app

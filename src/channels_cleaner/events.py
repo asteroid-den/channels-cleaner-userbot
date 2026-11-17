@@ -7,7 +7,6 @@ from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any
 
 Topic = str
 
@@ -15,7 +14,7 @@ Topic = str
 @dataclass(slots=True, frozen=True)
 class Event:
     type: str
-    data: dict[str, Any] = field(default_factory=dict)
+    data: dict[str, object] = field(default_factory=dict)
 
 
 class EventBus:
@@ -32,7 +31,7 @@ class EventBus:
         finally:
             self._subscribers[topic].discard(queue)
 
-    def publish(self, topic: Topic, type_: str, **data: Any) -> None:
+    def publish(self, topic: Topic, type_: str, **data: object) -> None:
         event = Event(type_, data)
         for queue in list(self._subscribers.get(topic, ())):
             try:

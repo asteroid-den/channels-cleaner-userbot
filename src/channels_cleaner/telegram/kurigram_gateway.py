@@ -10,8 +10,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from pyrogram import Client, enums, errors, raw
+from pyrogram import Client, enums, errors
 from pyrogram.qrlogin import QRLogin
+from pyrogram.raw.functions.messages.get_history import GetHistory
+from pyrogram.raw.types.auth.login_token import LoginToken
+from pyrogram.raw.types.message import Message
 
 from channels_cleaner.config import Settings
 from channels_cleaner.telegram import device_profiles
@@ -53,7 +56,7 @@ _MEDIA_KINDS: dict[Any, MediaKind] = {
 _MUTE_FOREVER = timedelta(days=365 * 10)
 
 
-def _to_user(user: Any) -> TgUser:
+def _to_user(user: Any) -> TgUser:  # noqa: ANN401 - a pyrogram User, untyped
     return TgUser(
         id=user.id,
         first_name=user.first_name or "",
@@ -102,13 +105,14 @@ class KurigramGateway:
     @property
     def client(self) -> Client:
         if self._client is None or not self._started:
-            raise NotAuthorizedError("Telegram client is not authorized")
+            msg = "Telegram client is not authorized"
+            raise NotAuthorizedError(msg)
         return self._client
 
     async def start(self) -> TgUser | None:
         self._client = self._make_client()
         # Mirror the first lines of ``Client.start`` so a bare ``connect`` works on our loop.
-        self._client._loop = asyncio.get_running_loop()
+        self._client._loop = asyncio.get_running_loop()  # noqa: SLF001
         rebuild = getattr(self._client, "_rebuild_loop_bound_state", None)
         if rebuild is not None:
             rebuild()
@@ -119,18 +123,19 @@ class KurigramGateway:
 
     async def _finish_login(self) -> TgUser:
         """Restart the connected-but-not-started client the regular way (now non-interactive)."""
-        assert self._client is not None
-        await self._client.disconnect()
+        client = self._pending_client()
+        await client.disconnect()
         try:
-            await self._client.start()
+            await client.start()
         except (errors.AuthKeyUnregistered, errors.Unauthorized) as exc:
             # Session revoked from another device: start from scratch.
             log.warning("Stored session is no longer valid: %s", exc)
             await self._reset_session()
-            raise NotAuthorizedError("Session was revoked, please log in again") from exc
+            msg = "Session was revoked, please log in again"
+            raise NotAuthorizedError(msg) from exc
         self._started = True
         self._qr = None
-        return _to_user(self._client.me)
+        return _to_user(client.me)
 
     async def stop(self) -> None:
         if self._client is None:
@@ -150,9 +155,11 @@ class KurigramGateway:
 
     def _pending_client(self) -> Client:
         if self._client is None or not self._client.is_connected:
-            raise GatewayError("Client is not connected")
+            msg = "Client is not connected"
+            raise GatewayError(msg)
         if self._started:
-            raise GatewayError("Already authorized")
+            msg = "Already authorized"
+            raise GatewayError(msg)
         return self._client
 
     # --- auth: QR ----------------------------------------------------------------
@@ -166,12 +173,17 @@ class KurigramGateway:
             raise PasswordNeededError from exc
         except errors.FloodWait as exc:
             raise FloodWaitError(int(exc.value or 0)) from exc
-        expires = datetime.fromtimestamp(self._qr.r.expires, tz=UTC)
+        token = self._qr.r
+        if not isinstance(token, LoginToken):  # migrate/success come from qr_wait, not from a fresh export
+            msg = f"Unexpected QR login answer: {type(token).__name__}"
+            raise GatewayError(msg)
+        expires = datetime.fromtimestamp(token.expires, tz=UTC)
         return QrToken(url=self._qr.url, expires_at=expires)
 
     async def qr_wait(self) -> TgUser:
         if self._qr is None:
-            raise GatewayError("QR login was not started")
+            msg = "QR login was not started"
+            raise GatewayError(msg)
         try:
             user = await self._qr.wait()
         except TimeoutError as exc:
@@ -200,7 +212,8 @@ class KurigramGateway:
     async def sign_in_code(self, code: str) -> TgUser:
         client = self._pending_client()
         if not self._phone or not self._phone_code_hash:
-            raise GatewayError("Request a code first")
+            msg = "Request a code first"
+            raise GatewayError(msg)
         try:
             result = await client.sign_in(self._phone, self._phone_code_hash, code)
         except (errors.PhoneCodeInvalid, errors.PhoneCodeExpired) as exc:
@@ -210,7 +223,8 @@ class KurigramGateway:
         except errors.FloodWait as exc:
             raise FloodWaitError(int(exc.value or 0)) from exc
         if result is False or not hasattr(result, "id"):
-            raise GatewayError("This phone number has no Telegram account")
+            msg = "This phone number has no Telegram account"
+            raise GatewayError(msg)
         return await self._finish_login()
 
     async def password_hint(self) -> str | None:
@@ -252,7 +266,7 @@ class KurigramGateway:
             raise FloodWaitError(int(exc.value or 0)) from exc
 
     @staticmethod
-    def _channel_info(dialog: Any, now: datetime) -> ChannelInfo:
+    def _channel_info(dialog: Any, now: datetime) -> ChannelInfo:  # noqa: ANN401 - a pyrogram Dialog, untyped
         chat = dialog.chat
         top = dialog.top_message
         muted = False
@@ -297,9 +311,12 @@ class KurigramGateway:
         # every message and may fetch replies on top).
         client = self.client
         try:
+            peer = await client.resolve_peer(channel_id)
+            if peer is None:
+                return []
             result = await client.invoke(
-                raw.functions.messages.GetHistory(
-                    peer=await client.resolve_peer(channel_id),
+                GetHistory(
+                    peer=peer,
                     offset_id=0,
                     offset_date=0,
                     add_offset=0,
@@ -315,9 +332,7 @@ class KurigramGateway:
             log.info("History fetch failed for %s: %s", channel_id, exc)
             return []
         dates = [
-            datetime.fromtimestamp(m.date, tz=UTC)
-            for m in getattr(result, "messages", [])
-            if isinstance(m, raw.types.Message)
+            datetime.fromtimestamp(m.date, tz=UTC) for m in getattr(result, "messages", []) if isinstance(m, Message)
         ]
         return sorted(dates, reverse=True)
 

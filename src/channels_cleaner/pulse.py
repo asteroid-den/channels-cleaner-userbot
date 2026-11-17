@@ -34,11 +34,12 @@ def compute_pulse(
     truncated = len(utc) >= limit
     oldest_seen = utc[-1] if utc else None
 
-    counts: list[int | None] = [0] * weeks
+    seen = [0] * weeks
     for date in utc:
         age_weeks = int((now - date) / timedelta(weeks=1))
         if 0 <= age_weeks < weeks:
-            counts[weeks - 1 - age_weeks] += 1  # type: ignore[operator]
+            seen[weeks - 1 - age_weeks] += 1
+    counts: list[int | None] = list(seen)
 
     if truncated and oldest_seen is not None:
         # Weeks entirely older than the oldest post we fetched are unknown, and the week

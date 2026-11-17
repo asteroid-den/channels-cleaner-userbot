@@ -190,7 +190,8 @@ class Database:
     @property
     def conn(self) -> aiosqlite.Connection:
         if self._conn is None:
-            raise RuntimeError("Database is not open")
+            msg = "Database is not open"
+            raise RuntimeError(msg)
         return self._conn
 
     async def open(self) -> None:
@@ -242,7 +243,8 @@ class Database:
             ("settings", "account_id"),
             ("accounts", "id"),
         ):
-            await self.conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (account_id,))
+            # Table and column names come from the tuple above, the value is a parameter
+            await self.conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (account_id,))  # noqa: S608
         await self.conn.commit()
 
     # --- channels ----------------------------------------------------------------------
@@ -412,7 +414,7 @@ class Database:
             elif row[1] == "applied" and row[0] in REVERSIBLE_ACTIONS:
                 in_telegram = row[0]
         if decision == "skip" and in_telegram:
-            decision = cast(Decision, in_telegram)  # "later" can't take an applied action back
+            decision = cast("Decision", in_telegram)  # "later" can't take an applied action back
 
         ts = now_iso()
         reverts: str | None = None
@@ -577,7 +579,9 @@ class Database:
             (account_id, total, now_iso()),
         )
         await self.conn.commit()
-        assert cur.lastrowid is not None
+        if cur.lastrowid is None:
+            msg = "INSERT returned no row id"
+            raise RuntimeError(msg)
         return cur.lastrowid
 
     async def update_job(self, job_id: int, *, done: int, failed: int, status: str | None = None) -> None:
@@ -607,14 +611,14 @@ class Database:
         return JobRow(*row) if row else None
 
     # --- settings ------------------------------------------------------------------------
-    async def get_setting(self, account_id: int, key: str) -> Any:
+    async def get_setting(self, account_id: int, key: str) -> Any:  # noqa: ANN401 - whatever JSON was stored
         async with self.conn.execute(
             "SELECT value FROM settings WHERE account_id = ? AND key = ?", (account_id, key)
         ) as cur:
             row = await cur.fetchone()
         return json.loads(row[0]) if row else None
 
-    async def set_setting(self, account_id: int, key: str, value: Any) -> None:
+    async def set_setting(self, account_id: int, key: str, value: object) -> None:
         await self.conn.execute(
             "INSERT INTO settings (account_id, key, value) VALUES (?, ?, ?) "
             "ON CONFLICT (account_id, key) DO UPDATE SET value = excluded.value",

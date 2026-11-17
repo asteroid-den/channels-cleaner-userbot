@@ -15,7 +15,7 @@ posix_only = pytest.mark.skipif(sys.platform == "win32", reason="POSIX opener pa
 def test_uses_platform_opener_with_silenced_output(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[tuple[list[str], dict[str, Any]]] = []
 
-    def fake_popen(cmd: list[str], **kwargs: Any) -> None:
+    def fake_popen(cmd: list[str], **kwargs: Any) -> None:  # noqa: ANN401 - Popen's keyword arguments
         calls.append((cmd, kwargs))
 
     def no_fallback(url: str) -> bool:
@@ -41,7 +41,7 @@ def test_falls_back_to_webbrowser(monkeypatch: pytest.MonkeyPatch) -> None:
         opened.append(url)
         return True
 
-    monkeypatch.setattr("shutil.which", lambda name: None)
+    monkeypatch.setattr("shutil.which", lambda _name: None)
     monkeypatch.setattr("webbrowser.open", fake_open)
 
     assert open_url("http://x")

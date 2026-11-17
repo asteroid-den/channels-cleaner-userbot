@@ -3,8 +3,7 @@ from __future__ import annotations
 import httpx
 
 from channels_cleaner.context import AppContext
-
-from .conftest import get_json, login, wait_for
+from tests.conftest import get_json, login, wait_for
 
 
 async def test_sort_dead_puts_never_posted_first(client: httpx.AsyncClient, ctx: AppContext) -> None:

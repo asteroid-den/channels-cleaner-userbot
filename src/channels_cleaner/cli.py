@@ -12,6 +12,7 @@ import sys
 import threading
 import time
 import urllib.request
+from typing import Any
 
 import uvicorn
 
@@ -36,7 +37,8 @@ def port_in_use(host: str, port: int) -> bool:
 def running_instance(url: str) -> dict[str, object] | None:
     """If our own app already answers at ``url``, return its /api/health payload."""
     try:
-        with urllib.request.urlopen(f"{url}/api/health", timeout=1) as response:
+        # Always our own http:// URL, never user input
+        with urllib.request.urlopen(f"{url}/api/health", timeout=1) as response:  # noqa: S310
             data = json.loads(response.read())
     except (OSError, ValueError):
         return None
@@ -77,14 +79,14 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
-    overrides: dict[str, object] = {}
+    overrides: dict[str, Any] = {}  # flags given on the command line, checked by Settings
     if args.host:
         overrides["host"] = args.host
     if args.port:
         overrides["port"] = args.port
     if args.mock:
         overrides["mock"] = True
-    settings = Settings(**overrides)  # type: ignore[arg-type]
+    settings = Settings(**overrides)
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -94,7 +96,7 @@ def main(argv: list[str] | None = None) -> None:
         logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
     # In a container the server listens on all interfaces; the browser still uses localhost.
-    shown_host = "127.0.0.1" if settings.host in {"0.0.0.0", "::"} else settings.host
+    shown_host = "127.0.0.1" if settings.host in {"0.0.0.0", "::"} else settings.host  # noqa: S104 - not a bind
     api_url = f"http://{shown_host}:{settings.port}"
     if port_in_use(settings.host, settings.port):
         print(port_busy_message(settings.host, settings.port, api_url), file=sys.stderr)
