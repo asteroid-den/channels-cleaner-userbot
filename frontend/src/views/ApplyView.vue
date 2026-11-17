@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useNow } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
 import type { ActionDecision } from '@/api/types'
 import AppIcon, { type IconName } from '@/components/AppIcon.vue'
 import ChannelAvatar from '@/components/ChannelAvatar.vue'
+import { useHotkeys } from '@/composables/useHotkeys'
 import { useApplyStore } from '@/stores/apply'
 import { useDeckStore } from '@/stores/deck'
 
@@ -17,6 +19,13 @@ const now = useNow({ interval: 250 })
 const VISIBLE = 14
 
 onMounted(() => apply.connect())
+
+const router = useRouter()
+// Once the job is over: Enter goes on to the results, Esc back to the channels.
+useHotkeys({
+  Enter: () => !apply.running && void router.push('/results'),
+  Escape: () => !apply.running && void router.push('/'),
+})
 onBeforeUnmount(() => {
   apply.disconnect()
   deck.clear() // the deck must be reloaded after channels were left
@@ -254,13 +263,14 @@ function onLeave(el: Element, done: () => void) {
       </button>
       <template v-else>
         <RouterLink to="/" class="key">
-          <AppIcon name="arrowLeft" :size="16" />{{ t('results.backToDeck') }}
+          <AppIcon name="arrowLeft" :size="16" />{{ t('results.backToDeck') }}<kbd>Esc</kbd>
         </RouterLink>
         <RouterLink
           to="/results"
           class="flex items-center gap-2 rounded-[10px] bg-text px-4 py-2.5 text-[13px] font-semibold text-bg"
         >
           {{ t('apply.seeResults') }}<AppIcon name="arrowRight" :size="16" />
+          <kbd class="font-mono text-[11px] font-medium opacity-70">↵</kbd>
         </RouterLink>
       </template>
     </div>

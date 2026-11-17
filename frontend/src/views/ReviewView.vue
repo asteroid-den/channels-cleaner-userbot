@@ -114,7 +114,7 @@ useHotkeys({
 </script>
 
 <template>
-  <section class="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pb-32">
+  <section class="mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 pt-8 pb-32">
     <RouterLink
       to="/"
       class="mb-4 inline-flex w-fit items-center gap-1.5 text-sm text-muted hover:text-text"
