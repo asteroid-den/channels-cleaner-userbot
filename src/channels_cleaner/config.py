@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from functools import cached_property
@@ -9,6 +10,8 @@ from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+log = logging.getLogger(__name__)
 
 # Public Telegram Desktop credentials. Users can override them with their own pair.
 TDESKTOP_API_ID = 2040
@@ -74,3 +77,11 @@ class Settings(BaseSettings):
     def ensure_dirs(self) -> None:
         for path in (self.data_dir, self.sessions_dir, self.media_dir):
             path.mkdir(parents=True, exist_ok=True)
+        # The session file is the whole Telegram account: keep the data dir private to the
+        # user, including dirs created by an older version with the default umask.
+        if os.name == "posix":
+            for path in (self.data_dir, self.sessions_dir):
+                try:
+                    path.chmod(0o700)
+                except OSError as e:
+                    log.warning("Could not make %s private: %s", path, e)
