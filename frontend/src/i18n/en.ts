@@ -86,7 +86,7 @@ export default {
     left: 'left',
     keptSession: 'kept',
     applyCta: 'Review and apply · {n}',
-    tags: { keep: 'KEEP', unsubscribe: 'LEAVE', skip: 'LATER', mute: 'MUTE', archive: 'ARCH' },
+    tags: { keep: 'Keep', unsubscribe: 'Leave', skip: 'Later', mute: 'Mute', archive: 'Archive' },
     position: '{pos} of {total}',
     emptyTitle: 'All sorted!',
     emptyText: 'You have made a decision for every channel.',
@@ -127,7 +127,7 @@ export default {
   actions: {
     unsubscribe: 'Unsubscribe',
     keep: 'Keep',
-    skip: 'Skip',
+    skip: 'Later',
     undo: 'Undo',
     mute: 'Mute',
     archive: 'Archive',
@@ -145,6 +145,21 @@ export default {
       'Actions run one by one with short pauses so Telegram does not get nervous. This takes {m}.',
     backToDeck: 'Back to channels',
     failedTitle: 'Failed last time',
+    hints: {
+      unsubscribe:
+        'You will leave these channels. Public ones can be rejoined by link, private ones only with an invite.',
+      mute: 'The channels stay in your list, but notifications are switched off for good.',
+      archive:
+        'The channels move to the Telegram archive. If not muted, a channel comes back with its next post.',
+    },
+    noWayBack: 'private, no way back without an invite',
+    noWayBackCount:
+      '{n} private channel — no way back without an invite | {n} private channels — no way back without an invite',
+    errors: {
+      gone: 'Channel is unavailable — you may have already left it',
+      flood: 'Telegram kept asking us to wait for too long',
+      unknown: 'Telegram returned an error — hover to see details',
+    },
   },
   apply: {
     title: 'Applying',
@@ -154,7 +169,7 @@ export default {
     cancelling: 'Stopping…',
     finished: 'Done',
     cancelled: 'Stopped',
-    error: 'The job crashed. Pending actions are kept — you can start again.',
+    error: 'Applying stopped because of an error. Pending actions are kept — start again.',
     seeResults: 'See results',
     failed: 'Failed: {n}',
   },
@@ -178,7 +193,8 @@ export default {
       never: 'Never',
     },
     export: 'Export unsubscribed list',
-    exportHint: 'Includes t.me links, in case you want something back.',
+    exportHint:
+      'Public channels come with t.me links so you can rejoin. Private ones need an invite to get back.',
     retryFailed: 'Retry failed',
     backToDeck: 'Back to channels',
   },
