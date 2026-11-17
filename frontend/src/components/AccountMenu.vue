@@ -78,6 +78,7 @@ async function logout(wipe: boolean) {
         v-if="open"
         class="absolute right-0 z-40 mt-2 w-72 overflow-hidden rounded-xl border border-border-2 bg-surface p-1 shadow-card"
         role="menu"
+        data-hotkeys-off
       >
         <div class="px-3 py-2 text-xs text-muted">
           {{ auth.state.user?.first_name }} {{ auth.state.user?.last_name ?? '' }}
