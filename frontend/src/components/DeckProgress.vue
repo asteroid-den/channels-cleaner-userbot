@@ -23,13 +23,12 @@ watch(
 )
 
 const pulse = ref(false)
-const flash = ref(false)
 watch(
   () => deck.landed,
   () => {
     shown.value = copy(deck.counts)
-    pulse.value = flash.value = false
-    requestAnimationFrame(() => (pulse.value = flash.value = true))
+    pulse.value = false
+    requestAnimationFrame(() => (pulse.value = true))
   },
 )
 
@@ -92,30 +91,18 @@ const runs = computed(() => {
           :style="{ flex: `${r.n} 0 0` }"
         />
       </div>
+      <!-- invisible anchor: where the "+1" chip lands -->
       <span
         data-progress-edge
-        class="edge absolute top-1/2 h-[18px] w-[18px] -translate-x-1/2 -translate-y-1/2 rounded-full transition-[left] duration-500 ease-out"
-        :class="flash ? 'edge-flash' : ''"
+        aria-hidden="true"
+        class="pointer-events-none absolute top-1/2 h-px w-px transition-[left] duration-500 ease-out"
         :style="{ left: `${pct}%` }"
-        @animationend="flash = false"
       />
     </div>
   </div>
 </template>
 
 <style scoped>
-.edge {
-  pointer-events: none;
-  background: radial-gradient(circle, rgb(var(--ch) / 0.85), rgb(var(--ch) / 0) 70%);
-}
-.edge-flash {
-  animation: edge-flash 0.6s ease-out;
-}
-@keyframes edge-flash {
-  40% {
-    scale: 2.6;
-  }
-}
 .count-bump {
   animation: count-bump 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
