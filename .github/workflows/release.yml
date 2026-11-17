@@ -15,6 +15,10 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+      # the version on PyPI comes from __init__.py, so it must match the tag
+      - run: |
+          version=$(sed -n 's/^__version__ = "\(.*\)"/\1/p' src/channels_cleaner/__init__.py)
+          test "v$version" = "$GITHUB_REF_NAME" || { echo "::error::tag $GITHUB_REF_NAME != version $version"; exit 1; }
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -27,6 +31,7 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
 
   ghcr:
+    needs: pypi # no image for a tag that failed the version check
     runs-on: ubuntu-latest
     permissions:
       contents: read
