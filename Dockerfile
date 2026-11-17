@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # --- the web UI -------------------------------------------------------------------------------
-FROM node:22-alpine AS ui
+# Static files are the same for every platform, so build them natively: npm under QEMU (arm64
+# on an amd64 runner) takes ages or hangs.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS ui
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
