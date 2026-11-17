@@ -49,6 +49,8 @@ export interface Channel {
   decision_status: 'pending' | 'applied' | 'failed' | null
   error: string | null
   pulse: Pulse | null
+  /** an applied mute/archive this (changed) decision will take back */
+  reverts?: 'mute' | 'archive' | null
 }
 
 export type FinalDecision = Exclude<Decision, 'skip'>
@@ -82,11 +84,13 @@ export type ApplyItemStatus = 'queued' | 'running' | 'done' | 'failed'
 
 export interface ApplyItem {
   channel_id: number
-  decision: ActionDecision
+  decision: Decision
   title: string
   has_photo: boolean
   status: ApplyItemStatus
   error: string | null
+  /** an applied mute/archive taken back first */
+  reverts: 'mute' | 'archive' | null
 }
 
 export interface ApplyState {
