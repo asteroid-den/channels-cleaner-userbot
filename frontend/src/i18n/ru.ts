@@ -116,6 +116,7 @@ const ru: typeof en = {
     unread: 'непрочит.',
     lastPost: 'Последний пост',
     neverPosted: 'Постов ещё нет',
+    neverPostedLong: 'Канал ещё ничего не публиковал',
     noAbout: 'Нет описания',
     archived: 'В архиве',
     muted: 'Без звука',

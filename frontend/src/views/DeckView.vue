@@ -234,7 +234,7 @@ const ZONES = [
         </span>
       </button>
 
-      <div class="relative mx-auto h-[min(560px,calc(100vh-220px))] min-h-[420px] w-[460px]">
+      <div class="relative mx-auto h-[min(540px,calc(100vh-220px))] min-h-[420px] w-[460px]">
         <SwipeDeck
           ref="swiper"
           :items="deck.items"
@@ -278,14 +278,15 @@ const ZONES = [
   );
 }
 
+/* The glow is not clipped by the zone: it runs on under the card, which covers it. */
 .zone {
-  overflow: hidden;
   cursor: pointer;
 }
 .zone::before {
   content: '';
   position: absolute;
   inset: 0;
+  pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s;
   background: radial-gradient(
@@ -293,6 +294,12 @@ const ZONES = [
     var(--zone-color),
     transparent 70%
   );
+}
+.zone-l::before {
+  right: -320px;
+}
+.zone-r::before {
+  left: -320px;
 }
 .zone-l {
   --zone-color: color-mix(in srgb, var(--danger) 20%, transparent);
