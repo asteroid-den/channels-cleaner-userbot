@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { DeckCounts, FinalDecision } from '@/api/types'
+import type { DeckCounts } from '@/api/types'
 import { useDeckStore } from '@/stores/deck'
 
 const { t } = useI18n()
@@ -36,15 +36,23 @@ watch(
 const decided = computed(() => shown.value.total - shown.value.undecided)
 const pct = computed(() => (shown.value.total ? (decided.value / shown.value.total) * 100 : 0))
 
-const SEGMENTS: { id: FinalDecision; cls: string }[] = [
-  { id: 'keep', cls: 'bg-success' },
-  { id: 'unsubscribe', cls: 'bg-danger' },
-  { id: 'mute', cls: 'bg-warn' },
-  { id: 'archive', cls: 'bg-accent' },
-]
-const segments = computed(() =>
-  SEGMENTS.map((s) => ({ ...s, n: shown.value.by_decision[s.id] })).filter((s) => s.n > 0),
-)
+const RUN_CLASS: Record<string, string> = {
+  k: 'bg-success',
+  u: 'bg-danger',
+  m: 'bg-warn',
+  a: 'bg-accent',
+}
+
+/** The trail as runs of the same decision, in the order they were made. */
+const runs = computed(() => {
+  const out: { code: string; n: number }[] = []
+  for (const code of shown.value.trail) {
+    const last = out[out.length - 1]
+    if (last?.code === code) last.n += 1
+    else out.push({ code, n: 1 })
+  }
+  return out
+})
 </script>
 
 <template>
@@ -77,11 +85,11 @@ const segments = computed(() =>
         :style="{ width: `${pct}%` }"
       >
         <span
-          v-for="s in segments"
-          :key="s.id"
+          v-for="(r, i) in runs"
+          :key="i"
           class="h-full transition-[flex-grow] duration-500 ease-out"
-          :class="s.cls"
-          :style="{ flex: `${s.n} 0 0` }"
+          :class="RUN_CLASS[r.code]"
+          :style="{ flex: `${r.n} 0 0` }"
         />
       </div>
       <span
