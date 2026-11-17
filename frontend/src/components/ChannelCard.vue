@@ -47,7 +47,7 @@ const rate = computed(() =>
 
     <div
       data-card-body
-      class="flex flex-col gap-4 px-6 pt-5 pb-5 transition-opacity duration-200"
+      class="flex min-h-0 flex-1 flex-col gap-4 px-6 pt-5 pb-5 transition-opacity duration-200"
       :class="stacked ? 'invisible opacity-0' : ''"
     >
       <!-- head -->
@@ -161,12 +161,12 @@ const rate = computed(() =>
       </div>
 
       <!-- last post -->
-      <div v-if="channel.last_post_at" class="post flex gap-3 rounded-xl p-3">
+      <div v-if="channel.last_post_at" class="post mt-auto flex gap-3 rounded-xl p-3">
         <img
           v-if="channel.thumb_url"
           :src="channel.thumb_url"
           alt=""
-          class="h-[76px] w-[76px] shrink-0 rounded-[10px] object-cover"
+          class="h-[88px] w-[88px] shrink-0 rounded-[10px] object-cover"
           draggable="false"
           loading="lazy"
           @error="($event.target as HTMLImageElement).style.display = 'none'"
@@ -176,10 +176,13 @@ const rate = computed(() =>
             {{ t('deck.lastPost') }} · {{ relativeTime(channel.last_post_at, locale) }}
             <template v-if="mediaLabel"> · {{ mediaLabel }}</template>
           </div>
-          <p class="mt-1 line-clamp-3 text-[14px] leading-snug whitespace-pre-line">
+          <p class="mt-1 line-clamp-5 text-[14px] leading-snug whitespace-pre-line">
             {{ channel.last_post_text ?? mediaLabel ?? '…' }}
           </p>
         </div>
+      </div>
+      <div v-else class="post mt-auto rounded-xl p-3 text-[13.5px] text-faint italic">
+        {{ t('deck.neverPostedLong') }}
       </div>
     </div>
   </article>

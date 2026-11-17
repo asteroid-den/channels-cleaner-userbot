@@ -108,6 +108,7 @@ export default {
     unread: 'unread',
     lastPost: 'Last post',
     neverPosted: 'No posts yet',
+    neverPostedLong: 'This channel hasn’t posted anything yet',
     noAbout: 'No description',
     archived: 'Archived',
     muted: 'Muted',

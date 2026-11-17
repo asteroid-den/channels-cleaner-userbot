@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { Channel, Decision } from '@/api/types'
@@ -31,30 +31,10 @@ let pointerId: number | null = null
 
 const busy = computed(() => flying.value !== null || entering.value)
 
-// The stack is as tall as the front card's content (capped by the stage), so short cards
-// don't carry an empty band; the cards behind take the same height to stay aligned.
-const root = ref<HTMLElement | null>(null)
-const cardHeight = ref<number | null>(null)
-let observed: Element | null = null
-const resize = new ResizeObserver(() => measure())
-
-function measure() {
-  const body = observed as HTMLElement | null
-  const stage = root.value?.clientHeight ?? 0
-  if (!body || !stage) return
-  // + accent stripe (4px) and the card border (2px)
-  cardHeight.value = Math.min(stage, Math.ceil(body.offsetHeight) + 6)
-}
-
-function observeFront(el: Element) {
-  const body = el.querySelector('[data-card-body]')
-  if (body === observed) return
-  if (observed) resize.unobserve(observed)
-  observed = body
-  if (body) resize.observe(body)
-  measure()
-}
-onBeforeUnmount(() => resize.disconnect())
+// All cards in the stack share the stage height, so the fan behind never resizes from one
+// channel to the next. The front card is remembered for the "+1" chip's starting point.
+let front: Element | null = null
+const setFront = (el: Element) => (front = el)
 
 function flyTarget(decision: Decision): string {
   const w = window.innerWidth
@@ -119,7 +99,7 @@ function depthStyle(depth: number) {
   return {
     transform: `translate(${x}px, ${y}px) rotate(${r}deg)`,
     transformOrigin: '50% 85%',
-    transition: 'transform 0.35s cubic-bezier(.2,.8,.2,1), height 0.3s ease-out',
+    transition: 'transform 0.35s cubic-bezier(.2,.8,.2,1)',
   }
 }
 
@@ -218,7 +198,7 @@ function onPointerUp(e: PointerEvent) {
 
 function fling(decision: Decision): boolean {
   if (busy.value || !visible.value.length) return false
-  const card = (observed as HTMLElement | null)?.closest('article')
+  const card = front?.querySelector('article')
   if (card) emit('flinging', decision, card.getBoundingClientRect())
   preview.value = null
   flying.value = decision
@@ -253,20 +233,14 @@ defineExpose({ fling, busy, preview })
 </script>
 
 <template>
-  <div
-    ref="root"
-    class="relative h-full w-full select-none"
-    @dragstart.prevent
-    @selectstart.prevent
-  >
+  <div class="relative h-full w-full select-none" @dragstart.prevent @selectstart.prevent>
     <div
       v-for="(channel, depth) in visible"
       :key="channel.id"
-      :ref="(el) => depth === 0 && el && observeFront(el as Element)"
-      class="absolute inset-x-0 top-0 transition-[height] duration-300 ease-out"
+      :ref="(el) => depth === 0 && el && setFront(el as Element)"
+      class="absolute inset-0"
       :style="{
         zIndex: 10 - depth,
-        height: cardHeight ? `${cardHeight}px` : '100%',
         ...(depth === 0 ? {} : depthStyle(depth)),
       }"
       :aria-hidden="depth > 0"
