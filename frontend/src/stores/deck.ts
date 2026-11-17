@@ -28,7 +28,12 @@ export const useDeckStore = defineStore('deck', () => {
 
   const items = ref<Channel[]>([])
   const history = ref<HistoryEntry[]>([])
-  const counts = ref<DeckCounts>({ total: 0, undecided: 0, pending: 0 })
+  const counts = ref<DeckCounts>({
+    total: 0,
+    undecided: 0,
+    pending: 0,
+    by_decision: { keep: 0, unsubscribe: 0, mute: 0, archive: 0 },
+  })
   const sync = ref<SyncState | null>(null)
   const prefs = ref<Prefs>({ sort: 'dead', reverse: false })
   const loaded = ref(false)
@@ -36,7 +41,28 @@ export const useDeckStore = defineStore('deck', () => {
   /** Set right after undo so the card can animate back in from where it left. */
   const returning = ref<HistoryEntry | null>(null)
 
+  /** "+1" chips on their way to the progress bar; the bar waits for them to land. */
+  const chipsInFlight = ref(0)
+  /** Bumped when a chip lands, so the progress counter can pulse. */
+  const landed = ref(0)
+  /** Timestamps of this session's decisions, for the ETA. */
+  const stamps = ref<number[]>([])
+
   const current = computed(() => items.value[0] ?? null)
+  const decided = computed(() => counts.value.total - counts.value.undecided)
+
+  /** Remaining time at the user's own pace (median gap between the last decisions), minutes. */
+  const eta = computed(() => {
+    const s = stamps.value
+    if (s.length < 4) return null
+    const gaps = s
+      .slice(-11)
+      .map((ts, i, arr) => (i ? ts - arr[i - 1]! : 0))
+      .slice(1)
+      .sort((a, b) => a - b)
+    const median = Math.min(gaps[Math.floor(gaps.length / 2)]!, 30_000)
+    return Math.round((median * counts.value.undecided) / 60_000)
+  })
   const position = computed(() =>
     Math.min(counts.value.total - counts.value.undecided + 1, counts.value.total),
   )
@@ -97,10 +123,12 @@ export const useDeckStore = defineStore('deck', () => {
     if (decision === 'skip') items.value.push(channel)
     history.value.push({ channel, decision })
     returning.value = null
-    const before = { ...counts.value }
+    const before = { ...counts.value, by_decision: { ...counts.value.by_decision } }
     if (decision !== 'skip') {
       counts.value.undecided -= 1
+      counts.value.by_decision[decision] += 1
       if (ACTIONS.includes(decision)) counts.value.pending += 1
+      stamps.value.push(Date.now())
     }
     try {
       const res = await api.put<{ counts: DeckCounts }>(`/api/decisions/${channel.id}`, {
@@ -220,7 +248,11 @@ export const useDeckStore = defineStore('deck', () => {
     loaded,
     loading,
     returning,
+    chipsInFlight,
+    landed,
     current,
+    decided,
+    eta,
     position,
     syncing,
     load,

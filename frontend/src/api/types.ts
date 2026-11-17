@@ -51,10 +51,14 @@ export interface Channel {
   pulse: Pulse | null
 }
 
+export type FinalDecision = Exclude<Decision, 'skip'>
+
 export interface DeckCounts {
   total: number
   undecided: number
   pending: number
+  /** Final decisions per kind for channels still in the list. */
+  by_decision: Record<FinalDecision, number>
 }
 
 export interface SyncState {

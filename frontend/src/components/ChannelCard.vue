@@ -44,13 +44,12 @@ const rate = computed(() =>
     class="relative flex h-full w-full flex-col overflow-hidden rounded-[18px] border border-border-2 bg-surface-2 shadow-card"
   >
     <div class="h-1 shrink-0 bg-gradient-to-r from-ch to-ch2" />
-    <!-- cards behind the top one only peek out at the bottom: keep that strip clean -->
-    <div
-      v-if="stacked"
-      class="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-surface-2"
-    />
 
-    <div data-card-body class="flex flex-col gap-4 px-6 pt-5 pb-5">
+    <div
+      data-card-body
+      class="flex flex-col gap-4 px-6 pt-5 pb-5 transition-opacity duration-200"
+      :class="stacked ? 'invisible opacity-0' : ''"
+    >
       <!-- head -->
       <div class="flex items-start gap-4">
         <ChannelAvatar
@@ -89,7 +88,7 @@ const rate = computed(() =>
           <div class="min-w-[7.5rem]">
             <template v-if="verdict">
               <div
-                class="font-mono text-[44px] leading-none font-bold tracking-[-0.03em] whitespace-nowrap text-ch-ink"
+                class="font-display text-[46px] leading-none font-semibold tracking-[-0.02em] whitespace-nowrap text-ch-ink"
                 :title="channel.last_post_at ? fullDate(channel.last_post_at, locale) : ''"
               >
                 <template v-if="verdict.kind === 'rate'">{{ rate }}</template>

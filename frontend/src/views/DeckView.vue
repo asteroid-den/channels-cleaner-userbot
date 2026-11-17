@@ -5,16 +5,13 @@ import { useRouter } from 'vue-router'
 
 import type { Decision } from '@/api/types'
 import AppIcon from '@/components/AppIcon.vue'
-import ChannelAvatar from '@/components/ChannelAvatar.vue'
-import PulseChart from '@/components/PulseChart.vue'
 import SwipeDeck from '@/components/SwipeDeck.vue'
 import { useChannelColor } from '@/composables/useChannelColor'
 import { useHotkeys } from '@/composables/useHotkeys'
 import { useApplyStore } from '@/stores/apply'
 import { useDeckStore } from '@/stores/deck'
-import { compactNumber, relativeTime } from '@/utils/format'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const deck = useDeckStore()
 const apply = useApplyStore()
 const router = useRouter()
@@ -31,7 +28,6 @@ onBeforeUnmount(() => deck.unwatchSync())
 
 // --- actions -------------------------------------------------------------------------------
 const pressed = ref<string | null>(null)
-const stamps: number[] = []
 
 function flash(key: string) {
   pressed.value = key
@@ -41,7 +37,7 @@ function flash(key: string) {
 function act(decision: Decision) {
   if (!deck.current) return
   flash(decision)
-  if (swiper.value?.fling(decision)) stamps.push(Date.now())
+  swiper.value?.fling(decision)
 }
 
 async function undo() {
@@ -65,44 +61,100 @@ useHotkeys({
   Enter: review,
 })
 
+// --- "+1" chip: flies from the leaving card into the progress bar in the header -------------
+const CHIP_CLASS: Record<Exclude<Decision, 'skip'>, string> = {
+  keep: 'bg-success',
+  unsubscribe: 'bg-danger-strong',
+  mute: 'bg-warn',
+  archive: 'bg-accent',
+}
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+function onFlinging(decision: Decision, from: DOMRect) {
+  if (decision === 'skip') return // "later" doesn't move the deck forward
+  const target = document.querySelector('[data-progress-edge]')?.getBoundingClientRect()
+  deck.chipsInFlight += 1
+  const land = () => {
+    deck.chipsInFlight = Math.max(0, deck.chipsInFlight - 1)
+    deck.landed += 1
+  }
+  if (!target || reduceMotion.matches) return void setTimeout(land, 200)
+
+  const chip = document.createElement('div')
+  chip.className = `chip ${CHIP_CLASS[decision]}`
+  chip.textContent = '+1'
+  chip.setAttribute('aria-hidden', 'true')
+  document.body.appendChild(chip)
+  const x0 = from.left + from.width / 2 - 18
+  const y0 = from.top + 36
+  const x1 = target.left + target.width / 2 - 18
+  const y1 = target.top + target.height / 2 - 12
+  const mx = (x0 + x1) / 2 + (decision === 'keep' ? 70 : -70)
+  const my = Math.min(y0, y1) + 20
+  chip.animate(
+    [
+      { transform: `translate(${x0}px, ${y0}px) scale(.6)`, opacity: 0 },
+      { transform: `translate(${x0}px, ${y0 - 30}px) scale(1.1)`, opacity: 1, offset: 0.2 },
+      { transform: `translate(${mx}px, ${my}px) scale(1)`, opacity: 1, offset: 0.6 },
+      { transform: `translate(${x1}px, ${y1}px) scale(.5)`, opacity: 0.3 },
+    ],
+    { duration: 650, easing: 'cubic-bezier(.5,0,.4,1)' },
+  ).onfinish = () => {
+    chip.remove()
+    land()
+  }
+}
+
+// --- side zones: click to decide, hover to preview ------------------------------------------
+function zoneMove(e: PointerEvent) {
+  const el = e.currentTarget as HTMLElement
+  const r = el.getBoundingClientRect()
+  el.style.setProperty('--mx', `${e.clientX - r.left}px`)
+  el.style.setProperty('--my', `${e.clientY - r.top}px`)
+}
+function zoneEnter(decision: 'keep' | 'unsubscribe') {
+  if (swiper.value && !swiper.value.busy) swiper.value.preview = decision
+}
+function zoneLeave() {
+  if (swiper.value) swiper.value.preview = null
+}
+
 // --- derived ---------------------------------------------------------------------------------
 const showSync = computed(() => deck.syncing && deck.items.length === 0)
 const empty = computed(() => deck.loaded && !deck.syncing && deck.items.length === 0)
-const progress = computed(() =>
-  deck.counts.total ? ((deck.position - 1) / deck.counts.total) * 100 : 0,
-)
-const history = computed(() => deck.history.slice(-14).reverse())
-const queue = computed(() => deck.items.slice(1, 8))
-const keptInSession = computed(() => deck.history.filter((h) => h.decision === 'keep').length)
 
-/** Remaining time at the user's own pace (median gap between the last decisions). */
-const eta = computed(() => {
-  void deck.history.length // recompute after each decision
-  if (stamps.length < 4) return null
-  const gaps = stamps
-    .slice(-11)
-    .map((ts, i, arr) => (i ? ts - arr[i - 1]! : 0))
-    .slice(1)
-    .sort((a, b) => a - b)
-  const median = Math.min(gaps[Math.floor(gaps.length / 2)]!, 30_000)
-  return Math.round((median * deck.counts.undecided) / 60_000)
-})
-
-const TAG_CLASS: Record<Decision, string> = {
-  keep: 'bg-success-soft text-success',
-  unsubscribe: 'bg-danger-soft text-danger',
-  skip: 'bg-surface-3 text-muted',
-  mute: 'bg-warn-soft text-warn',
-  archive: 'bg-accent-soft text-accent',
-}
-
-const KEYS: { id: Decision; kbd: string; label: string; cls?: string; kbdAfter?: boolean }[] = [
-  { id: 'unsubscribe', kbd: '←', label: 'actions.unsubscribe', cls: 'text-danger' },
-  { id: 'skip', kbd: '↓', label: 'actions.skip' },
-  { id: 'mute', kbd: 'M', label: 'actions.mute' },
-  { id: 'archive', kbd: 'A', label: 'actions.archive' },
-  { id: 'keep', kbd: '→', label: 'actions.keep', cls: 'text-success', kbdAfter: true },
+const KEYS: {
+  id: Decision
+  kbd: string
+  shortcut: string
+  label: string
+  cls?: string
+  kbdAfter?: boolean
+}[] = [
+  {
+    id: 'unsubscribe',
+    kbd: '←',
+    shortcut: 'ArrowLeft',
+    label: 'actions.unsubscribe',
+    cls: 'text-danger',
+  },
+  { id: 'skip', kbd: '↓', shortcut: 'ArrowDown', label: 'actions.skip' },
+  { id: 'mute', kbd: 'M', shortcut: 'M', label: 'actions.mute' },
+  { id: 'archive', kbd: 'A', shortcut: 'A', label: 'actions.archive' },
+  {
+    id: 'keep',
+    kbd: '→',
+    shortcut: 'ArrowRight',
+    label: 'actions.keep',
+    cls: 'text-success',
+    kbdAfter: true,
+  },
 ]
+
+const ZONES = [
+  { id: 'unsubscribe', label: 'deck.zoneLeave', cls: 'zone-l left-0', hint: 'right-9' },
+  { id: 'keep', label: 'deck.zoneKeep', cls: 'zone-r right-0', hint: 'left-9' },
+] as const
 </script>
 
 <template>
@@ -153,175 +205,59 @@ const KEYS: { id: Decision; kbd: string; label: string; cls?: string; kbdAfter?:
   </section>
 
   <!-- the deck -->
-  <section
-    v-else-if="deck.loaded"
-    class="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)_320px]"
-  >
-    <!-- history -->
-    <aside
-      class="hidden min-h-0 overflow-hidden border-r border-border bg-surface p-[18px] xl:block"
-    >
-      <div class="label mb-3 flex items-center justify-between">
-        <span>{{ t('deck.historyTitle') }}</span>
-        <button
-          class="font-mono tracking-normal normal-case hover:text-text disabled:opacity-40"
-          :disabled="!deck.history.length"
-          @click="undo"
-        >
-          ⌫ {{ t('actions.undo').toLowerCase() }}
-        </button>
-      </div>
-      <TransitionGroup
-        tag="ul"
-        enter-from-class="opacity-0 -translate-y-2"
-        enter-active-class="transition duration-300"
-        move-class="transition duration-300"
-      >
-        <li
-          v-for="h in history"
-          :key="`${h.channel.id}-${h.decision}`"
-          class="flex items-center gap-2.5 border-b border-dashed border-border py-2"
-        >
-          <ChannelAvatar
-            :id="h.channel.id"
-            :title="h.channel.title"
-            :src="h.channel.avatar_url"
-            :size="28"
-            rounded="8px"
-          />
-          <span class="min-w-0 flex-1 truncate">{{ h.channel.title }}</span>
-          <span class="tag" :class="TAG_CLASS[h.decision]">{{ t(`deck.tags.${h.decision}`) }}</span>
-        </li>
-      </TransitionGroup>
-      <p v-if="!deck.history.length" class="text-[13px] text-faint">
-        {{ t('deck.historyEmpty') }}
-      </p>
-    </aside>
+  <section v-else-if="deck.loaded" class="glow relative flex min-h-0 flex-1 flex-col items-center">
+    <h1 class="sr-only">{{ t('app.name') }}</h1>
+    <p class="sr-only" aria-live="polite">
+      <template v-if="deck.current">
+        {{ deck.current.title }} ·
+        {{ t('deck.position', { pos: deck.position, total: deck.counts.total }) }}
+      </template>
+    </p>
 
-    <!-- centre -->
-    <div class="glow relative flex min-h-0 flex-col items-center overflow-hidden px-6 pt-5 pb-6">
-      <div class="relative flex w-full max-w-[480px] items-center gap-3 text-[12.5px] text-muted">
-        <span class="font-mono tabular-nums">{{ deck.position }}/{{ deck.counts.total }}</span>
-        <div class="h-1 flex-1 overflow-hidden rounded bg-border">
-          <div
-            class="h-full rounded bg-text transition-[width] duration-300"
-            :style="{ width: `${progress}%` }"
-          />
-        </div>
-        <span v-if="deck.syncing" class="flex items-center gap-1">
-          <AppIcon name="refresh" :size="12" class="animate-spin" />{{ t('deck.syncing') }}
+    <div class="relative w-full flex-1 pt-8">
+      <!-- clickable side zones: the same as swiping toward them -->
+      <button
+        v-for="z in ZONES"
+        :key="z.id"
+        tabindex="-1"
+        aria-hidden="true"
+        class="zone absolute inset-y-0 w-[calc(50%-260px)]"
+        :class="z.cls"
+        @pointermove="zoneMove"
+        @pointerenter="zoneEnter(z.id)"
+        @pointerleave="zoneLeave"
+        @click="act(z.id)"
+      >
+        <span class="zone-hint" :class="z.hint">
+          <kbd v-if="z.id === 'unsubscribe'">←</kbd>{{ t(z.label)
+          }}<kbd v-if="z.id === 'keep'">→</kbd>
         </span>
-        <span v-else-if="eta !== null">{{ t('deck.eta', { m: t('time.minutes', eta) }) }}</span>
-      </div>
-      <p class="sr-only" aria-live="polite">
-        <template v-if="deck.current">
-          {{ deck.current.title }} ·
-          {{ t('deck.position', { pos: deck.position, total: deck.counts.total }) }}
-        </template>
-      </p>
+      </button>
 
-      <div
-        class="relative mt-4 h-[min(610px,calc(100vh-200px))] min-h-[480px] w-full max-w-[480px]"
-      >
+      <div class="relative mx-auto h-[min(560px,calc(100vh-220px))] min-h-[420px] w-[460px]">
         <SwipeDeck
           ref="swiper"
           :items="deck.items"
           :returning="deck.returning"
           @decide="deck.decide"
+          @flinging="onFlinging"
         />
-      </div>
-
-      <div class="relative mt-5 flex flex-wrap justify-center gap-2">
-        <button
-          v-for="k in KEYS"
-          :key="k.id"
-          class="key"
-          :class="[k.cls, pressed === k.id ? 'pressed' : '']"
-          @click="act(k.id)"
-        >
-          <kbd v-if="!k.kbdAfter">{{ k.kbd }}</kbd>{{ t(k.label)
-          }}<kbd v-if="k.kbdAfter">{{ k.kbd }}</kbd>
-        </button>
       </div>
     </div>
 
-    <!-- queue + summary -->
-    <aside
-      class="hidden min-h-0 flex-col gap-[18px] overflow-hidden border-l border-border bg-surface p-[18px] xl:flex"
-    >
-      <div>
-        <div class="label mb-3">{{ t('deck.queueTitle') }}</div>
-        <TransitionGroup
-          tag="ul"
-          move-class="transition duration-300"
-          enter-from-class="opacity-0"
-          enter-active-class="transition duration-300"
-        >
-          <li
-            v-for="c in queue"
-            :key="c.id"
-            class="flex items-center gap-2.5 border-b border-dashed border-border py-2"
-          >
-            <ChannelAvatar
-              :id="c.id"
-              :title="c.title"
-              :src="c.avatar_url"
-              :size="28"
-              rounded="8px"
-            />
-            <div class="min-w-0 flex-1">
-              <div class="truncate">{{ c.title }}</div>
-              <div class="truncate text-[11.5px] text-faint">
-                {{ c.last_post_at ? relativeTime(c.last_post_at, locale) : t('deck.neverPosted') }}
-                · {{ compactNumber(c.unread_count, locale) }} {{ t('deck.unread') }}
-              </div>
-            </div>
-            <div class="w-16 shrink-0 text-muted">
-              <PulseChart v-if="c.pulse" :weeks="c.pulse.weeks" :height="18" mini />
-              <div v-else class="skeleton h-[18px] w-full opacity-60" />
-            </div>
-          </li>
-        </TransitionGroup>
-      </div>
-
-      <dl class="grid grid-cols-2 gap-3 rounded-xl border border-border p-3.5">
-        <div>
-          <dd class="font-mono text-[22px] font-bold text-danger">{{ deck.counts.pending }}</dd>
-          <dt class="text-[11.5px] text-faint">{{ t('deck.toApply') }}</dt>
-        </div>
-        <div>
-          <dd class="font-mono text-[22px] font-bold text-success">{{ keptInSession }}</dd>
-          <dt class="text-[11.5px] text-faint">{{ t('deck.keptSession') }}</dt>
-        </div>
-        <div>
-          <dd class="font-mono text-[22px] font-bold">
-            {{ deck.counts.total - deck.counts.undecided }}
-          </dd>
-          <dt class="text-[11.5px] text-faint">{{ t('deck.decided') }}</dt>
-        </div>
-        <div>
-          <dd class="font-mono text-[22px] font-bold">{{ deck.counts.undecided }}</dd>
-          <dt class="text-[11.5px] text-faint">{{ t('deck.left') }}</dt>
-        </div>
-      </dl>
-
+    <div class="relative z-10 flex flex-wrap justify-center gap-2 pt-4 pb-7">
       <button
-        class="rounded-[10px] bg-text px-3 py-3 font-semibold text-bg transition-opacity disabled:opacity-35"
-        :disabled="!deck.counts.pending"
-        @click="review"
+        v-for="k in KEYS"
+        :key="k.id"
+        class="key"
+        :class="[k.cls, pressed === k.id ? 'pressed' : '']"
+        :aria-keyshortcuts="k.shortcut"
+        @click="act(k.id)"
       >
-        {{ t('deck.applyCta', { n: deck.counts.pending }) }} ↵
+        <kbd v-if="!k.kbdAfter">{{ k.kbd }}</kbd>{{ t(k.label)
+        }}<kbd v-if="k.kbdAfter">{{ k.kbd }}</kbd>
       </button>
-    </aside>
-
-    <!-- narrow screens: floating review button instead of the side panel -->
-    <button
-      v-if="deck.counts.pending"
-      class="fixed right-5 bottom-5 z-20 rounded-[10px] bg-text px-4 py-3 font-semibold text-bg shadow-card xl:hidden"
-      @click="review"
-    >
-      {{ t('deck.applyCta', { n: deck.counts.pending }) }} ↵
-    </button>
+    </div>
   </section>
 
   <div v-else class="flex flex-1 items-center justify-center">
@@ -336,10 +272,69 @@ const KEYS: { id: Decision; kbd: string; label: string; cls?: string; kbdAfter?:
   inset: 0;
   pointer-events: none;
   background: radial-gradient(
-    60% 45% at 50% 32%,
+    50% 45% at 50% 38%,
     rgb(var(--ch) / var(--glow-strength)),
     transparent 70%
   );
-  transition: background 0.6s;
+}
+
+.zone {
+  overflow: hidden;
+  cursor: pointer;
+}
+.zone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background: radial-gradient(
+    420px circle at var(--mx, 50%) var(--my, 50%),
+    var(--zone-color),
+    transparent 70%
+  );
+}
+.zone-l {
+  --zone-color: color-mix(in srgb, var(--danger) 20%, transparent);
+}
+.zone-r {
+  --zone-color: color-mix(in srgb, var(--success) 18%, transparent);
+}
+.zone:hover::before {
+  opacity: 1;
+}
+.zone-hint {
+  position: absolute;
+  top: 42%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0;
+  transition:
+    opacity 0.2s,
+    translate 0.25s;
+}
+.zone-l .zone-hint {
+  color: var(--danger);
+  translate: 10px 0;
+}
+.zone-r .zone-hint {
+  color: var(--success);
+  translate: -10px 0;
+}
+.zone:hover .zone-hint {
+  opacity: 1;
+  translate: 0 0;
+}
+.zone-hint kbd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  padding: 0 0.35rem;
+  opacity: 0.7;
 }
 </style>

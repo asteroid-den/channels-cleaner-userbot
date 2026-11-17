@@ -1,4 +1,4 @@
-@import '@fontsource-variable/geologica/wght.css';
+@import '@fontsource-variable/jost/wght.css';
 @import '@fontsource-variable/onest/wght.css';
 @import '@fontsource-variable/jetbrains-mono/wght.css';
 @import 'tailwindcss';
@@ -97,7 +97,7 @@
   --color-ch-ink: rgb(var(--ch-ink));
   --shadow-card: var(--shadow);
   --font-sans: 'Onest Variable', Onest, ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Geologica Variable', Geologica, ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Jost Variable', Jost, ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, monospace;
 }
 
@@ -193,6 +193,22 @@ button:disabled {
     padding: 0.2rem 0.45rem;
     border-radius: 6px;
     white-space: nowrap;
+  }
+
+  /* "+1" that flies from a decided card into the progress bar (see DeckView). */
+  .chip {
+    position: fixed;
+    z-index: 50;
+    left: 0;
+    top: 0;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    pointer-events: none;
+    box-shadow: 0 6px 18px -6px rgb(0 0 0 / 0.5);
   }
 
   .skeleton {
