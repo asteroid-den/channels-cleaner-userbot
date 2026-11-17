@@ -34,6 +34,8 @@ class ApplyItem:
     has_photo: bool
     status: ItemStatus = "queued"
     error: str | None = None
+    #: an applied mute/archive to take back first (the decision was changed since)
+    reverts: str | None = None
 
 
 @dataclass(slots=True)
@@ -90,6 +92,7 @@ class ApplyService:
                     decision=row.decision or "unsubscribe",
                     title=row.title,
                     has_photo=row.has_photo,
+                    reverts=row.reverts,
                 )
                 for row in pending
             ],
@@ -116,12 +119,17 @@ class ApplyService:
         return self._cancel.is_set()
 
     async def _execute(self, item: ApplyItem) -> None:
+        # Leaving makes any earlier mute/archive moot; otherwise take it back first.
+        if item.reverts and item.decision != "unsubscribe":
+            undo = {"mute": self._gw.unmute, "archive": self._gw.unarchive}[item.reverts]
+            await undo(item.channel_id)
         action = {
             "unsubscribe": self._gw.leave,
             "mute": self._gw.mute,
             "archive": self._gw.archive,
-        }[item.decision]
-        await action(item.channel_id)
+        }.get(item.decision)
+        if action is not None:
+            await action(item.channel_id)
 
     async def _run(self, account_id: int) -> None:
         state = self.state
@@ -204,6 +212,10 @@ class ApplyService:
                 return item.status
             item.status = "done"
             await self._db.mark_decision(account_id, item.channel_id, "applied")
+            if item.reverts == "mute" and item.decision != "unsubscribe":
+                await self._db.set_channel_flags(account_id, item.channel_id, muted=False)
+            elif item.reverts == "archive" and item.decision != "unsubscribe":
+                await self._db.set_channel_flags(account_id, item.channel_id, archived=False)
             if item.decision == "unsubscribe":
                 await self._db.set_channel_gone(account_id, item.channel_id)
             elif item.decision == "mute":

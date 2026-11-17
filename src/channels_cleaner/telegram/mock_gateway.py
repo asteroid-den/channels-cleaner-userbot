@@ -366,3 +366,17 @@ class MockGateway:
         if channel_id in self._channels:
             info, full = self._channels[channel_id]
             self._channels[channel_id] = (replace(info, is_archived=True), full)
+
+    async def unmute(self, channel_id: int) -> None:
+        self._require_auth()
+        await self._maybe_fail()
+        if channel_id in self._channels:
+            info, full = self._channels[channel_id]
+            self._channels[channel_id] = (replace(info, is_muted=False), full)
+
+    async def unarchive(self, channel_id: int) -> None:
+        self._require_auth()
+        await self._maybe_fail()
+        if channel_id in self._channels:
+            info, full = self._channels[channel_id]
+            self._channels[channel_id] = (replace(info, is_archived=False), full)

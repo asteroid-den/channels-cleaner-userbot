@@ -177,6 +177,13 @@ async def decision_undo(channel_id: int, ctx: Ctx, account: AccountId) -> dict[s
     return {"ok": removed, "counts": await _deck_counts(ctx, account)}
 
 
+@router.get("/decisions/trail")
+async def decisions_trail(ctx: Ctx, account: AccountId) -> dict[str, Any]:
+    """Decided channels in the order decided: what the progress bar shows, for rewinding."""
+    rows = await ctx.db.list_trail(account)
+    return {"items": [schemas.ChannelOut.from_row(row) for row in rows]}
+
+
 @router.get("/decisions")
 async def decisions_list(
     ctx: Ctx,

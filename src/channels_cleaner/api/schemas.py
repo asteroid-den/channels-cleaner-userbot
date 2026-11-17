@@ -60,6 +60,7 @@ class ChannelOut(BaseModel):
     decision_status: str | None
     error: str | None
     pulse: dict[str, Any] | None
+    reverts: str | None = None
 
     @classmethod
     def from_row(cls, row: ChannelRow) -> ChannelOut:
@@ -93,4 +94,5 @@ class ChannelOut(BaseModel):
             decision_status=row.decision_status,
             error=row.error,
             pulse=row.pulse,
+            reverts=row.reverts,
         )

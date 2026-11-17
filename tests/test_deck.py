@@ -111,3 +111,47 @@ async def test_apply_review_stats_export(client: httpx.AsyncClient, ctx: AppCont
         await client.post("/api/decisions/retry-failed")
         pending = await get_json(client, "/api/decisions", params={"status": "pending"})
         assert len(pending["items"]) == final["failed"]
+
+
+async def test_changed_decision_keeps_its_place(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    items = (await get_json(client, "/api/channels"))["items"]
+    a, b = items[0]["id"], items[1]["id"]
+    await client.put(f"/api/decisions/{a}", json={"decision": "keep"})
+    await client.put(f"/api/decisions/{b}", json={"decision": "unsubscribe"})
+    r = await client.put(f"/api/decisions/{a}", json={"decision": "mute"})
+    assert r.json()["counts"]["trail"] == "mu"  # changed in place, not moved to the end
+
+    trail = (await get_json(client, "/api/decisions/trail"))["items"]
+    assert [t["id"] for t in trail] == [a, b]
+    assert [t["decision"] for t in trail] == ["mute", "unsubscribe"]
+
+
+async def test_changing_an_applied_mute_queues_the_way_back(
+    client: httpx.AsyncClient, ctx: AppContext
+) -> None:
+    await login(client, ctx)
+    account = ctx.auth.account_id
+    db = ctx.db
+    cid = (await get_json(client, "/api/channels"))["items"][0]["id"]
+    await db.set_decision(account, cid, "mute")
+    await db.mark_decision(account, cid, "applied")
+
+    await db.set_decision(account, cid, "keep")
+    pending = await db.list_decided(account, status="pending")
+    assert [(r.channel_id, r.decision, r.reverts) for r in pending] == [(cid, "keep", "mute")]
+
+    # Changing it back to what Telegram already has needs no work at all.
+    await db.set_decision(account, cid, "mute")
+    assert await db.list_decided(account, status="pending") == []
+
+    # Undo of a pending change restores the applied mute.
+    await db.set_decision(account, cid, "archive")
+    assert await db.delete_decision(account, cid)
+    row = await db.get_channel(account, cid)
+    assert row is not None
+    assert (row.decision, row.decision_status, row.reverts) == (
+        "mute",
+        "applied",
+        None,
+    )
