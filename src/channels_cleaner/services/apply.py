@@ -133,6 +133,14 @@ class ApplyService:
                 state.current = item.channel_id
                 item.status = "running"
                 self._bus.publish(TOPIC, "item_started", channel_id=item.channel_id, index=index)
+                # The pause between actions happens while the item is already "running", so
+                # the UI shows the card being worked on rather than idling, then leaving.
+                if index > 0:
+                    delay = self._rng.uniform(
+                        self._settings.apply_delay_min, self._settings.apply_delay_max
+                    )
+                    if await self._sleep(delay):
+                        break
                 result = await self._apply_one(account_id, item)
                 if result == "done":
                     state.done += 1
@@ -154,13 +162,6 @@ class ApplyService:
                         failed=state.failed,
                     )
                 await self._db.update_job(state.job_id, done=state.done, failed=state.failed)
-                is_last = index == len(state.items) - 1
-                if not is_last and result != "queued":
-                    delay = self._rng.uniform(
-                        self._settings.apply_delay_min, self._settings.apply_delay_max
-                    )
-                    if await self._sleep(delay):
-                        break
             state.current = None
             state.status = "cancelled" if self._cancel.is_set() else "finished"
         except Exception:
