@@ -15,8 +15,10 @@ from channels_cleaner.telegram.types import ChannelInfo, FloodWaitError
 log = logging.getLogger(__name__)
 
 TOPIC = "sync"
-#: stored once a sync has covered supergroups and the chats the user runs (older lists lack them)
-ROLES_SETTING = "synced_roles"
+#: What a sync covers, stored once one has finished. A list synced under an older scope is synced once
+#: more: 2 = supergroups and the chats the user runs, 3 = forums too.
+SCOPE_SETTING = "synced_scope"
+SCOPE_VERSION = 3
 _BATCH = 50
 _MAX_FLOOD_RETRIES = 3
 
@@ -80,7 +82,7 @@ class SyncService:
 
             synced_at = now_iso()
             await self._db.set_setting(account_id, "synced_at", synced_at)
-            await self._db.set_setting(account_id, ROLES_SETTING, True)  # noqa: FBT003 - a stored flag
+            await self._db.set_setting(account_id, SCOPE_SETTING, SCOPE_VERSION)
             self.state.running = False
             self.state.last_synced_at = synced_at
             self.state.total = self.state.fetched

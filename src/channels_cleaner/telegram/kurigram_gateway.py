@@ -53,9 +53,12 @@ _MEDIA_KINDS: dict[Any, MediaKind] = {
     enums.MessageMediaType.STICKER: "sticker",
 }
 
+# A forum (a supergroup with topics) is a separate type in Kurigram but a supergroup for Telegram
+# and for its 1000 channels-and-supergroups limit. Basic groups and channel DMs are not covered.
 _CHAT_KINDS: dict[Any, ChatKind] = {
     enums.ChatType.CHANNEL: "channel",
     enums.ChatType.SUPERGROUP: "supergroup",
+    enums.ChatType.FORUM: "supergroup",
 }
 
 # Telegram uses this as "muted forever".

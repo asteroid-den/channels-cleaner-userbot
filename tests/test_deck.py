@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 
 from channels_cleaner.context import AppContext
+from channels_cleaner.services.sync import SCOPE_VERSION
 from tests.conftest import get_json, login, wait_for
 
 
@@ -187,7 +188,7 @@ async def test_sync_keeps_both_kinds_and_resyncs_old_lists(client: httpx.AsyncCl
     await login(client, ctx)
     account = ctx.auth.account_id
     assert await ctx.db.channel_count(account) == 65
-    assert await ctx.db.get_setting(account, "synced_roles") is True
+    assert await ctx.db.get_setting(account, "synced_scope") == SCOPE_VERSION
 
     ctx.sync.start(account)
     await wait_for(lambda: _idle(ctx))

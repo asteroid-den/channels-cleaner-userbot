@@ -12,7 +12,7 @@ from channels_cleaner.events import EventBus
 from channels_cleaner.services.apply import ApplyService
 from channels_cleaner.services.auth import AuthService
 from channels_cleaner.services.channels import ChannelsService
-from channels_cleaner.services.sync import ROLES_SETTING, SyncService
+from channels_cleaner.services.sync import SCOPE_SETTING, SCOPE_VERSION, SyncService
 from channels_cleaner.telegram.gateway import TelegramGateway
 from channels_cleaner.telegram.types import TgUser
 
@@ -79,7 +79,10 @@ class AppContext:
     async def _after_login(self, user: TgUser) -> None:
         await self.sync.load(user.id)
 
-        if await self.db.channel_count(user.id) == 0 or not await self.db.get_setting(user.id, ROLES_SETTING):
+        if (
+            await self.db.channel_count(user.id) == 0
+            or await self.db.get_setting(user.id, SCOPE_SETTING) != SCOPE_VERSION
+        ):
             self.sync.start(user.id)
 
     async def wait_ready(self) -> None:
