@@ -12,7 +12,7 @@ from channels_cleaner import __version__
 from channels_cleaner.api import schemas
 from channels_cleaner.api.sse import sse_response
 from channels_cleaner.context import AppContext
-from channels_cleaner.db import ArchiveFilter
+from channels_cleaner.db import ArchiveFilter, ChannelRow, RoleFilter
 from channels_cleaner.services import stats
 from channels_cleaner.services.apply import TOPIC as APPLY_TOPIC
 from channels_cleaner.services.auth import TOPIC as AUTH_TOPIC
@@ -40,7 +40,12 @@ AccountId = Annotated[int, Depends(account_id)]
 # --- meta ------------------------------------------------------------------------------
 @router.get("/health")
 async def health(ctx: Ctx) -> dict[str, Any]:
-    return {"ok": True, "version": __version__, "mock": ctx.settings.mock}
+    return {
+        "ok": True,
+        "version": __version__,
+        "mock": ctx.settings.mock,
+        "allow_owner_leave": ctx.settings.allow_owner_leave,
+    }
 
 
 # --- auth ------------------------------------------------------------------------------
@@ -97,6 +102,7 @@ async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
 # --- channels --------------------------------------------------------------------------
 _KINDS: tuple[ChatKind, ...] = ("channel", "supergroup")
 _ARCHIVE_FILTERS: tuple[ArchiveFilter, ...] = ("all", "active", "archived")
+_ROLES: tuple[RoleFilter, ...] = ("member", "managed")
 
 
 async def _archive_filter(ctx: AppContext, account: int, archive: ArchiveFilter | None) -> ArchiveFilter:
@@ -109,34 +115,44 @@ async def _archive_filter(ctx: AppContext, account: int, archive: ArchiveFilter 
 
 
 async def _deck_counts(
-    ctx: AppContext, account: int, kind: ChatKind, archive: ArchiveFilter | None = None
+    ctx: AppContext,
+    account: int,
+    kind: ChatKind,
+    role: RoleFilter,
+    archive: ArchiveFilter | None = None,
 ) -> dict[str, Any]:
     archive = await _archive_filter(ctx, account, archive)
-    total = await ctx.db.channel_count(account, kind, archive)
-    undecided = len(await ctx.db.list_channels(account, kind=kind, archive=archive, undecided_only=True))
-    # Pending work is for both kinds: one review screen, one apply job
+    total = await ctx.db.channel_count(account, kind, archive, role)
+    undecided = len(await ctx.db.list_channels(account, kind=kind, role=role, archive=archive, undecided_only=True))
+    # Pending work covers every kind and role: one review screen, one apply job
     pending = len(await ctx.db.list_decided(account, status="pending"))
-    pending_other = pending - len(await ctx.db.list_decided(account, status="pending", kind=kind))
+    here = len(await ctx.db.list_decided(account, status="pending", kind=kind, role=role))
     return {
         "total": total,
         # how many chats each choice in the deck settings menu would show
-        "kind_totals": {k: await ctx.db.channel_count(account, k, archive) for k in _KINDS},
-        "archive_totals": {a: await ctx.db.channel_count(account, kind, a) for a in _ARCHIVE_FILTERS},
+        "kind_totals": {k: await ctx.db.channel_count(account, k, archive, role) for k in _KINDS},
+        "role_totals": {r: await ctx.db.channel_count(account, kind, archive, r) for r in _ROLES},
+        "archive_totals": {a: await ctx.db.channel_count(account, kind, a, role) for a in _ARCHIVE_FILTERS},
         "undecided": undecided,
         "pending": pending,
-        "pending_other": pending_other,
-        "by_decision": await ctx.db.decision_counts(account, kind, archive),
-        "trail": await ctx.db.decision_trail(account, kind, archive),
+        "pending_other": pending - here,
+        "by_decision": await ctx.db.decision_counts(account, kind, archive, role),
+        "trail": await ctx.db.decision_trail(account, kind, archive, role),
     }
 
 
-async def _kind_of(ctx: AppContext, account: int, channel_id: int) -> ChatKind:
+async def _chat(ctx: AppContext, account: int, channel_id: int) -> ChannelRow:
     row = await ctx.db.get_channel(account, channel_id)
 
     if row is None:
         raise HTTPException(404, "Unknown channel")
 
-    return row.kind
+    return row
+
+
+def _role_filter(row: ChannelRow) -> RoleFilter:
+    """The deck a chat belongs to, by what the user is there."""
+    return "member" if row.role == "member" else "managed"
 
 
 @router.post("/channels/sync")
@@ -156,6 +172,7 @@ async def channels_list(
     account: AccountId,
     *,
     kind: ChatKind = "channel",
+    role: RoleFilter = "member",
     archive: ArchiveFilter | None = None,
     sort: Literal["dead", "unread"] = "dead",
     reverse: bool = False,
@@ -163,11 +180,11 @@ async def channels_list(
 ) -> dict[str, Any]:
     archive = await _archive_filter(ctx, account, archive)
     rows = await ctx.db.list_channels(
-        account, kind=kind, archive=archive, sort=sort, reverse=reverse, undecided_only=state == "undecided"
+        account, kind=kind, role=role, archive=archive, sort=sort, reverse=reverse, undecided_only=state == "undecided"
     )
     return {
         "items": [schemas.ChannelOut.from_row(row) for row in rows],
-        "counts": await _deck_counts(ctx, account, kind, archive),
+        "counts": await _deck_counts(ctx, account, kind, role, archive),
         "sync": ctx.sync.state.snapshot(),
     }
 
@@ -203,9 +220,13 @@ async def channel_thumb(channel_id: int, ctx: Ctx, account: AccountId) -> Respon
 # --- decisions -------------------------------------------------------------------------
 @router.put("/decisions/{channel_id}")
 async def decision_set(channel_id: int, body: schemas.DecisionBody, ctx: Ctx, account: AccountId) -> dict[str, Any]:
-    kind = await _kind_of(ctx, account, channel_id)
+    chat = await _chat(ctx, account, channel_id)
+
+    if body.decision == "unsubscribe" and chat.role == "owner" and not ctx.settings.allow_owner_leave:
+        raise HTTPException(409, "Leaving a chat you own is off (start with --allow-owner-leave to allow it)")
+
     await ctx.db.set_decision(account, channel_id, body.decision)
-    return {"ok": True, "counts": await _deck_counts(ctx, account, kind)}
+    return {"ok": True, "counts": await _deck_counts(ctx, account, chat.kind, _role_filter(chat))}
 
 
 @router.delete("/decisions/{channel_id}")
@@ -213,17 +234,21 @@ async def decision_undo(channel_id: int, ctx: Ctx, account: AccountId) -> dict[s
     if ctx.apply.running:
         raise HTTPException(409, "Decisions are locked while applying")
 
-    kind = await _kind_of(ctx, account, channel_id)
+    chat = await _chat(ctx, account, channel_id)
     removed = await ctx.db.delete_decision(account, channel_id)
-    return {"ok": removed, "counts": await _deck_counts(ctx, account, kind)}
+    return {"ok": removed, "counts": await _deck_counts(ctx, account, chat.kind, _role_filter(chat))}
 
 
 @router.get("/decisions/trail")
 async def decisions_trail(
-    ctx: Ctx, account: AccountId, kind: ChatKind = "channel", archive: ArchiveFilter | None = None
+    ctx: Ctx,
+    account: AccountId,
+    kind: ChatKind = "channel",
+    role: RoleFilter = "member",
+    archive: ArchiveFilter | None = None,
 ) -> dict[str, Any]:
     """Decided channels in the order decided: what the progress bar shows, for rewinding."""
-    rows = await ctx.db.list_trail(account, kind, await _archive_filter(ctx, account, archive))
+    rows = await ctx.db.list_trail(account, kind, await _archive_filter(ctx, account, archive), role)
     return {"items": [schemas.ChannelOut.from_row(row) for row in rows]}
 
 
@@ -242,14 +267,16 @@ async def decisions_reset(body: schemas.ResetIn, ctx: Ctx, account: AccountId) -
     if ctx.apply.running:
         raise HTTPException(409, "Decisions are locked while applying")
 
-    removed = await ctx.db.reset_decisions(account, body.only, body.kind)
-    return {"removed": removed, "counts": await _deck_counts(ctx, account, body.kind)}
+    removed = await ctx.db.reset_decisions(account, body.only, body.kind, body.role)
+    return {"removed": removed, "counts": await _deck_counts(ctx, account, body.kind, body.role)}
 
 
 @router.post("/decisions/retry-failed")
-async def decisions_retry_failed(ctx: Ctx, account: AccountId, kind: ChatKind = "channel") -> dict[str, Any]:
+async def decisions_retry_failed(
+    ctx: Ctx, account: AccountId, kind: ChatKind = "channel", role: RoleFilter = "member"
+) -> dict[str, Any]:
     await ctx.db.reset_failed(account)
-    return {"counts": await _deck_counts(ctx, account, kind)}
+    return {"counts": await _deck_counts(ctx, account, kind, role)}
 
 
 # --- apply -----------------------------------------------------------------------------
@@ -289,8 +316,10 @@ async def prefs_put(body: schemas.PrefsIn, ctx: Ctx, account: AccountId) -> sche
 
 
 @router.get("/stats")
-async def stats_get(ctx: Ctx, account: AccountId, kind: ChatKind = "channel") -> dict[str, Any]:
-    return await stats.collect(ctx.db, account, kind)
+async def stats_get(
+    ctx: Ctx, account: AccountId, kind: ChatKind = "channel", role: RoleFilter = "member"
+) -> dict[str, Any]:
+    return await stats.collect(ctx.db, account, kind, role)
 
 
 @router.get("/export")
@@ -299,8 +328,9 @@ async def export(
     account: AccountId,
     format_: Annotated[Literal["csv", "json"], Query(alias="format")] = "csv",
     kind: ChatKind = "channel",
+    role: RoleFilter = "member",
 ) -> Response:
-    rows = await stats.export_rows(ctx.db, account, kind)
+    rows = await stats.export_rows(ctx.db, account, kind, role)
     filename = f"unsubscribed-{kind}s.{format_}"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
 

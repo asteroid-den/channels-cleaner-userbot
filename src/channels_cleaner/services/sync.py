@@ -15,8 +15,8 @@ from channels_cleaner.telegram.types import ChannelInfo, FloodWaitError
 log = logging.getLogger(__name__)
 
 TOPIC = "sync"
-#: stored once a sync has covered supergroups too (lists synced by older versions only had channels)
-KINDS_SETTING = "synced_kinds"
+#: stored once a sync has covered supergroups and the chats the user runs (older lists lack them)
+ROLES_SETTING = "synced_roles"
 _BATCH = 50
 _MAX_FLOOD_RETRIES = 3
 
@@ -80,7 +80,7 @@ class SyncService:
 
             synced_at = now_iso()
             await self._db.set_setting(account_id, "synced_at", synced_at)
-            await self._db.set_setting(account_id, KINDS_SETTING, True)  # noqa: FBT003 - a stored flag
+            await self._db.set_setting(account_id, ROLES_SETTING, True)  # noqa: FBT003 - a stored flag
             self.state.running = False
             self.state.last_synced_at = synced_at
             self.state.total = self.state.fetched

@@ -7,7 +7,7 @@ import io
 from datetime import UTC, datetime
 from typing import Any
 
-from channels_cleaner.db import Database
+from channels_cleaner.db import Database, RoleFilter
 from channels_cleaner.telegram.types import ChatKind
 
 AGE_BUCKETS: list[tuple[str, float]] = [
@@ -20,16 +20,19 @@ AGE_BUCKETS: list[tuple[str, float]] = [
 ]
 
 
-async def collect(db: Database, account_id: int, kind: ChatKind = "channel") -> dict[str, Any]:
+async def collect(
+    db: Database, account_id: int, kind: ChatKind = "channel", role: RoleFilter = "member"
+) -> dict[str, Any]:
     conn = db.conn
 
     async with conn.execute(
         """
         SELECT d.decision, d.status, COUNT(*) FROM decisions d
         JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
-        WHERE d.account_id = ? AND c.kind = ? GROUP BY d.decision, d.status
+        WHERE d.account_id = ? AND c.kind = ? AND ((? = 'managed') = (c.role != 'member'))
+        GROUP BY d.decision, d.status
         """,
-        (account_id, kind),
+        (account_id, kind, role),
     ) as cur:
         by_decision: dict[str, dict[str, int]] = {}
 
@@ -40,16 +43,20 @@ async def collect(db: Database, account_id: int, kind: ChatKind = "channel") -> 
         """
         SELECT COALESCE(SUM(c.unread_count), 0) FROM decisions d
         JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
-        WHERE d.account_id = ? AND c.kind = ? AND d.decision = 'unsubscribe' AND d.status = 'applied'
+        WHERE d.account_id = ? AND c.kind = ? AND ((? = 'managed') = (c.role != 'member'))
+          AND d.decision = 'unsubscribe' AND d.status = 'applied'
         """,
-        (account_id, kind),
+        (account_id, kind, role),
     ) as cur:
         row = await cur.fetchone()
         unread_cleared = int(row[0]) if row else 0
 
     async with conn.execute(
-        "SELECT last_post_at, unread_count FROM channels WHERE account_id = ? AND kind = ? AND gone = 0",
-        (account_id, kind),
+        """
+        SELECT c.last_post_at, c.unread_count FROM channels c
+        WHERE c.account_id = ? AND c.kind = ? AND c.gone = 0 AND ((? = 'managed') = (c.role != 'member'))
+        """,
+        (account_id, kind, role),
     ) as cur:
         rows = list(await cur.fetchall())
 
@@ -80,8 +87,10 @@ async def collect(db: Database, account_id: int, kind: ChatKind = "channel") -> 
     }
 
 
-async def export_rows(db: Database, account_id: int, kind: ChatKind = "channel") -> list[dict[str, Any]]:
-    rows = await db.list_decided(account_id, status="applied", decisions=("unsubscribe",), kind=kind)
+async def export_rows(
+    db: Database, account_id: int, kind: ChatKind = "channel", role: RoleFilter = "member"
+) -> list[dict[str, Any]]:
+    rows = await db.list_decided(account_id, status="applied", decisions=("unsubscribe",), kind=kind, role=role)
     return [
         {
             "channel_id": row.channel_id,

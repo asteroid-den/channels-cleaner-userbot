@@ -316,9 +316,6 @@ class KurigramGateway:
                 if chat is None or kind is None:
                     continue
 
-                if chat.is_creator or chat.is_admin:
-                    continue
-
                 yield self._channel_info(dialog, now, kind)
 
         except errors.FloodWait as exc:
@@ -360,6 +357,7 @@ class KurigramGateway:
             last_post_text=str(text) if text else None,
             last_post_media=media,
             kind=kind,
+            role="owner" if chat.is_creator else "admin" if chat.is_admin else "member",
         )
 
     async def get_full(self, channel_id: int) -> ChannelFull:

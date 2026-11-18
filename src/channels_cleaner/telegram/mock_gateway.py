@@ -17,6 +17,7 @@ from channels_cleaner.telegram.types import (
     ChannelFull,
     ChannelInfo,
     ChatKind,
+    ChatRole,
     FloodWaitError,
     GatewayError,
     InvalidCodeError,
@@ -165,6 +166,9 @@ def _generate(count: int, seed: int = 42, kind: ChatKind = "channel") -> dict[in
         unread = 0 if rng.random() < 0.25 else int(rng.expovariate(1 / 120))
         media = rng.choice(_MEDIA) if last_post_at else None
         members = int(rng.lognormvariate(8, 1.6))
+        # its own generator, so the roles don't shift what everything else is generated from
+        role_roll = random.Random(f"{seed}/{kind}/{i}").random()
+        role: ChatRole = "owner" if role_roll < 0.04 else "admin" if role_roll < 0.11 else "member"
         info = ChannelInfo(
             id=channel_id,
             title=title,
@@ -180,6 +184,7 @@ def _generate(count: int, seed: int = 42, kind: ChatKind = "channel") -> dict[in
             last_post_text=rng.choice(texts) if last_post_at and rng.random() < 0.9 else None,
             last_post_media=media,
             kind=kind,
+            role=role,
         )
 
         if info.photo_file_id is None:
