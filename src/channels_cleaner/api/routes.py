@@ -131,7 +131,7 @@ async def _deck_counts(
         "total": total,
         # how many chats each choice in the deck settings menu would show
         "kind_totals": {k: await ctx.db.channel_count(account, k, archive, role) for k in _KINDS},
-        "role_totals": {r: await ctx.db.channel_count(account, kind, archive, r) for r in _ROLES},
+        "role_totals": {r: {k: await ctx.db.channel_count(account, k, archive, r) for k in _KINDS} for r in _ROLES},
         "archive_totals": {a: await ctx.db.channel_count(account, kind, a, role) for a in _ARCHIVE_FILTERS},
         "undecided": undecided,
         "pending": pending,

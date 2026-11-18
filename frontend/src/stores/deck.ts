@@ -71,7 +71,7 @@ export const useDeckStore = defineStore('deck', () => {
   const counts = ref<DeckCounts>({
     total: 0,
     kind_totals: { channel: 0, supergroup: 0 },
-    role_totals: { member: 0, managed: 0 },
+    role_totals: { member: { channel: 0, supergroup: 0 }, managed: { channel: 0, supergroup: 0 } },
     archive_totals: { all: 0, active: 0, archived: 0 },
     undecided: 0,
     pending: 0,

@@ -80,7 +80,7 @@ Key behaviours / decisions (agreed with the user):
   leave, the review screen warns about lost rights. What Telegram does when a creator leaves is untested. Archive included (flagged). One sync pass covers both
   kinds (a per-kind sync would mark the other kind `gone`); the deck, trail, stats and export take
   `?kind=`, review/apply are shared across kinds (`counts.pending_other` drives the dot on the
-  header switcher). Lists synced before supergroups/roles existed are re-synced once (`synced_roles` setting).
+  header switcher). Lists synced before supergroups/roles existed are re-synced once (`synced_scope` setting, bump `SCOPE_VERSION` whenever a sync learns to cover more).
   Wording that differs for groups lives under `group.*` in i18n (`useKindI18n().tk`).
 - Archive filter (all / active / archived) lives in the deck prefs (`prefs.archive`, per account) and narrows
   the deck, trail and its counters for either kind; endpoints that return counts without `?archive=` read it

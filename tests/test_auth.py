@@ -17,7 +17,9 @@ async def test_qr_login_triggers_sync(client: httpx.AsyncClient, ctx: AppContext
     await login(client, ctx)
     data = await get_json(client, "/api/channels")
     counts = data["counts"]
-    assert counts["total"] + counts["role_totals"]["managed"] == 40  # chats the user runs have their own deck
+    assert (
+        counts["total"] + counts["role_totals"]["managed"]["channel"] == 40
+    )  # chats the user runs have their own deck
     assert len(data["items"]) == counts["total"]
 
 

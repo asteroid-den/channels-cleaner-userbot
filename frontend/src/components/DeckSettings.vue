@@ -22,6 +22,10 @@ const ROLES: RoleFilter[] = ['member', 'managed']
 const ARCHIVES: ArchiveFilter[] = ['all', 'active', 'archived']
 const SORTS: SortMode[] = ['dead', 'unread']
 
+/** Chats in a role, both kinds together. */
+const roleTotal = (r: RoleFilter) =>
+  deck.counts.role_totals[r].channel + deck.counts.role_totals[r].supergroup
+
 const isDefault = computed(
   () => deck.prefs.archive === 'all' && deck.prefs.sort === 'dead' && !deck.prefs.reverse,
 )
@@ -120,7 +124,7 @@ function reset() {
             <button
               v-for="r in ROLES"
               :key="r"
-              class="border-r border-border-2 px-2 py-1.5 transition-colors last:border-r-0"
+              class="border-r border-border-2 px-2 py-2 transition-colors last:border-r-0"
               :class="deck.role === r ? 'bg-text text-bg' : 'text-muted hover:text-text'"
               :title="t(`settings.roleLong.${r}`)"
               :aria-pressed="deck.role === r"
@@ -128,10 +132,15 @@ function reset() {
             >
               {{ t(`settings.role.${r}`) }}
               <span
-                class="ml-0.5 text-[11px] italic"
+                class="mt-0.5 block text-[11px]"
                 :class="deck.role === r ? 'opacity-60' : 'text-faint'"
+                :title="`${t('settings.kind.channel')} | ${t('settings.kind.supergroup')}`"
               >
-                {{ deck.counts.role_totals[r] }}
+                {{ roleTotal(r) }}
+                <span class="italic">
+                  ({{ deck.counts.role_totals[r].channel }} |
+                  {{ deck.counts.role_totals[r].supergroup }})
+                </span>
               </span>
             </button>
           </div>
