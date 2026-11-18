@@ -20,6 +20,7 @@ def settings(tmp_path: Path) -> Settings:
         data_dir=tmp_path,
         mock=True,
         mock_channels=40,
+        mock_supergroups=25,
         apply_delay_min=0,
         apply_delay_max=0.01,
         _env_file=None,  # pyright: ignore[reportCallIssue] - pydantic-settings init option, not a field

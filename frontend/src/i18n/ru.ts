@@ -1,6 +1,27 @@
 import type en from './en'
 
 const ru: typeof en = {
+  group: {
+    sync: { title: 'Собираем ваши каналы и группы' },
+    deck: {
+      verdict: {
+        rate: 'сообщений в неделю',
+        since: 'с последнего сообщения',
+        silent: 'без единого сообщения',
+        never: 'сообщений за всё время',
+      },
+      lastPostAt: 'последнее сообщение {when}',
+      progressLabel: 'Разобрано групп',
+      pulseTruncated: 'последние {n} сообщений',
+      emptyNoChannels: 'Вы не состоите ни в одной супергруппе (кроме своих).',
+      emptyText: 'Для каждой группы уже принято решение.',
+      subscribers: 'участник | участника | участников',
+      lastPost: 'Последнее сообщение',
+      neverPosted: 'Сообщений ещё нет',
+      neverPostedLong: 'В этой группе ещё никто не писал',
+      private: 'Приватная группа',
+    },
+  },
   app: { name: 'Channels Cleaner', tagline: 'Разбери свои Telegram-каналы свайпами' },
   common: {
     back: 'Назад',
@@ -12,6 +33,10 @@ const ru: typeof en = {
     mockMode: 'Mock-режим',
   },
   header: {
+    kind: 'Тип чата',
+    kindChannel: 'Каналы',
+    kindGroup: 'Супергруппы',
+    pendingElsewhere: 'Есть действия, ожидающие проверки',
     sort: 'Порядок',
     sortDead: 'Сначала мёртвые',
     sortUnread: 'Больше непрочитанных',
@@ -23,7 +48,7 @@ const ru: typeof en = {
   },
   account: {
     menu: 'Аккаунт',
-    resync: 'Обновить список каналов',
+    resync: 'Обновить список каналов и групп',
     resetKeeps: 'Снова показать оставленные',
     resetAll: 'Сбросить все решения',
     results: 'Итоги и экспорт',
@@ -70,8 +95,8 @@ const ru: typeof en = {
     },
   },
   sync: {
-    title: 'Собираем ваши каналы',
-    found: 'Каналов пока нет | Найден {n} канал | Найдено {n} канала | Найдено {n} каналов',
+    title: 'Собираем ваши каналы и группы',
+    found: 'Пока ничего нет | Найден {n} чат | Найдено {n} чата | Найдено {n} чатов',
     floodWait: 'Telegram попросил притормозить — продолжим через {s} с',
     error: 'Не удалось загрузить каналы: {msg}',
   },

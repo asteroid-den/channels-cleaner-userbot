@@ -16,6 +16,7 @@ from channels_cleaner.services import stats
 from channels_cleaner.services.apply import TOPIC as APPLY_TOPIC
 from channels_cleaner.services.auth import TOPIC as AUTH_TOPIC
 from channels_cleaner.services.sync import TOPIC as SYNC_TOPIC
+from channels_cleaner.telegram.types import ChatKind
 
 router = APIRouter(prefix="/api")
 
@@ -93,17 +94,29 @@ async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
 
 
 # --- channels --------------------------------------------------------------------------
-async def _deck_counts(ctx: AppContext, account: int) -> dict[str, Any]:
-    total = await ctx.db.channel_count(account)
-    undecided = len(await ctx.db.list_channels(account, undecided_only=True))
+async def _deck_counts(ctx: AppContext, account: int, kind: ChatKind) -> dict[str, Any]:
+    total = await ctx.db.channel_count(account, kind)
+    undecided = len(await ctx.db.list_channels(account, kind=kind, undecided_only=True))
+    # Pending work is for both kinds: one review screen, one apply job
     pending = len(await ctx.db.list_decided(account, status="pending"))
+    pending_other = pending - len(await ctx.db.list_decided(account, status="pending", kind=kind))
     return {
         "total": total,
         "undecided": undecided,
         "pending": pending,
-        "by_decision": await ctx.db.decision_counts(account),
-        "trail": await ctx.db.decision_trail(account),
+        "pending_other": pending_other,
+        "by_decision": await ctx.db.decision_counts(account, kind),
+        "trail": await ctx.db.decision_trail(account, kind),
     }
+
+
+async def _kind_of(ctx: AppContext, account: int, channel_id: int) -> ChatKind:
+    row = await ctx.db.get_channel(account, channel_id)
+
+    if row is None:
+        raise HTTPException(404, "Unknown channel")
+
+    return row.kind
 
 
 @router.post("/channels/sync")
@@ -122,14 +135,17 @@ async def channels_list(
     ctx: Ctx,
     account: AccountId,
     *,
+    kind: ChatKind = "channel",
     sort: Literal["dead", "unread"] = "dead",
     reverse: bool = False,
     state: Literal["undecided", "all"] = "undecided",
 ) -> dict[str, Any]:
-    rows = await ctx.db.list_channels(account, sort=sort, reverse=reverse, undecided_only=state == "undecided")
+    rows = await ctx.db.list_channels(
+        account, kind=kind, sort=sort, reverse=reverse, undecided_only=state == "undecided"
+    )
     return {
         "items": [schemas.ChannelOut.from_row(row) for row in rows],
-        "counts": await _deck_counts(ctx, account),
+        "counts": await _deck_counts(ctx, account, kind),
         "sync": ctx.sync.state.snapshot(),
     }
 
@@ -165,11 +181,9 @@ async def channel_thumb(channel_id: int, ctx: Ctx, account: AccountId) -> Respon
 # --- decisions -------------------------------------------------------------------------
 @router.put("/decisions/{channel_id}")
 async def decision_set(channel_id: int, body: schemas.DecisionBody, ctx: Ctx, account: AccountId) -> dict[str, Any]:
-    if await ctx.db.get_channel(account, channel_id) is None:
-        raise HTTPException(404, "Unknown channel")
-
+    kind = await _kind_of(ctx, account, channel_id)
     await ctx.db.set_decision(account, channel_id, body.decision)
-    return {"ok": True, "counts": await _deck_counts(ctx, account)}
+    return {"ok": True, "counts": await _deck_counts(ctx, account, kind)}
 
 
 @router.delete("/decisions/{channel_id}")
@@ -177,14 +191,15 @@ async def decision_undo(channel_id: int, ctx: Ctx, account: AccountId) -> dict[s
     if ctx.apply.running:
         raise HTTPException(409, "Decisions are locked while applying")
 
+    kind = await _kind_of(ctx, account, channel_id)
     removed = await ctx.db.delete_decision(account, channel_id)
-    return {"ok": removed, "counts": await _deck_counts(ctx, account)}
+    return {"ok": removed, "counts": await _deck_counts(ctx, account, kind)}
 
 
 @router.get("/decisions/trail")
-async def decisions_trail(ctx: Ctx, account: AccountId) -> dict[str, Any]:
+async def decisions_trail(ctx: Ctx, account: AccountId, kind: ChatKind = "channel") -> dict[str, Any]:
     """Decided channels in the order decided: what the progress bar shows, for rewinding."""
-    rows = await ctx.db.list_trail(account)
+    rows = await ctx.db.list_trail(account, kind)
     return {"items": [schemas.ChannelOut.from_row(row) for row in rows]}
 
 
@@ -203,14 +218,14 @@ async def decisions_reset(body: schemas.ResetIn, ctx: Ctx, account: AccountId) -
     if ctx.apply.running:
         raise HTTPException(409, "Decisions are locked while applying")
 
-    removed = await ctx.db.reset_decisions(account, body.only)
-    return {"removed": removed, "counts": await _deck_counts(ctx, account)}
+    removed = await ctx.db.reset_decisions(account, body.only, body.kind)
+    return {"removed": removed, "counts": await _deck_counts(ctx, account, body.kind)}
 
 
 @router.post("/decisions/retry-failed")
-async def decisions_retry_failed(ctx: Ctx, account: AccountId) -> dict[str, Any]:
+async def decisions_retry_failed(ctx: Ctx, account: AccountId, kind: ChatKind = "channel") -> dict[str, Any]:
     await ctx.db.reset_failed(account)
-    return {"counts": await _deck_counts(ctx, account)}
+    return {"counts": await _deck_counts(ctx, account, kind)}
 
 
 # --- apply -----------------------------------------------------------------------------
@@ -250,16 +265,19 @@ async def prefs_put(body: schemas.PrefsIn, ctx: Ctx, account: AccountId) -> sche
 
 
 @router.get("/stats")
-async def stats_get(ctx: Ctx, account: AccountId) -> dict[str, Any]:
-    return await stats.collect(ctx.db, account)
+async def stats_get(ctx: Ctx, account: AccountId, kind: ChatKind = "channel") -> dict[str, Any]:
+    return await stats.collect(ctx.db, account, kind)
 
 
 @router.get("/export")
 async def export(
-    ctx: Ctx, account: AccountId, format_: Annotated[Literal["csv", "json"], Query(alias="format")] = "csv"
+    ctx: Ctx,
+    account: AccountId,
+    format_: Annotated[Literal["csv", "json"], Query(alias="format")] = "csv",
+    kind: ChatKind = "channel",
 ) -> Response:
-    rows = await stats.export_rows(ctx.db, account)
-    filename = f"unsubscribed-channels.{format_}"
+    rows = await stats.export_rows(ctx.db, account, kind)
+    filename = f"unsubscribed-{kind}s.{format_}"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
 
     if format_ == "json":

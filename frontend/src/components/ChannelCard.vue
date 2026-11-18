@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-
 import type { Channel } from '@/api/types'
+import { useKindI18n } from '@/composables/useKindI18n'
 import { ageShort, compactNumber, fullDate, pulseAxis, relativeTime } from '@/utils/format'
 import { verdictOf } from '@/utils/verdict'
 
@@ -11,7 +11,8 @@ import ChannelAvatar from './ChannelAvatar.vue'
 import PulseChart from './PulseChart.vue'
 
 const props = defineProps<{ channel: Channel; stacked?: boolean }>()
-const { t, locale } = useI18n()
+const { t, tk } = useKindI18n(() => props.channel.kind)
+const { locale } = useI18n()
 
 /** Compact figures ("18,7 тыс.") take the plural form of a round number, not of the raw count. */
 const pluralCount = (n: number) => (n >= 1000 ? 1000 : n)
@@ -95,7 +96,7 @@ const rate = computed(() =>
               >@{{ channel.username }}</a
             >
             <span v-else class="inline-flex items-center gap-1"
-              ><AppIcon name="lock" :size="11" />{{ t('deck.private') }}</span
+              ><AppIcon name="lock" :size="11" />{{ tk('deck.private') }}</span
             >
             <template v-if="channel.is_muted"><span>·</span>{{ t('deck.muted') }}</template>
             <template v-if="channel.is_archived"><span>·</span>{{ t('deck.archived') }}</template>
@@ -121,12 +122,12 @@ const rate = computed(() =>
               <div class="mt-1.5 text-[12.5px] text-muted">
                 {{
                   verdict.kind === 'rate'
-                    ? t('deck.verdict.rate')
+                    ? tk('deck.verdict.rate')
                     : verdict.kind === 'never'
-                      ? t('deck.verdict.never')
+                      ? tk('deck.verdict.never')
                       : verdict.silent
-                        ? t('deck.verdict.silent')
-                        : t('deck.verdict.since')
+                        ? tk('deck.verdict.silent')
+                        : tk('deck.verdict.since')
                 }}
               </div>
             </template>
@@ -141,7 +142,7 @@ const rate = computed(() =>
               <b v-if="members" class="font-mono font-semibold text-text">{{ members }}</b>
               <span v-else-if="!channel.full_loaded" class="skeleton inline-block h-3 w-10" />
               <b v-else class="font-mono text-faint">—</b>
-              {{ t('deck.subscribers', pluralCount(channel.members_count ?? 0)) }}
+              {{ tk('deck.subscribers', pluralCount(channel.members_count ?? 0)) }}
             </li>
             <li>
               <b
@@ -152,9 +153,9 @@ const rate = computed(() =>
               {{ t('deck.unreadLong', pluralCount(channel.unread_count)) }}
             </li>
             <li v-if="channel.last_post_at">
-              {{ t('deck.lastPostAt', { when: relativeTime(channel.last_post_at, locale) }) }}
+              {{ tk('deck.lastPostAt', { when: relativeTime(channel.last_post_at, locale) }) }}
             </li>
-            <li v-else>{{ t('deck.neverPosted') }}</li>
+            <li v-else>{{ tk('deck.neverPosted') }}</li>
           </ul>
         </div>
 
@@ -163,7 +164,7 @@ const rate = computed(() =>
           <div class="mt-1.5 flex justify-between font-mono text-[10.5px] text-faint">
             <span>{{ axis[0] }}</span>
             <span v-if="pulseUnknown">{{
-              t('deck.pulseTruncated', { n: channel.pulse.sample })
+              tk('deck.pulseTruncated', { n: channel.pulse.sample })
             }}</span>
             <span v-else>{{ axis[1] }}</span>
             <span>{{ axis[2] }}</span>
@@ -194,7 +195,7 @@ const rate = computed(() =>
         />
         <div class="min-w-0">
           <div class="text-[11.5px] text-faint">
-            {{ t('deck.lastPost') }} · {{ relativeTime(channel.last_post_at, locale) }}
+            {{ tk('deck.lastPost') }} · {{ relativeTime(channel.last_post_at, locale) }}
             <template v-if="mediaLabel"> · {{ mediaLabel }}</template>
           </div>
           <p class="mt-1 line-clamp-5 text-[14px] leading-snug whitespace-pre-line">
@@ -203,7 +204,7 @@ const rate = computed(() =>
         </div>
       </div>
       <div v-else class="post mt-auto rounded-xl p-3 text-[13.5px] text-faint italic">
-        {{ t('deck.neverPostedLong') }}
+        {{ tk('deck.neverPostedLong') }}
       </div>
     </div>
   </article>

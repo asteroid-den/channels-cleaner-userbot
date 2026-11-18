@@ -7,6 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from channels_cleaner.db import ChannelRow
+from channels_cleaner.telegram.types import ChatKind
 
 DecisionIn = Literal["keep", "unsubscribe", "mute", "archive", "skip"]
 
@@ -33,6 +34,7 @@ class DecisionBody(BaseModel):
 
 class ResetIn(BaseModel):
     only: DecisionIn | None = None
+    kind: ChatKind = "channel"
 
 
 class PrefsIn(BaseModel):
@@ -42,6 +44,7 @@ class PrefsIn(BaseModel):
 
 class ChannelOut(BaseModel):
     id: int
+    kind: ChatKind
     title: str
     username: str | None
     link: str | None
@@ -72,6 +75,7 @@ class ChannelOut(BaseModel):
         version = row.photo_unique_id or "x"
         return cls(
             id=row.channel_id,
+            kind=row.kind,
             title=row.title,
             username=row.username,
             link=f"https://t.me/{row.username}" if row.username else None,

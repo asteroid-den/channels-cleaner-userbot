@@ -22,6 +22,7 @@ from channels_cleaner.telegram.device_profiles import DeviceProfile
 from channels_cleaner.telegram.types import (
     ChannelFull,
     ChannelInfo,
+    ChatKind,
     FloodWaitError,
     GatewayError,
     InvalidCodeError,
@@ -50,6 +51,11 @@ _MEDIA_KINDS: dict[Any, MediaKind] = {
     enums.MessageMediaType.VOICE: "voice",
     enums.MessageMediaType.POLL: "poll",
     enums.MessageMediaType.STICKER: "sticker",
+}
+
+_CHAT_KINDS: dict[Any, ChatKind] = {
+    enums.ChatType.CHANNEL: "channel",
+    enums.ChatType.SUPERGROUP: "supergroup",
 }
 
 # Telegram uses this as "muted forever".
@@ -305,19 +311,21 @@ class KurigramGateway:
             async for dialog in client.get_dialogs():
                 chat = dialog.chat
 
-                if chat is None or chat.type != enums.ChatType.CHANNEL:
+                kind = _CHAT_KINDS.get(chat.type) if chat is not None else None
+
+                if chat is None or kind is None:
                     continue
 
                 if chat.is_creator or chat.is_admin:
                     continue
 
-                yield self._channel_info(dialog, now)
+                yield self._channel_info(dialog, now, kind)
 
         except errors.FloodWait as exc:
             raise FloodWaitError(int(exc.value or 0)) from exc
 
     @staticmethod
-    def _channel_info(dialog: Any, now: datetime) -> ChannelInfo:  # noqa: ANN401 - a pyrogram Dialog, untyped
+    def _channel_info(dialog: Any, now: datetime, kind: ChatKind) -> ChannelInfo:  # noqa: ANN401 - a pyrogram Dialog, untyped
         chat = dialog.chat
         top = dialog.top_message
         muted = False
@@ -351,6 +359,7 @@ class KurigramGateway:
             last_post_at=_utc(top.date) if top is not None else None,
             last_post_text=str(text) if text else None,
             last_post_media=media,
+            kind=kind,
         )
 
     async def get_full(self, channel_id: int) -> ChannelFull:

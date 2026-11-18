@@ -72,7 +72,14 @@ frontend/src/     Vue 3 + Vite + TS, Pinia, vue-router, vue-i18n (en/ru), Tailwi
 ```
 
 Key behaviours / decisions (agreed with the user):
-- Only broadcast channels; channels the user owns/admins are excluded. Archive included (flagged).
+- Broadcast channels and supergroups (`channels.kind`, migration 4); anything the user owns/admins is
+  excluded; plain basic groups are not covered. Archive included (flagged). One sync pass covers both
+  kinds (a per-kind sync would mark the other kind `gone`); the deck, trail, stats and export take
+  `?kind=`, review/apply are shared across kinds (`counts.pending_other` drives the dot on the
+  header switcher). Lists synced before supergroups existed are re-synced once (`synced_kinds` setting).
+  Wording that differs for groups lives under `group.*` in i18n (`useKindI18n().tk`).
+- Idea for later (user is thinking about it): extra tabs for chats the user owns/admins (2x2 with kind);
+  leaving an owned/admin chat is destructive, so `unsubscribe` would need to be off by default there.
 - Decisions: keep/skip are final immediately; unsubscribe/mute/archive are `pending` until the
   apply job. "Skip" = back of the deck, forgotten on next launch. Undo = DELETE decision.
 - Full info (GetFullChannel) and pulse (raw `messages.GetHistory`, limit 100, no parsing) are

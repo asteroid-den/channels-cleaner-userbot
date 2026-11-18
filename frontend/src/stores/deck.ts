@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { api, ApiError, subscribe } from '@/api/client'
 import type {
   Channel,
+  ChatKind,
   ChannelsResponse,
   Decision,
   DeckCounts,
@@ -16,6 +17,15 @@ import { i18n } from '@/i18n'
 import { useUiStore } from './ui'
 
 const PREFETCH_AHEAD = 8
+const KIND_KEY = 'cc.kind'
+
+function readKind(): ChatKind {
+  try {
+    return localStorage.getItem(KIND_KEY) === 'supergroup' ? 'supergroup' : 'channel'
+  } catch {
+    return 'channel'
+  }
+}
 const ACTIONS: Decision[] = ['unsubscribe', 'mute', 'archive']
 const TRAIL_CODE = { keep: 'k', unsubscribe: 'u', mute: 'm', archive: 'a' } as const
 
@@ -31,6 +41,8 @@ export interface HistoryEntry {
 export const useDeckStore = defineStore('deck', () => {
   const ui = useUiStore()
 
+  /** Which deck is on screen: channels or supergroups. */
+  const kind = ref<ChatKind>(readKind())
   /** Undecided channels, in deck order. */
   const queue = ref<Channel[]>([])
   /** Decided channels in the order decided — the progress bar, card by card. */
@@ -47,6 +59,7 @@ export const useDeckStore = defineStore('deck', () => {
     total: 0,
     undecided: 0,
     pending: 0,
+    pending_other: 0,
     by_decision: { keep: 0, unsubscribe: 0, mute: 0, archive: 0 },
     trail: '',
   })
@@ -104,14 +117,17 @@ export const useDeckStore = defineStore('deck', () => {
     loading.value = true
     try {
       if (!loaded.value) await loadPrefs()
+      const requested = kind.value
       const params = new URLSearchParams({
+        kind: requested,
         sort: prefs.value.sort,
         reverse: String(prefs.value.reverse),
       })
       const [data, decided] = await Promise.all([
         api.get<ChannelsResponse>(`/api/channels?${params}`),
-        api.get<{ items: Channel[] }>('/api/decisions/trail'),
+        api.get<{ items: Channel[] }>(`/api/decisions/trail?kind=${requested}`),
       ])
+      if (requested !== kind.value) return // the user switched again while this was loading
       queue.value = data.items
       trail.value = decided.items
       cursor.value = null
@@ -132,6 +148,20 @@ export const useDeckStore = defineStore('deck', () => {
     } catch {
       /* not critical */
     }
+    await load()
+  }
+
+  async function setKind(next: ChatKind) {
+    if (next === kind.value) return
+    kind.value = next
+    try {
+      localStorage.setItem(KIND_KEY, next)
+    } catch {
+      /* not critical */
+    }
+    // The undo history and the rewind position belong to the deck that was on screen
+    history.value = []
+    returning.value = null
     await load()
   }
 
@@ -336,7 +366,7 @@ export const useDeckStore = defineStore('deck', () => {
 
   async function reset(only: Decision | null) {
     try {
-      await api.post('/api/decisions/reset', { only })
+      await api.post('/api/decisions/reset', { only, kind: kind.value })
       history.value = []
       await load()
     } catch (err) {
@@ -354,6 +384,7 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   return {
+    kind,
     items,
     trail,
     cursor,
@@ -373,6 +404,7 @@ export const useDeckStore = defineStore('deck', () => {
     position,
     syncing,
     load,
+    setKind,
     setSort,
     toggleReverse,
     decide,

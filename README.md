@@ -175,6 +175,7 @@ Everything is optional. Use environment variables or a `.env` file in the workin
 | `--no-browser` | `CC_NO_BROWSER=1` | off | Don't open a browser tab |
 | `--mock` | `CC_MOCK=1` | off | Fake Telegram backend |
 | | `CC_MOCK_CHANNELS` | `120` | Number of generated channels |
+| | `CC_MOCK_SUPERGROUPS` | `60` | Number of generated supergroups |
 | | `CC_MOCK_2FA=1` | off | Ask for a 2FA password in mock mode |
 | | `CC_DATA_DIR` | see above | Sessions, database, media cache |
 | | `CC_API_ID`, `CC_API_HASH` | Telegram Desktop | Your own Telegram API credentials |

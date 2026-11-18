@@ -162,6 +162,7 @@ useHotkeys({
                 <span v-if="c.reverts && group.decision !== 'unsubscribe'" class="text-text"
                   >↺ {{ t(`review.reverts.${c.reverts}`) }} ·
                 </span>
+                <span v-if="c.kind === 'supergroup'">{{ t('header.kindGroup') }} · </span>
                 <span v-if="c.username">@{{ c.username }} · </span>
                 <span
                   v-else
