@@ -21,6 +21,10 @@ export type Decision = 'keep' | 'unsubscribe' | 'mute' | 'archive' | 'skip'
 export type ActionDecision = 'unsubscribe' | 'mute' | 'archive'
 export type SortMode = 'dead' | 'unread'
 export type ChatKind = 'channel' | 'supergroup'
+/** What the user is in that chat. */
+export type ChatRole = 'member' | 'admin' | 'owner'
+/** Two decks: chats the user is just in, and the ones they run (admin or owner). */
+export type RoleFilter = 'member' | 'managed'
 /** Which part of the list the deck shows: everything, the main list only, or the archive only. */
 export type ArchiveFilter = 'all' | 'active' | 'archived'
 
@@ -35,6 +39,7 @@ export interface Pulse {
 export interface Channel {
   id: number
   kind: ChatKind
+  role: ChatRole
   title: string
   username: string | null
   link: string | null
@@ -63,6 +68,7 @@ export interface DeckCounts {
   total: number
   /** Chats of each kind / in each archive filter, as the settings menu offers them. */
   kind_totals: Record<ChatKind, number>
+  role_totals: Record<RoleFilter, number>
   archive_totals: Record<ArchiveFilter, number>
   undecided: number
   pending: number

@@ -6,6 +6,7 @@ import type {
   ArchiveFilter,
   Channel,
   ChatKind,
+  RoleFilter,
   ChannelsResponse,
   Decision,
   DeckCounts,
@@ -19,6 +20,15 @@ import { useUiStore } from './ui'
 
 const PREFETCH_AHEAD = 8
 const KIND_KEY = 'cc.kind'
+const ROLE_KEY = 'cc.role'
+
+function readRole(): RoleFilter {
+  try {
+    return localStorage.getItem(ROLE_KEY) === 'managed' ? 'managed' : 'member'
+  } catch {
+    return 'member'
+  }
+}
 
 function readKind(): ChatKind {
   try {
@@ -44,6 +54,8 @@ export const useDeckStore = defineStore('deck', () => {
 
   /** Which deck is on screen: channels or supergroups. */
   const kind = ref<ChatKind>(readKind())
+  /** Whether the deck holds the chats the user is just in, or the ones they run. */
+  const role = ref<RoleFilter>(readRole())
   /** Undecided channels, in deck order. */
   const queue = ref<Channel[]>([])
   /** Decided channels in the order decided — the progress bar, card by card. */
@@ -59,6 +71,7 @@ export const useDeckStore = defineStore('deck', () => {
   const counts = ref<DeckCounts>({
     total: 0,
     kind_totals: { channel: 0, supergroup: 0 },
+    role_totals: { member: 0, managed: 0 },
     archive_totals: { all: 0, active: 0, archived: 0 },
     undecided: 0,
     pending: 0,
@@ -121,9 +134,11 @@ export const useDeckStore = defineStore('deck', () => {
     try {
       if (!loaded.value) await loadPrefs()
       const requested = kind.value
+      const requestedRole = role.value
       const requestedArchive = prefs.value.archive
       const params = new URLSearchParams({
         kind: requested,
+        role: requestedRole,
         archive: requestedArchive,
         sort: prefs.value.sort,
         reverse: String(prefs.value.reverse),
@@ -131,11 +146,16 @@ export const useDeckStore = defineStore('deck', () => {
       const [data, decided] = await Promise.all([
         api.get<ChannelsResponse>(`/api/channels?${params}`),
         api.get<{ items: Channel[] }>(
-          `/api/decisions/trail?kind=${requested}&archive=${requestedArchive}`,
+          `/api/decisions/trail?kind=${requested}&role=${requestedRole}&archive=${requestedArchive}`,
         ),
       ])
       // the user switched again while this was loading
-      if (requested !== kind.value || requestedArchive !== prefs.value.archive) return
+      if (
+        requested !== kind.value ||
+        requestedRole !== role.value ||
+        requestedArchive !== prefs.value.archive
+      )
+        return
       queue.value = data.items
       trail.value = decided.items
       cursor.value = null
@@ -168,6 +188,19 @@ export const useDeckStore = defineStore('deck', () => {
       /* not critical */
     }
     // The undo history and the rewind position belong to the deck that was on screen
+    history.value = []
+    returning.value = null
+    await load()
+  }
+
+  async function setRole(next: RoleFilter) {
+    if (next === role.value) return
+    role.value = next
+    try {
+      localStorage.setItem(ROLE_KEY, next)
+    } catch {
+      /* not critical */
+    }
     history.value = []
     returning.value = null
     await load()
@@ -389,7 +422,7 @@ export const useDeckStore = defineStore('deck', () => {
 
   async function reset(only: Decision | null) {
     try {
-      await api.post('/api/decisions/reset', { only, kind: kind.value })
+      await api.post('/api/decisions/reset', { only, kind: kind.value, role: role.value })
       history.value = []
       await load()
     } catch (err) {
@@ -408,6 +441,7 @@ export const useDeckStore = defineStore('deck', () => {
 
   return {
     kind,
+    role,
     items,
     trail,
     cursor,
@@ -428,6 +462,7 @@ export const useDeckStore = defineStore('deck', () => {
     syncing,
     load,
     setKind,
+    setRole,
     setArchive,
     setPrefs,
     setSort,
