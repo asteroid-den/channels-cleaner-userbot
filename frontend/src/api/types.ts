@@ -21,6 +21,8 @@ export type Decision = 'keep' | 'unsubscribe' | 'mute' | 'archive' | 'skip'
 export type ActionDecision = 'unsubscribe' | 'mute' | 'archive'
 export type SortMode = 'dead' | 'unread'
 export type ChatKind = 'channel' | 'supergroup'
+/** Which part of the list the deck shows: everything, the main list only, or the archive only. */
+export type ArchiveFilter = 'all' | 'active' | 'archived'
 
 export interface Pulse {
   /** 26 weekly post counts, oldest first; null = week not covered by the fetched history. */
@@ -119,4 +121,5 @@ export interface Stats {
 export interface Prefs {
   sort: SortMode
   reverse: boolean
+  archive: ArchiveFilter
 }
