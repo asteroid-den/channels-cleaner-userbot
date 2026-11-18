@@ -195,3 +195,40 @@ async def test_sync_keeps_both_kinds_and_resyncs_old_lists(client: httpx.AsyncCl
 
 async def _idle(ctx: AppContext) -> bool:
     return not ctx.sync.state.running
+
+
+async def test_archive_filter_narrows_the_deck_and_its_counts(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    everything = await get_json(client, "/api/channels", params={"kind": "supergroup"})
+    archived = await get_json(client, "/api/channels", params={"kind": "supergroup", "archive": "archived"})
+    active = await get_json(client, "/api/channels", params={"kind": "supergroup", "archive": "active"})
+    assert {i["is_archived"] for i in archived["items"]} == {True}
+    assert {i["is_archived"] for i in active["items"]} == {False}
+    assert len(archived["items"]) + len(active["items"]) == len(everything["items"])
+    assert archived["counts"]["total"] == len(archived["items"])
+    assert archived["counts"]["undecided"] == len(archived["items"])
+
+    # a decision inside the filter only moves that filter's counters
+    pick = archived["items"][0]["id"]
+    await client.put(f"/api/decisions/{pick}", json={"decision": "keep"})
+    after = await get_json(client, "/api/channels", params={"kind": "supergroup", "archive": "archived"})
+    other = await get_json(client, "/api/channels", params={"kind": "supergroup", "archive": "active"})
+    assert after["counts"]["trail"] == "k"
+    assert other["counts"]["trail"] == ""
+    trail = await get_json(client, "/api/decisions/trail", params={"kind": "supergroup", "archive": "archived"})
+    assert [t["id"] for t in trail["items"]] == [pick]
+    assert (await get_json(client, "/api/decisions/trail", params={"kind": "supergroup", "archive": "active"}))[
+        "items"
+    ] == []
+
+
+async def test_archive_filter_saved_in_prefs_applies_to_answers(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    assert (
+        await client.put("/api/prefs", json={"sort": "dead", "reverse": False, "archive": "archived"})
+    ).status_code == 200
+    items = (await get_json(client, "/api/channels", params={"archive": "archived"}))["items"]
+    r = await client.put(f"/api/decisions/{items[0]['id']}", json={"decision": "unsubscribe"})
+    counts = r.json()["counts"]  # no archive param: the saved filter decides
+    assert counts["total"] == len(items)
+    assert counts["trail"] == "u"

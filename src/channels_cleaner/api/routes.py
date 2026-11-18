@@ -12,6 +12,7 @@ from channels_cleaner import __version__
 from channels_cleaner.api import schemas
 from channels_cleaner.api.sse import sse_response
 from channels_cleaner.context import AppContext
+from channels_cleaner.db import ArchiveFilter
 from channels_cleaner.services import stats
 from channels_cleaner.services.apply import TOPIC as APPLY_TOPIC
 from channels_cleaner.services.auth import TOPIC as AUTH_TOPIC
@@ -94,9 +95,21 @@ async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
 
 
 # --- channels --------------------------------------------------------------------------
-async def _deck_counts(ctx: AppContext, account: int, kind: ChatKind) -> dict[str, Any]:
-    total = await ctx.db.channel_count(account, kind)
-    undecided = len(await ctx.db.list_channels(account, kind=kind, undecided_only=True))
+async def _archive_filter(ctx: AppContext, account: int, archive: ArchiveFilter | None) -> ArchiveFilter:
+    """The archive filter asked for, else the one saved in the deck prefs."""
+    if archive is not None:
+        return archive
+
+    stored = await ctx.db.get_setting(account, "deck_prefs") or {}
+    return schemas.PrefsIn(**stored).archive
+
+
+async def _deck_counts(
+    ctx: AppContext, account: int, kind: ChatKind, archive: ArchiveFilter | None = None
+) -> dict[str, Any]:
+    archive = await _archive_filter(ctx, account, archive)
+    total = await ctx.db.channel_count(account, kind, archive)
+    undecided = len(await ctx.db.list_channels(account, kind=kind, archive=archive, undecided_only=True))
     # Pending work is for both kinds: one review screen, one apply job
     pending = len(await ctx.db.list_decided(account, status="pending"))
     pending_other = pending - len(await ctx.db.list_decided(account, status="pending", kind=kind))
@@ -105,8 +118,8 @@ async def _deck_counts(ctx: AppContext, account: int, kind: ChatKind) -> dict[st
         "undecided": undecided,
         "pending": pending,
         "pending_other": pending_other,
-        "by_decision": await ctx.db.decision_counts(account, kind),
-        "trail": await ctx.db.decision_trail(account, kind),
+        "by_decision": await ctx.db.decision_counts(account, kind, archive),
+        "trail": await ctx.db.decision_trail(account, kind, archive),
     }
 
 
@@ -136,16 +149,18 @@ async def channels_list(
     account: AccountId,
     *,
     kind: ChatKind = "channel",
+    archive: ArchiveFilter | None = None,
     sort: Literal["dead", "unread"] = "dead",
     reverse: bool = False,
     state: Literal["undecided", "all"] = "undecided",
 ) -> dict[str, Any]:
+    archive = await _archive_filter(ctx, account, archive)
     rows = await ctx.db.list_channels(
-        account, kind=kind, sort=sort, reverse=reverse, undecided_only=state == "undecided"
+        account, kind=kind, archive=archive, sort=sort, reverse=reverse, undecided_only=state == "undecided"
     )
     return {
         "items": [schemas.ChannelOut.from_row(row) for row in rows],
-        "counts": await _deck_counts(ctx, account, kind),
+        "counts": await _deck_counts(ctx, account, kind, archive),
         "sync": ctx.sync.state.snapshot(),
     }
 
@@ -197,9 +212,11 @@ async def decision_undo(channel_id: int, ctx: Ctx, account: AccountId) -> dict[s
 
 
 @router.get("/decisions/trail")
-async def decisions_trail(ctx: Ctx, account: AccountId, kind: ChatKind = "channel") -> dict[str, Any]:
+async def decisions_trail(
+    ctx: Ctx, account: AccountId, kind: ChatKind = "channel", archive: ArchiveFilter | None = None
+) -> dict[str, Any]:
     """Decided channels in the order decided: what the progress bar shows, for rewinding."""
-    rows = await ctx.db.list_trail(account, kind)
+    rows = await ctx.db.list_trail(account, kind, await _archive_filter(ctx, account, archive))
     return {"items": [schemas.ChannelOut.from_row(row) for row in rows]}
 
 

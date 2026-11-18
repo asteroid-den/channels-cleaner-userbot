@@ -16,6 +16,11 @@ from channels_cleaner.telegram.types import ChannelFull, ChannelInfo, ChatKind, 
 Decision = Literal["keep", "unsubscribe", "mute", "archive", "skip"]
 DecisionStatus = Literal["pending", "applied", "failed"]
 SortMode = Literal["dead", "unread"]
+#: which part of the list the deck shows: everything, only the main list, or only the Telegram archive
+ArchiveFilter = Literal["all", "active", "archived"]
+
+#: narrows a query on ``channels c`` to the archive filter; takes the filter twice as parameters
+_ARCHIVE_COND = "(? = 'all' OR c.is_archived = (? = 'archived'))"
 
 ACTION_DECISIONS: tuple[Decision, ...] = ("unsubscribe", "mute", "archive")
 #: applied actions the app can take back (a left channel is gone for good)
@@ -374,12 +379,12 @@ class Database:
         )
         await self.conn.commit()
 
-    async def channel_count(self, account_id: int, kind: ChatKind | None = None) -> int:
-        sql = "SELECT COUNT(*) FROM channels WHERE account_id = ? AND gone = 0"
-        params: list[Any] = [account_id]
+    async def channel_count(self, account_id: int, kind: ChatKind | None = None, archive: ArchiveFilter = "all") -> int:
+        sql = f"SELECT COUNT(*) FROM channels c WHERE c.account_id = ? AND c.gone = 0 AND {_ARCHIVE_COND}"  # noqa: S608 - the only interpolation is a module constant
+        params: list[Any] = [account_id, archive, archive]
 
         if kind is not None:
-            sql += " AND kind = ?"
+            sql += " AND c.kind = ?"
             params.append(kind)
 
         async with self.conn.execute(sql, params) as cur:
@@ -401,11 +406,12 @@ class Database:
         account_id: int,
         *,
         kind: ChatKind = "channel",
+        archive: ArchiveFilter = "all",
         sort: SortMode = "dead",
         reverse: bool = False,
         undecided_only: bool = True,
     ) -> list[ChannelRow]:
-        where = ["c.account_id = ?", "c.gone = 0", "c.kind = ?"]
+        where = ["c.account_id = ?", "c.gone = 0", "c.kind = ?", _ARCHIVE_COND]
 
         if undecided_only:
             where.append("(d.decision IS NULL OR d.decision = 'skip')")
@@ -422,7 +428,7 @@ class Database:
         order = f"(d.decision = 'skip') ASC, {key_desc if reverse else key}, c.title COLLATE NOCASE"
         sql = f"{_CHANNEL_SELECT} WHERE {' AND '.join(where)} ORDER BY {order}"
 
-        async with self.conn.execute(sql, (account_id, kind)) as cur:
+        async with self.conn.execute(sql, (account_id, kind, archive, archive)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
     # --- decisions ---------------------------------------------------------------------
@@ -535,16 +541,19 @@ class Database:
         await self.conn.execute("DELETE FROM decisions WHERE decision = 'skip'")
         await self.conn.commit()
 
-    async def decision_counts(self, account_id: int, kind: ChatKind = "channel") -> dict[str, int]:
+    async def decision_counts(
+        self, account_id: int, kind: ChatKind = "channel", archive: ArchiveFilter = "all"
+    ) -> dict[str, int]:
         """Final decisions per kind for channels still in the list ("skip" is not one)."""
         async with self.conn.execute(
             """
             SELECT d.decision, COUNT(*) FROM decisions d
             JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
             WHERE d.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision != 'skip'
+              AND (? = 'all' OR c.is_archived = (? = 'archived'))
             GROUP BY d.decision
             """,
-            (account_id, kind),
+            (account_id, kind, archive, archive),
         ) as cur:
             rows = list(await cur.fetchall())
 
@@ -552,16 +561,17 @@ class Database:
         counts.update({str(decision): int(n) for decision, n in rows})
         return counts
 
-    async def decision_trail(self, account_id: int, kind: ChatKind = "channel") -> str:
+    async def decision_trail(self, account_id: int, kind: ChatKind = "channel", archive: ArchiveFilter = "all") -> str:
         """Final decisions in the order they were made, one letter each (k/u/m/a)."""
         async with self.conn.execute(
             """
             SELECT d.decision FROM decisions d
             JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
             WHERE d.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision != 'skip'
+              AND (? = 'all' OR c.is_archived = (? = 'archived'))
             ORDER BY d.decided_at, d.rowid
             """,
-            (account_id, kind),
+            (account_id, kind, archive, archive),
         ) as cur:
             rows = list(await cur.fetchall())
 
@@ -593,14 +603,16 @@ class Database:
         async with self.conn.execute(sql, params) as cur:
             return [_row_to_channel(row) async for row in cur]
 
-    async def list_trail(self, account_id: int, kind: ChatKind = "channel") -> list[ChannelRow]:
+    async def list_trail(
+        self, account_id: int, kind: ChatKind = "channel", archive: ArchiveFilter = "all"
+    ) -> list[ChannelRow]:
         """Channels with a final decision, in the order decided (same order as the trail)."""
         sql = f"""{_CHANNEL_SELECT}
             WHERE c.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision IS NOT NULL
-              AND d.decision != 'skip'
+              AND d.decision != 'skip' AND {_ARCHIVE_COND}
             ORDER BY d.decided_at, d.rowid"""
 
-        async with self.conn.execute(sql, (account_id, kind)) as cur:
+        async with self.conn.execute(sql, (account_id, kind, archive, archive)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
     async def mark_decision(
