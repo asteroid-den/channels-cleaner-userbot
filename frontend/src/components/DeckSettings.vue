@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onClickOutside } from '@vueuse/core'
-import { computed, ref, useTemplateRef } from 'vue'
+import { useEventListener } from '@vueuse/core'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { ArchiveFilter, ChatKind, SortMode } from '@/api/types'
@@ -12,8 +12,10 @@ const { t } = useI18n()
 const deck = useDeckStore()
 
 const open = ref(false)
-const root = useTemplateRef<HTMLElement>('root')
-onClickOutside(root, () => (open.value = false))
+// Esc closes the menu wherever the focus is
+useEventListener(window, 'keydown', (e) => {
+  if (open.value && e.key === 'Escape') open.value = false
+})
 
 const KINDS: ChatKind[] = ['channel', 'supergroup']
 const ARCHIVES: ArchiveFilter[] = ['all', 'active', 'archived']
@@ -29,9 +31,13 @@ function reset() {
 </script>
 
 <template>
-  <div ref="root" class="relative shrink-0" @keydown.esc="open = false">
+  <div class="relative shrink-0">
+    <!-- While the menu is open a click anywhere else only closes it: this catches the pointer
+         before the deck (swipe, side zones) can read it as a decision -->
+    <div v-if="open" class="fixed inset-0 z-30" aria-hidden="true" @click="open = false" />
+
     <button
-      class="relative flex h-[30px] items-center gap-2 rounded-lg border border-border-2 px-3 text-[12.5px] transition-colors hover:bg-surface-2"
+      class="relative z-40 flex h-[30px] items-center gap-2 rounded-lg border border-border-2 px-3 text-[12.5px] transition-colors hover:bg-surface-2"
       :class="open ? 'bg-surface-3' : ''"
       :aria-label="t('settings.title')"
       :aria-expanded="open"
