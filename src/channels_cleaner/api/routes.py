@@ -95,6 +95,10 @@ async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
 
 
 # --- channels --------------------------------------------------------------------------
+_KINDS: tuple[ChatKind, ...] = ("channel", "supergroup")
+_ARCHIVE_FILTERS: tuple[ArchiveFilter, ...] = ("all", "active", "archived")
+
+
 async def _archive_filter(ctx: AppContext, account: int, archive: ArchiveFilter | None) -> ArchiveFilter:
     """The archive filter asked for, else the one saved in the deck prefs."""
     if archive is not None:
@@ -115,6 +119,9 @@ async def _deck_counts(
     pending_other = pending - len(await ctx.db.list_decided(account, status="pending", kind=kind))
     return {
         "total": total,
+        # how many chats each choice in the deck settings menu would show
+        "kind_totals": {k: await ctx.db.channel_count(account, k, archive) for k in _KINDS},
+        "archive_totals": {a: await ctx.db.channel_count(account, kind, a) for a in _ARCHIVE_FILTERS},
         "undecided": undecided,
         "pending": pending,
         "pending_other": pending_other,

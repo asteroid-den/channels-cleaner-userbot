@@ -232,3 +232,17 @@ async def test_archive_filter_saved_in_prefs_applies_to_answers(client: httpx.As
     counts = r.json()["counts"]  # no archive param: the saved filter decides
     assert counts["total"] == len(items)
     assert counts["trail"] == "u"
+
+
+async def test_counts_tell_how_big_each_menu_choice_is(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    counts = (await get_json(client, "/api/channels", params={"kind": "supergroup"}))["counts"]
+    assert counts["kind_totals"] == {"channel": 40, "supergroup": 25}
+    totals = counts["archive_totals"]
+    assert totals["all"] == 25
+    assert totals["active"] + totals["archived"] == 25
+
+    archived = (await get_json(client, "/api/channels", params={"kind": "supergroup", "archive": "archived"}))["counts"]
+    assert archived["total"] == totals["archived"]
+    assert archived["archive_totals"] == totals  # the menu keeps showing all choices
+    assert archived["kind_totals"]["supergroup"] == totals["archived"]
