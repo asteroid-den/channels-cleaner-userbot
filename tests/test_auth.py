@@ -16,8 +16,9 @@ async def test_starts_unauthorized(client: httpx.AsyncClient) -> None:
 async def test_qr_login_triggers_sync(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     data = await get_json(client, "/api/channels")
-    assert data["counts"]["total"] == 40
-    assert len(data["items"]) == 40
+    counts = data["counts"]
+    assert counts["total"] + counts["role_totals"]["managed"] == 40  # chats the user runs have their own deck
+    assert len(data["items"]) == counts["total"]
 
 
 async def test_phone_login_with_2fa(client: httpx.AsyncClient, ctx: AppContext) -> None:
