@@ -16,6 +16,7 @@ from channels_cleaner.telegram.device_profiles import DeviceProfile, all_profile
 from channels_cleaner.telegram.types import (
     ChannelFull,
     ChannelInfo,
+    ChatKind,
     FloodWaitError,
     GatewayError,
     InvalidCodeError,
@@ -102,18 +103,49 @@ _ABOUT = [
     "Канал, который вы забыли, что читаете.",
     None,
 ]
+_GROUP_NOUN = ["Chat", "Talk", "Club", "Community", "Help", "Offtopic", "Flood", "Meetup"]
+_GROUP_RU = [
+    "Чат разработчиков",
+    "Барахолка района",
+    "Соседи из 3-го подъезда",
+    "Флудилка",
+    "Вопросы по Python",
+    "Клуб любителей кофе",
+    "Помощь с ремонтом",
+    "Книжный клуб",
+]
+_GROUP_TEXTS = [
+    "Кто-нибудь сталкивался с такой ошибкой? Скину лог в ветку.",
+    "Anyone up for a call tomorrow evening?",
+    "Спасибо, помогло! Закрываю вопрос.",
+    "lol, same here",
+    "Ребят, продаю монитор, подробности в личке.",
+    "Does anyone know a good tutorial for this?",
+    "+1, тоже интересно",
+    "Reminder: please keep it on topic.",
+]
 _MEDIA: list[MediaKind | None] = [None, None, None, "photo", "photo", "video", "document", "poll"]
 _COLORS = ["#e17076", "#7bc862", "#e5ca77", "#65aadd", "#a695e7", "#ee7aae", "#6ec9cb", "#faa774"]
 
 
-def _generate(count: int, seed: int = 42) -> dict[int, tuple[ChannelInfo, ChannelFull]]:
-    rng = random.Random(seed)
+_ID_BASE: dict[ChatKind, int] = {"channel": -1001000000000, "supergroup": -1002000000000}
+
+
+def _generate(count: int, seed: int = 42, kind: ChatKind = "channel") -> dict[int, tuple[ChannelInfo, ChannelFull]]:
+    rng = random.Random(seed if kind == "channel" else seed + 1000)
     now = datetime.now(UTC)
     channels: dict[int, tuple[ChannelInfo, ChannelFull]] = {}
+    group = kind == "supergroup"
+    texts = _GROUP_TEXTS if group else _TEXTS
 
     for i in range(count):
-        channel_id = -1001000000000 - i
-        title = rng.choice(_RU) if rng.random() < 0.3 else f"{rng.choice(_ADJ)} {rng.choice(_NOUN)}"
+        channel_id = _ID_BASE[kind] - i
+
+        if group:
+            title = rng.choice(_GROUP_RU) if rng.random() < 0.3 else f"{rng.choice(_ADJ)} {rng.choice(_GROUP_NOUN)}"
+
+        else:
+            title = rng.choice(_RU) if rng.random() < 0.3 else f"{rng.choice(_ADJ)} {rng.choice(_NOUN)}"
 
         if any(info.title == title for info, _ in channels.values()):
             title = f"{title} #{i}"
@@ -136,7 +168,7 @@ def _generate(count: int, seed: int = 42) -> dict[int, tuple[ChannelInfo, Channe
         info = ChannelInfo(
             id=channel_id,
             title=title,
-            username=None if rng.random() < 0.15 else f"mock_{i:03d}",
+            username=None if rng.random() < 0.15 else f"mock_{kind[:1]}{i:03d}",
             unread_count=unread,
             is_muted=rng.random() < 0.3,
             is_archived=rng.random() < 0.15,
@@ -145,8 +177,9 @@ def _generate(count: int, seed: int = 42) -> dict[int, tuple[ChannelInfo, Channe
             photo_unique_id=None if rng.random() < 0.1 else f"u{i}",
             last_post_id=rng.randint(10, 9000) if last_post_at else None,
             last_post_at=last_post_at,
-            last_post_text=rng.choice(_TEXTS) if last_post_at and rng.random() < 0.9 else None,
+            last_post_text=rng.choice(texts) if last_post_at and rng.random() < 0.9 else None,
             last_post_media=media,
+            kind=kind,
         )
 
         if info.photo_file_id is None:
@@ -201,7 +234,7 @@ class MockGateway:
     def __init__(self, settings: Settings, *, seed: int = 42) -> None:
         self._settings = settings
         self._state_path = settings.data_dir / "mock_session.json"
-        self._channels = _generate(settings.mock_channels, seed)
+        self._channels = self._generate_all(seed)
         self._authorized = False
         self._awaiting_password = False
         self._phone: str | None = None
@@ -209,6 +242,12 @@ class MockGateway:
         self._rng = random.Random(seed + 1)
         self._profile = all_profiles()[0]
         self.action_delay = 0.15
+
+    def _generate_all(self, seed: int) -> dict[int, tuple[ChannelInfo, ChannelFull]]:
+        return {
+            **_generate(self._settings.mock_channels, seed),
+            **_generate(self._settings.mock_supergroups, seed, "supergroup"),
+        }
 
     @property
     def device_profile(self) -> DeviceProfile | None:
@@ -305,7 +344,7 @@ class MockGateway:
     async def log_out(self) -> None:
         self._authorized = False
         self._state_path.unlink(missing_ok=True)
-        self._channels = _generate(self._settings.mock_channels)
+        self._channels = self._generate_all(42)
 
     # --- channels --------------------------------------------------------------------
     async def iter_channels(self) -> AsyncIterator[ChannelInfo]:

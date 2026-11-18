@@ -11,7 +11,7 @@ from typing import Any, Literal, cast
 
 import aiosqlite
 
-from channels_cleaner.telegram.types import ChannelFull, ChannelInfo, TgUser
+from channels_cleaner.telegram.types import ChannelFull, ChannelInfo, ChatKind, TgUser
 
 Decision = Literal["keep", "unsubscribe", "mute", "archive", "skip"]
 DecisionStatus = Literal["pending", "applied", "failed"]
@@ -89,6 +89,10 @@ MIGRATIONS: list[str] = [
     """
     ALTER TABLE decisions ADD COLUMN reverts TEXT;
     """,
+    # 4 — channels and supergroups share the table; ids don't collide, ``kind`` tells them apart
+    """
+    ALTER TABLE channels ADD COLUMN kind TEXT NOT NULL DEFAULT 'channel';
+    """,
 ]
 
 
@@ -130,13 +134,14 @@ class ChannelRow:
     pulse: dict[str, Any] | None = None
     #: mute/archive the app already applied and the current decision will undo
     reverts: str | None = None
+    kind: ChatKind = "channel"
 
 
 _CHANNEL_SELECT = """
     SELECT c.channel_id, c.title, c.username, c.about, c.members_count, c.unread_count,
            c.is_muted, c.is_archived, c.photo_file_id, c.photo_unique_id, c.last_post_id,
            c.last_post_at, c.last_post_text, c.last_post_media, c.full_fetched_at, c.gone,
-           d.decision, d.status, d.decided_at, d.applied_at, d.error, c.pulse, d.reverts
+           d.decision, d.status, d.decided_at, d.applied_at, d.error, c.pulse, d.reverts, c.kind
     FROM channels c
     LEFT JOIN decisions d ON d.account_id = c.account_id AND d.channel_id = c.channel_id
 """
@@ -168,6 +173,7 @@ def _row_to_channel(row: Sequence[Any]) -> ChannelRow:
         error=row[20],
         pulse=json.loads(row[21]) if row[21] else None,
         reverts=row[22],
+        kind=row[23],
     )
 
 
@@ -261,8 +267,8 @@ class Database:
             """
             INSERT INTO channels (account_id, channel_id, title, username, members_count,
                 unread_count, is_muted, is_archived, photo_file_id, photo_unique_id,
-                last_post_id, last_post_at, last_post_text, last_post_media, synced_at, gone)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                last_post_id, last_post_at, last_post_text, last_post_media, synced_at, kind, gone)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             ON CONFLICT (account_id, channel_id) DO UPDATE SET
                 title = excluded.title, username = excluded.username,
                 members_count = COALESCE(excluded.members_count, channels.members_count),
@@ -271,7 +277,7 @@ class Database:
                 photo_unique_id = excluded.photo_unique_id, last_post_id = excluded.last_post_id,
                 last_post_at = excluded.last_post_at, last_post_text = excluded.last_post_text,
                 last_post_media = excluded.last_post_media, synced_at = excluded.synced_at,
-                gone = 0
+                kind = excluded.kind, gone = 0
             """,
             [
                 (
@@ -290,6 +296,7 @@ class Database:
                     c.last_post_text,
                     c.last_post_media,
                     ts,
+                    c.kind,
                 )
                 for c in channels
             ],
@@ -367,10 +374,15 @@ class Database:
         )
         await self.conn.commit()
 
-    async def channel_count(self, account_id: int) -> int:
-        async with self.conn.execute(
-            "SELECT COUNT(*) FROM channels WHERE account_id = ? AND gone = 0", (account_id,)
-        ) as cur:
+    async def channel_count(self, account_id: int, kind: ChatKind | None = None) -> int:
+        sql = "SELECT COUNT(*) FROM channels WHERE account_id = ? AND gone = 0"
+        params: list[Any] = [account_id]
+
+        if kind is not None:
+            sql += " AND kind = ?"
+            params.append(kind)
+
+        async with self.conn.execute(sql, params) as cur:
             row = await cur.fetchone()
 
         return int(row[0]) if row else 0
@@ -388,11 +400,12 @@ class Database:
         self,
         account_id: int,
         *,
+        kind: ChatKind = "channel",
         sort: SortMode = "dead",
         reverse: bool = False,
         undecided_only: bool = True,
     ) -> list[ChannelRow]:
-        where = ["c.account_id = ?", "c.gone = 0"]
+        where = ["c.account_id = ?", "c.gone = 0", "c.kind = ?"]
 
         if undecided_only:
             where.append("(d.decision IS NULL OR d.decision = 'skip')")
@@ -409,7 +422,7 @@ class Database:
         order = f"(d.decision = 'skip') ASC, {key_desc if reverse else key}, c.title COLLATE NOCASE"
         sql = f"{_CHANNEL_SELECT} WHERE {' AND '.join(where)} ORDER BY {order}"
 
-        async with self.conn.execute(sql, (account_id,)) as cur:
+        async with self.conn.execute(sql, (account_id, kind)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
     # --- decisions ---------------------------------------------------------------------
@@ -498,7 +511,7 @@ class Database:
         await self.conn.commit()
         return cur.rowcount > 0
 
-    async def reset_decisions(self, account_id: int, only: Decision | None = None) -> int:
+    async def reset_decisions(self, account_id: int, only: Decision | None = None, kind: ChatKind | None = None) -> int:
         """Forget non-action decisions (keep/skip) and pending ones; applied actions stay."""
         sql = """
             DELETE FROM decisions WHERE account_id = ?
@@ -508,7 +521,11 @@ class Database:
 
         if only is not None:
             sql += " AND decision = ?"
-            params = (account_id, only)
+            params = (*params, only)
+
+        if kind is not None:
+            sql += " AND channel_id IN (SELECT channel_id FROM channels WHERE account_id = ? AND kind = ?)"
+            params = (*params, account_id, kind)
 
         cur = await self.conn.execute(sql, params)
         await self.conn.commit()
@@ -518,16 +535,16 @@ class Database:
         await self.conn.execute("DELETE FROM decisions WHERE decision = 'skip'")
         await self.conn.commit()
 
-    async def decision_counts(self, account_id: int) -> dict[str, int]:
+    async def decision_counts(self, account_id: int, kind: ChatKind = "channel") -> dict[str, int]:
         """Final decisions per kind for channels still in the list ("skip" is not one)."""
         async with self.conn.execute(
             """
             SELECT d.decision, COUNT(*) FROM decisions d
             JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
-            WHERE d.account_id = ? AND c.gone = 0 AND d.decision != 'skip'
+            WHERE d.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision != 'skip'
             GROUP BY d.decision
             """,
-            (account_id,),
+            (account_id, kind),
         ) as cur:
             rows = list(await cur.fetchall())
 
@@ -535,16 +552,16 @@ class Database:
         counts.update({str(decision): int(n) for decision, n in rows})
         return counts
 
-    async def decision_trail(self, account_id: int) -> str:
+    async def decision_trail(self, account_id: int, kind: ChatKind = "channel") -> str:
         """Final decisions in the order they were made, one letter each (k/u/m/a)."""
         async with self.conn.execute(
             """
             SELECT d.decision FROM decisions d
             JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
-            WHERE d.account_id = ? AND c.gone = 0 AND d.decision != 'skip'
+            WHERE d.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision != 'skip'
             ORDER BY d.decided_at, d.rowid
             """,
-            (account_id,),
+            (account_id, kind),
         ) as cur:
             rows = list(await cur.fetchall())
 
@@ -556,6 +573,7 @@ class Database:
         *,
         status: DecisionStatus | None = None,
         decisions: Sequence[Decision] = ACTION_DECISIONS,
+        kind: ChatKind | None = None,
     ) -> list[ChannelRow]:
         placeholders = ",".join("?" for _ in decisions)
         # Rows that undo an applied action are work for the apply job too, whatever the decision.
@@ -566,19 +584,23 @@ class Database:
             sql += " AND d.status = ?"
             params.append(status)
 
+        if kind is not None:
+            sql += " AND c.kind = ?"
+            params.append(kind)
+
         sql += " ORDER BY d.decided_at, d.rowid"
 
         async with self.conn.execute(sql, params) as cur:
             return [_row_to_channel(row) async for row in cur]
 
-    async def list_trail(self, account_id: int) -> list[ChannelRow]:
+    async def list_trail(self, account_id: int, kind: ChatKind = "channel") -> list[ChannelRow]:
         """Channels with a final decision, in the order decided (same order as the trail)."""
         sql = f"""{_CHANNEL_SELECT}
-            WHERE c.account_id = ? AND c.gone = 0 AND d.decision IS NOT NULL
+            WHERE c.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision IS NOT NULL
               AND d.decision != 'skip'
             ORDER BY d.decided_at, d.rowid"""
 
-        async with self.conn.execute(sql, (account_id,)) as cur:
+        async with self.conn.execute(sql, (account_id, kind)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
     async def mark_decision(

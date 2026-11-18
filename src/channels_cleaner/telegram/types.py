@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Literal
 
 MediaKind = Literal["photo", "video", "animation", "document", "audio", "voice", "poll", "sticker", "other"]
+ChatKind = Literal["channel", "supergroup"]
 
 
 @dataclass(slots=True, frozen=True)
@@ -40,6 +41,7 @@ class ChannelInfo:
     last_post_at: datetime | None
     last_post_text: str | None
     last_post_media: MediaKind | None
+    kind: ChatKind = "channel"
 
 
 @dataclass(slots=True, frozen=True)

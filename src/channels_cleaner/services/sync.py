@@ -1,4 +1,4 @@
-"""Pulls the channel list from Telegram into SQLite, reporting progress over the bus."""
+"""Pulls the channel and supergroup list from Telegram into SQLite, reporting progress over the bus."""
 
 from __future__ import annotations
 
@@ -15,6 +15,8 @@ from channels_cleaner.telegram.types import ChannelInfo, FloodWaitError
 log = logging.getLogger(__name__)
 
 TOPIC = "sync"
+#: stored once a sync has covered supergroups too (lists synced by older versions only had channels)
+KINDS_SETTING = "synced_kinds"
 _BATCH = 50
 _MAX_FLOOD_RETRIES = 3
 
@@ -78,6 +80,7 @@ class SyncService:
 
             synced_at = now_iso()
             await self._db.set_setting(account_id, "synced_at", synced_at)
+            await self._db.set_setting(account_id, KINDS_SETTING, True)  # noqa: FBT003 - a stored flag
             self.state.running = False
             self.state.last_synced_at = synced_at
             self.state.total = self.state.fetched

@@ -46,7 +46,7 @@ class TelegramGateway(Protocol):
 
     # --- channels ----------------------------------------------------------------
     def iter_channels(self) -> AsyncIterator[ChannelInfo]:
-        """Yield broadcast channels the user is subscribed to (main list + archive),
+        """Yield broadcast channels and supergroups the user is in (main list + archive),
 
         excluding ones the user owns or administers.
         """

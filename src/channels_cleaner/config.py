@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     mock: bool = False
     # Mock-only knobs, handy for exercising UI edge cases.
     mock_channels: int = 120
+    mock_supergroups: int = 60
     mock_2fa: bool = False
 
     # Pause between consecutive apply actions (seconds, randomised within the range).
