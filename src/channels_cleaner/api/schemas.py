@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from channels_cleaner.db import ChannelRow
+from channels_cleaner.db import ArchiveFilter, ChannelRow
 from channels_cleaner.telegram.types import ChatKind
 
 DecisionIn = Literal["keep", "unsubscribe", "mute", "archive", "skip"]
@@ -40,6 +40,7 @@ class ResetIn(BaseModel):
 class PrefsIn(BaseModel):
     sort: Literal["dead", "unread"] = "dead"
     reverse: bool = False
+    archive: ArchiveFilter = "all"
 
 
 class ChannelOut(BaseModel):

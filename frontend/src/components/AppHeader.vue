@@ -64,6 +64,25 @@ const onDeck = computed(() => auth.authorized && route.name === 'deck' && deck.l
       v-if="auth.authorized && route.name === 'deck'"
       class="flex shrink-0 overflow-hidden rounded-lg border border-border-2 text-[12.5px]"
       role="group"
+      :aria-label="t('header.archive')"
+    >
+      <button
+        v-for="mode in ['all', 'active', 'archived'] as const"
+        :key="mode"
+        class="border-r border-border-2 px-3 py-1.5 transition-colors last:border-r-0"
+        :title="t(`header.archiveLong.${mode}`)"
+        :class="deck.prefs.archive === mode ? 'bg-text text-bg' : 'text-muted hover:text-text'"
+        :aria-pressed="deck.prefs.archive === mode"
+        @click="deck.setArchive(mode)"
+      >
+        {{ t(`header.archiveShort.${mode}`) }}
+      </button>
+    </div>
+
+    <div
+      v-if="auth.authorized && route.name === 'deck'"
+      class="flex shrink-0 overflow-hidden rounded-lg border border-border-2 text-[12.5px]"
+      role="group"
       :aria-label="t('header.sort')"
     >
       <button

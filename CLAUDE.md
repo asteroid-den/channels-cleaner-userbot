@@ -78,6 +78,9 @@ Key behaviours / decisions (agreed with the user):
   `?kind=`, review/apply are shared across kinds (`counts.pending_other` drives the dot on the
   header switcher). Lists synced before supergroups existed are re-synced once (`synced_kinds` setting).
   Wording that differs for groups lives under `group.*` in i18n (`useKindI18n().tk`).
+- Archive filter (all / active / archived) lives in the deck prefs (`prefs.archive`, per account) and narrows
+  the deck, trail and its counters for either kind; endpoints that return counts without `?archive=` read it
+  from the saved prefs. Header: kind | archive | sort.
 - Idea for later (user is thinking about it): extra tabs for chats the user owns/admins (2x2 with kind);
   leaving an owned/admin chat is destructive, so `unsubscribe` would need to be off by default there.
 - Decisions: keep/skip are final immediately; unsubscribe/mute/archive are `pending` until the

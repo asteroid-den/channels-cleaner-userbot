@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 
 import { api, ApiError, subscribe } from '@/api/client'
 import type {
+  ArchiveFilter,
   Channel,
   ChatKind,
   ChannelsResponse,
@@ -64,7 +65,7 @@ export const useDeckStore = defineStore('deck', () => {
     trail: '',
   })
   const sync = ref<SyncState | null>(null)
-  const prefs = ref<Prefs>({ sort: 'dead', reverse: false })
+  const prefs = ref<Prefs>({ sort: 'dead', reverse: false, archive: 'all' })
   const loaded = ref(false)
   const loading = ref(false)
   /** Set right after undo so the card can animate back in from where it left. */
@@ -118,16 +119,21 @@ export const useDeckStore = defineStore('deck', () => {
     try {
       if (!loaded.value) await loadPrefs()
       const requested = kind.value
+      const requestedArchive = prefs.value.archive
       const params = new URLSearchParams({
         kind: requested,
+        archive: requestedArchive,
         sort: prefs.value.sort,
         reverse: String(prefs.value.reverse),
       })
       const [data, decided] = await Promise.all([
         api.get<ChannelsResponse>(`/api/channels?${params}`),
-        api.get<{ items: Channel[] }>(`/api/decisions/trail?kind=${requested}`),
+        api.get<{ items: Channel[] }>(
+          `/api/decisions/trail?kind=${requested}&archive=${requestedArchive}`,
+        ),
       ])
-      if (requested !== kind.value) return // the user switched again while this was loading
+      // the user switched again while this was loading
+      if (requested !== kind.value || requestedArchive !== prefs.value.archive) return
       queue.value = data.items
       trail.value = decided.items
       cursor.value = null
@@ -166,6 +172,13 @@ export const useDeckStore = defineStore('deck', () => {
   }
 
   const setSort = (sort: SortMode) => savePrefs({ ...prefs.value, sort })
+  async function setArchive(archive: ArchiveFilter) {
+    if (archive === prefs.value.archive) return
+    // The undo history and the rewind position belong to the list that was on screen
+    history.value = []
+    returning.value = null
+    await savePrefs({ ...prefs.value, archive })
+  }
   const toggleReverse = () => savePrefs({ ...prefs.value, reverse: !prefs.value.reverse })
 
   function snapshot(): DeckCounts {
@@ -405,6 +418,7 @@ export const useDeckStore = defineStore('deck', () => {
     syncing,
     load,
     setKind,
+    setArchive,
     setSort,
     toggleReverse,
     decide,

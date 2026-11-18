@@ -191,7 +191,13 @@ const ZONES = [
     <div>
       <h1 class="text-2xl font-bold">{{ t('deck.emptyTitle') }}</h1>
       <p class="mt-1 text-muted">
-        {{ deck.counts.total ? tk('deck.emptyText') : tk('deck.emptyNoChannels') }}
+        {{
+          deck.counts.total
+            ? tk('deck.emptyText')
+            : deck.prefs.archive !== 'all'
+              ? t('deck.emptyFilter')
+              : tk('deck.emptyNoChannels')
+        }}
       </p>
       <p v-if="deck.sync?.error" class="mt-3 text-sm text-danger">
         {{ t('sync.error', { msg: deck.sync.error }) }}
