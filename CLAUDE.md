@@ -72,19 +72,21 @@ frontend/src/     Vue 3 + Vite + TS, Pinia, vue-router, vue-i18n (en/ru), Tailwi
 ```
 
 Key behaviours / decisions (agreed with the user):
-- Broadcast channels and supergroups (`channels.kind`, migration 4); anything the user owns/admins is
-  excluded; plain basic groups are not covered. Archive included (flagged). One sync pass covers both
+- Broadcast channels and supergroups (`channels.kind`, migration 4); plain basic groups are not covered.
+  Chats the user owns/admins are included with `channels.role` (member/admin/owner, migration 5) and have
+  their own deck: `role=member|managed` next to `kind`/`archive` on every deck query; the settings menu's
+  "Who you are there" block picks it. Leaving a chat the user *owns* is refused (409 on decide, failed item
+  on apply) unless `CC_ALLOW_OWNER_LEAVE=1` / `--allow-owner-leave` (exposed in /api/health); admins may
+  leave, the review screen warns about lost rights. What Telegram does when a creator leaves is untested. Archive included (flagged). One sync pass covers both
   kinds (a per-kind sync would mark the other kind `gone`); the deck, trail, stats and export take
   `?kind=`, review/apply are shared across kinds (`counts.pending_other` drives the dot on the
-  header switcher). Lists synced before supergroups existed are re-synced once (`synced_kinds` setting).
+  header switcher). Lists synced before supergroups/roles existed are re-synced once (`synced_roles` setting).
   Wording that differs for groups lives under `group.*` in i18n (`useKindI18n().tk`).
 - Archive filter (all / active / archived) lives in the deck prefs (`prefs.archive`, per account) and narrows
   the deck, trail and its counters for either kind; endpoints that return counts without `?archive=` read it
   from the saved prefs. Header: one wide settings button (`DeckSettings.vue`: kind, archive filter, sort, reverse,
   reset; counts come from `counts.kind_totals` / `archive_totals`) — the progress bar lives in DeckView, centred
   right above the deck (mockup D in `mockups/header-layout.html`). Switching kind is deliberately two clicks.
-- Idea for later (user is thinking about it): extra tabs for chats the user owns/admins (2x2 with kind);
-  leaving an owned/admin chat is destructive, so `unsubscribe` would need to be off by default there.
 - Decisions: keep/skip are final immediately; unsubscribe/mute/archive are `pending` until the
   apply job. "Skip" = back of the deck, forgotten on next launch. Undo = DELETE decision.
 - Full info (GetFullChannel) and pulse (raw `messages.GetHistory`, limit 100, no parsing) are

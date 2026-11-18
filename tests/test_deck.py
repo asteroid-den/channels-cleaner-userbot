@@ -34,7 +34,7 @@ async def test_decide_undo_skip(client: httpx.AsyncClient, ctx: AppContext) -> N
     a, b, c = items[0]["id"], items[1]["id"], items[2]["id"]
 
     r = await client.put(f"/api/decisions/{a}", json={"decision": "keep"})
-    assert r.json()["counts"]["undecided"] == 39
+    assert r.json()["counts"]["undecided"] == len(items) - 1
     await client.put(f"/api/decisions/{b}", json={"decision": "unsubscribe"})
     await client.put(f"/api/decisions/{c}", json={"decision": "skip"})
 
@@ -97,7 +97,7 @@ async def test_apply_review_stats_export(client: httpx.AsyncClient, ctx: AppCont
 
     stats = await get_json(client, "/api/stats")
     unsubscribed = stats["decisions"]["unsubscribe"].get("applied", 0)
-    assert stats["subscribed"] == 40 - unsubscribed
+    assert stats["subscribed"] == len(items) - unsubscribed
 
     export = await client.get("/api/export", params={"format": "json"})
     assert len(export.json()) == unsubscribed
@@ -157,8 +157,10 @@ async def test_channels_and_supergroups_are_separate_decks(client: httpx.AsyncCl
     await login(client, ctx)
     channels = await get_json(client, "/api/channels")
     groups = await get_json(client, "/api/channels", params={"kind": "supergroup"})
-    assert channels["counts"]["total"] == 40
-    assert groups["counts"]["total"] == 25
+    assert channels["counts"]["total"] == len(channels["items"])
+    assert groups["counts"]["total"] == len(groups["items"])
+    assert channels["counts"]["total"] + channels["counts"]["role_totals"]["managed"] == 40
+    assert groups["counts"]["total"] + groups["counts"]["role_totals"]["managed"] == 25
     assert {item["kind"] for item in channels["items"]} == {"channel"}
     assert {item["kind"] for item in groups["items"]} == {"supergroup"}
 
@@ -166,7 +168,7 @@ async def test_channels_and_supergroups_are_separate_decks(client: httpx.AsyncCl
     await client.put(f"/api/decisions/{cid}", json={"decision": "keep"})
     r = await client.put(f"/api/decisions/{gid}", json={"decision": "unsubscribe"})
     counts = r.json()["counts"]  # the kind comes from the channel itself
-    assert counts["total"] == 25
+    assert counts["total"] == len(groups["items"])
     assert counts["trail"] == "u"
     assert counts["pending"] == 1
     assert counts["pending_other"] == 0
@@ -178,14 +180,14 @@ async def test_channels_and_supergroups_are_separate_decks(client: httpx.AsyncCl
 
     trail = await get_json(client, "/api/decisions/trail", params={"kind": "supergroup"})
     assert [t["id"] for t in trail["items"]] == [gid]
-    assert (await get_json(client, "/api/stats", params={"kind": "supergroup"}))["subscribed"] == 25
+    assert (await get_json(client, "/api/stats", params={"kind": "supergroup"}))["subscribed"] == len(groups["items"])
 
 
 async def test_sync_keeps_both_kinds_and_resyncs_old_lists(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     account = ctx.auth.account_id
     assert await ctx.db.channel_count(account) == 65
-    assert await ctx.db.get_setting(account, "synced_kinds") is True
+    assert await ctx.db.get_setting(account, "synced_roles") is True
 
     ctx.sync.start(account)
     await wait_for(lambda: _idle(ctx))
@@ -236,13 +238,94 @@ async def test_archive_filter_saved_in_prefs_applies_to_answers(client: httpx.As
 
 async def test_counts_tell_how_big_each_menu_choice_is(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
+    account = ctx.auth.account_id
     counts = (await get_json(client, "/api/channels", params={"kind": "supergroup"}))["counts"]
-    assert counts["kind_totals"] == {"channel": 40, "supergroup": 25}
+    assert counts["kind_totals"] == {
+        "channel": await ctx.db.channel_count(account, "channel", role="member"),
+        "supergroup": await ctx.db.channel_count(account, "supergroup", role="member"),
+    }
     totals = counts["archive_totals"]
-    assert totals["all"] == 25
-    assert totals["active"] + totals["archived"] == 25
+    assert totals["all"] == counts["total"]
+    assert totals["active"] + totals["archived"] == totals["all"]
 
     archived = (await get_json(client, "/api/channels", params={"kind": "supergroup", "archive": "archived"}))["counts"]
     assert archived["total"] == totals["archived"]
     assert archived["archive_totals"] == totals  # the menu keeps showing all choices
     assert archived["kind_totals"]["supergroup"] == totals["archived"]
+
+
+async def test_chats_the_user_runs_have_their_own_deck(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    mine = await get_json(client, "/api/channels", params={"role": "managed"})
+    others = await get_json(client, "/api/channels")
+    assert mine["items"], "the mock has some chats the user runs"
+    assert {i["role"] for i in mine["items"]} <= {"admin", "owner"}
+    assert {i["role"] for i in others["items"]} == {"member"}
+    assert mine["counts"]["role_totals"] == others["counts"]["role_totals"]
+    assert mine["counts"]["role_totals"]["managed"] == len(mine["items"])
+
+    # a decision lands in the deck of the chat's own role
+    pick = mine["items"][0]["id"]
+    r = await client.put(
+        f"/api/decisions/{pick}", json={"decision": "keep" if mine["items"][0]["role"] == "owner" else "mute"}
+    )
+    assert r.json()["counts"]["total"] == len(mine["items"])
+    assert (await get_json(client, "/api/channels"))["counts"]["trail"] == ""
+    assert (await get_json(client, "/api/channels", params={"role": "managed"}))["counts"]["trail"] != ""
+    assert (await get_json(client, "/api/stats", params={"role": "managed"}))["subscribed"] == len(mine["items"])
+
+
+async def _owned(client: httpx.AsyncClient) -> int:
+    items = (await get_json(client, "/api/channels", params={"role": "managed"}))["items"]
+    return next(i["id"] for i in items if i["role"] == "owner")
+
+
+async def test_leaving_an_owned_chat_is_off_by_default(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    owned = await _owned(client)
+    refused = await client.put(f"/api/decisions/{owned}", json={"decision": "unsubscribe"})
+    assert refused.status_code == 409
+    assert (await client.put(f"/api/decisions/{owned}", json={"decision": "mute"})).status_code == 200
+
+    # an admin may leave: only the creator is protected
+    items = (await get_json(client, "/api/channels", params={"role": "managed"}))["items"]
+    admin = next(i["id"] for i in items if i["role"] == "admin")
+    assert (await client.put(f"/api/decisions/{admin}", json={"decision": "unsubscribe"})).status_code == 200
+    assert (await get_json(client, "/api/health"))["allow_owner_leave"] is False
+
+
+async def test_owner_leave_flag_allows_it(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    ctx.settings.allow_owner_leave = True
+    owned = await _owned(client)
+    assert (await client.put(f"/api/decisions/{owned}", json={"decision": "unsubscribe"})).status_code == 200
+
+    async def finished() -> bool:
+        return bool((await get_json(client, "/api/apply/state"))["status"] == "finished")
+
+    await client.post("/api/apply")
+    await wait_for(finished, timeout=30)
+    state = await get_json(client, "/api/apply/state")
+    assert state["done"] + state["failed"] == 1
+    assert (
+        state["failed"] == 0
+        or state["items"][0]["error"] != "Leaving a chat you own is off (start with --allow-owner-leave)"
+    )
+
+
+async def test_queued_owner_leave_fails_when_the_flag_is_off(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    ctx.settings.allow_owner_leave = True
+    owned = await _owned(client)
+    await client.put(f"/api/decisions/{owned}", json={"decision": "unsubscribe"})
+    ctx.settings.allow_owner_leave = False  # e.g. the app was restarted without the flag
+
+    await client.post("/api/apply")
+
+    async def finished() -> bool:
+        return bool((await get_json(client, "/api/apply/state"))["status"] == "finished")
+
+    await wait_for(finished, timeout=30)
+    state = await get_json(client, "/api/apply/state")
+    assert state["failed"] == 1
+    assert "off" in state["items"][0]["error"]

@@ -6,8 +6,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from channels_cleaner.db import ArchiveFilter, ChannelRow
-from channels_cleaner.telegram.types import ChatKind
+from channels_cleaner.db import ArchiveFilter, ChannelRow, RoleFilter
+from channels_cleaner.telegram.types import ChatKind, ChatRole
 
 DecisionIn = Literal["keep", "unsubscribe", "mute", "archive", "skip"]
 
@@ -35,6 +35,7 @@ class DecisionBody(BaseModel):
 class ResetIn(BaseModel):
     only: DecisionIn | None = None
     kind: ChatKind = "channel"
+    role: RoleFilter = "member"
 
 
 class PrefsIn(BaseModel):
@@ -46,6 +47,7 @@ class PrefsIn(BaseModel):
 class ChannelOut(BaseModel):
     id: int
     kind: ChatKind
+    role: ChatRole
     title: str
     username: str | None
     link: str | None
@@ -77,6 +79,7 @@ class ChannelOut(BaseModel):
         return cls(
             id=row.channel_id,
             kind=row.kind,
+            role=row.role,
             title=row.title,
             username=row.username,
             link=f"https://t.me/{row.username}" if row.username else None,

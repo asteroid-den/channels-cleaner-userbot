@@ -31,3 +31,10 @@ def test_data_dir_is_private(tmp_path: Path) -> None:
 
     for path in (data, data / "sessions"):
         assert stat.S_IMODE(path.stat().st_mode) == 0o700
+
+
+def test_leaving_owned_chats_is_off_unless_asked_for(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CC_ALLOW_OWNER_LEAVE", raising=False)
+    assert Settings(_env_file=None).allow_owner_leave is False  # pyright: ignore[reportCallIssue]
+    monkeypatch.setenv("CC_ALLOW_OWNER_LEAVE", "1")
+    assert Settings(_env_file=None).allow_owner_leave is True  # pyright: ignore[reportCallIssue]

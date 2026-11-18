@@ -3,7 +3,7 @@ import { useEventListener } from '@vueuse/core'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { ArchiveFilter, ChatKind, SortMode } from '@/api/types'
+import type { ArchiveFilter, ChatKind, RoleFilter, SortMode } from '@/api/types'
 import { useDeckStore } from '@/stores/deck'
 
 import AppIcon from './AppIcon.vue'
@@ -18,6 +18,7 @@ useEventListener(window, 'keydown', (e) => {
 })
 
 const KINDS: ChatKind[] = ['channel', 'supergroup']
+const ROLES: RoleFilter[] = ['member', 'managed']
 const ARCHIVES: ArchiveFilter[] = ['all', 'active', 'archived']
 const SORTS: SortMode[] = ['dead', 'unread']
 
@@ -46,6 +47,10 @@ function reset() {
     >
       <span class="font-semibold">{{ t(`settings.kind.${deck.kind}`) }}</span>
       <span class="text-faint">·</span>
+      <template v-if="deck.role === 'managed'">
+        <span>{{ t('settings.role.managed') }}</span>
+        <span class="text-faint">·</span>
+      </template>
       <span>{{ t(`settings.archiveShort.${deck.prefs.archive}`) }}</span>
       <span class="text-faint">·</span>
       <span>{{ t(`settings.sort.${deck.prefs.sort}`) }}</span>
@@ -102,6 +107,31 @@ function reset() {
                 <template v-if="deck.kind !== k && deck.counts.pending_other > 0">
                   · {{ t('settings.waiting', { n: deck.counts.pending_other }) }}
                 </template>
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <section class="mb-3.5">
+          <h2 class="label mb-2">{{ t('settings.roleTitle') }}</h2>
+          <div
+            class="grid grid-cols-2 overflow-hidden rounded-lg border border-border-2 text-[12.5px]"
+          >
+            <button
+              v-for="r in ROLES"
+              :key="r"
+              class="border-r border-border-2 px-2 py-1.5 transition-colors last:border-r-0"
+              :class="deck.role === r ? 'bg-text text-bg' : 'text-muted hover:text-text'"
+              :title="t(`settings.roleLong.${r}`)"
+              :aria-pressed="deck.role === r"
+              @click="deck.setRole(r)"
+            >
+              {{ t(`settings.role.${r}`) }}
+              <span
+                class="ml-0.5 text-[11px] italic"
+                :class="deck.role === r ? 'opacity-60' : 'text-faint'"
+              >
+                {{ deck.counts.role_totals[r] }}
               </span>
             </button>
           </div>

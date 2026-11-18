@@ -35,6 +35,12 @@ export default {
   settings: {
     title: 'Deck settings',
     kindTitle: 'What to clean',
+    roleTitle: 'Who you are there',
+    role: { member: 'Member', managed: 'I run it' },
+    roleLong: {
+      member: 'Chats where you are just a member',
+      managed: 'Chats you own or administer',
+    },
     kind: { channel: 'Channels', supergroup: 'Supergroups' },
     waiting: '{n} waiting for review',
     pendingElsewhere: 'Has actions waiting for review',
@@ -143,6 +149,9 @@ export default {
     applyCta: 'Review and apply · {n}',
     tags: { keep: 'Keep', unsubscribe: 'Leave', skip: 'Later', mute: 'Mute', archive: 'Archive' },
     position: '{pos} of {total}',
+    role: { admin: 'Admin', owner: 'Owner' },
+    ownerLeaveOff:
+      'Leaving a chat you own is switched off. Start the app with --allow-owner-leave (or CC_ALLOW_OWNER_LEAVE=1) to allow it.',
     emptyTitle: 'All sorted!',
     emptyText: 'You have made a decision for every channel.',
     emptyNoChannels: 'You are not subscribed to any channels (that you don’t own).',
@@ -205,6 +214,10 @@ export default {
       archive:
         'The channels move to the Telegram archive. If not muted, a channel comes back with its next post.',
     },
+    leavingRun:
+      'You are leaving {n} chat you administer — you will lose your admin rights | You are leaving {n} chats you administer — you will lose your admin rights',
+    leavingOwned:
+      '{n} chat you own will be left without its owner | {n} chats you own will be left without their owner',
     noWayBack: 'private, no way back without an invite',
     noWayBackCount:
       '{n} private channel — no way back without an invite | {n} private channels — no way back without an invite',

@@ -15,7 +15,7 @@ const stats = ref<Stats | null>(null)
 const AGE_ORDER = ['week', 'month', 'quarter', 'half_year', 'year', 'older', 'never'] as const
 
 async function load() {
-  stats.value = await api.get<Stats>(`/api/stats?kind=${deck.kind}`)
+  stats.value = await api.get<Stats>(`/api/stats?kind=${deck.kind}&role=${deck.role}`)
 }
 onMounted(load)
 
@@ -34,7 +34,7 @@ const tiles = computed(() => [
 const ageMax = computed(() => Math.max(1, ...Object.values(stats.value?.last_post_age ?? {})))
 
 async function retryFailed() {
-  await api.post(`/api/decisions/retry-failed?kind=${deck.kind}`)
+  await api.post(`/api/decisions/retry-failed?kind=${deck.kind}&role=${deck.role}`)
   await load()
 }
 </script>
@@ -117,7 +117,7 @@ async function retryFailed() {
           <a
             v-for="fmt in ['csv', 'json']"
             :key="fmt"
-            :href="`/api/export?format=${fmt}&kind=${deck.kind}`"
+            :href="`/api/export?format=${fmt}&kind=${deck.kind}&role=${deck.role}`"
             class="key uppercase"
             download
           >

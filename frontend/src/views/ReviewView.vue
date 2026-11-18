@@ -59,6 +59,13 @@ const minutes = computed(() => Math.round((pending.value.length * 2.6) / 60))
 const noWayBack = computed(
   () => pending.value.filter((c) => c.decision === 'unsubscribe' && !c.username).length,
 )
+/** Chats the user runs that they are about to leave: admin rights go with them. */
+const leavingRun = computed(
+  () => pending.value.filter((c) => c.decision === 'unsubscribe' && c.role === 'admin').length,
+)
+const leavingOwned = computed(
+  () => pending.value.filter((c) => c.decision === 'unsubscribe' && c.role === 'owner').length,
+)
 const modKey = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'
 
 async function load() {
@@ -162,6 +169,9 @@ useHotkeys({
                 <span v-if="c.reverts && group.decision !== 'unsubscribe'" class="text-text"
                   >↺ {{ t(`review.reverts.${c.reverts}`) }} ·
                 </span>
+                <span v-if="c.role !== 'member'" class="font-medium text-text"
+                  >{{ t(`deck.role.${c.role}`) }} ·
+                </span>
                 <span v-if="c.kind === 'supergroup'">{{ t('settings.kind.supergroup') }} · </span>
                 <span v-if="c.username">@{{ c.username }} · </span>
                 <span
@@ -222,6 +232,12 @@ useHotkeys({
         <div class="flex-1 text-xs leading-relaxed text-muted">
           <p v-if="noWayBack" class="mb-0.5 flex items-center gap-1.5 font-medium text-danger">
             <AppIcon name="lock" :size="12" />{{ t('review.noWayBackCount', noWayBack) }}
+          </p>
+          <p v-if="leavingOwned" class="mb-0.5 flex items-center gap-1.5 font-medium text-danger">
+            <AppIcon name="alert" :size="12" />{{ t('review.leavingOwned', leavingOwned) }}
+          </p>
+          <p v-if="leavingRun" class="mb-0.5 flex items-center gap-1.5 font-medium text-danger">
+            <AppIcon name="alert" :size="12" />{{ t('review.leavingRun', leavingRun) }}
           </p>
           <p>{{ t('review.pacing', { m: t('time.minutes', minutes) }) }}</p>
         </div>

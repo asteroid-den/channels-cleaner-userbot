@@ -11,16 +11,20 @@ from typing import Any, Literal, cast
 
 import aiosqlite
 
-from channels_cleaner.telegram.types import ChannelFull, ChannelInfo, ChatKind, TgUser
+from channels_cleaner.telegram.types import ChannelFull, ChannelInfo, ChatKind, ChatRole, TgUser
 
 Decision = Literal["keep", "unsubscribe", "mute", "archive", "skip"]
 DecisionStatus = Literal["pending", "applied", "failed"]
 SortMode = Literal["dead", "unread"]
 #: which part of the list the deck shows: everything, only the main list, or only the Telegram archive
 ArchiveFilter = Literal["all", "active", "archived"]
+#: chats the user is just in, or ones they run (admin or owner)
+RoleFilter = Literal["member", "managed"]
 
 #: narrows a query on ``channels c`` to the archive filter; takes the filter twice as parameters
 _ARCHIVE_COND = "(? = 'all' OR c.is_archived = (? = 'archived'))"
+#: narrows a query on ``channels c`` to a role filter; takes the filter once as a parameter
+_ROLE_COND = "((? = 'managed') = (c.role != 'member'))"
 
 ACTION_DECISIONS: tuple[Decision, ...] = ("unsubscribe", "mute", "archive")
 #: applied actions the app can take back (a left channel is gone for good)
@@ -98,6 +102,10 @@ MIGRATIONS: list[str] = [
     """
     ALTER TABLE channels ADD COLUMN kind TEXT NOT NULL DEFAULT 'channel';
     """,
+    # 5 — chats the user owns or administers are listed too, marked by ``role``
+    """
+    ALTER TABLE channels ADD COLUMN role TEXT NOT NULL DEFAULT 'member';
+    """,
 ]
 
 
@@ -140,13 +148,14 @@ class ChannelRow:
     #: mute/archive the app already applied and the current decision will undo
     reverts: str | None = None
     kind: ChatKind = "channel"
+    role: ChatRole = "member"
 
 
 _CHANNEL_SELECT = """
     SELECT c.channel_id, c.title, c.username, c.about, c.members_count, c.unread_count,
            c.is_muted, c.is_archived, c.photo_file_id, c.photo_unique_id, c.last_post_id,
            c.last_post_at, c.last_post_text, c.last_post_media, c.full_fetched_at, c.gone,
-           d.decision, d.status, d.decided_at, d.applied_at, d.error, c.pulse, d.reverts, c.kind
+           d.decision, d.status, d.decided_at, d.applied_at, d.error, c.pulse, d.reverts, c.kind, c.role
     FROM channels c
     LEFT JOIN decisions d ON d.account_id = c.account_id AND d.channel_id = c.channel_id
 """
@@ -179,6 +188,7 @@ def _row_to_channel(row: Sequence[Any]) -> ChannelRow:
         pulse=json.loads(row[21]) if row[21] else None,
         reverts=row[22],
         kind=row[23],
+        role=row[24],
     )
 
 
@@ -272,8 +282,8 @@ class Database:
             """
             INSERT INTO channels (account_id, channel_id, title, username, members_count,
                 unread_count, is_muted, is_archived, photo_file_id, photo_unique_id,
-                last_post_id, last_post_at, last_post_text, last_post_media, synced_at, kind, gone)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                last_post_id, last_post_at, last_post_text, last_post_media, synced_at, kind, role, gone)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             ON CONFLICT (account_id, channel_id) DO UPDATE SET
                 title = excluded.title, username = excluded.username,
                 members_count = COALESCE(excluded.members_count, channels.members_count),
@@ -282,7 +292,7 @@ class Database:
                 photo_unique_id = excluded.photo_unique_id, last_post_id = excluded.last_post_id,
                 last_post_at = excluded.last_post_at, last_post_text = excluded.last_post_text,
                 last_post_media = excluded.last_post_media, synced_at = excluded.synced_at,
-                kind = excluded.kind, gone = 0
+                kind = excluded.kind, role = excluded.role, gone = 0
             """,
             [
                 (
@@ -302,6 +312,7 @@ class Database:
                     c.last_post_media,
                     ts,
                     c.kind,
+                    c.role,
                 )
                 for c in channels
             ],
@@ -379,13 +390,23 @@ class Database:
         )
         await self.conn.commit()
 
-    async def channel_count(self, account_id: int, kind: ChatKind | None = None, archive: ArchiveFilter = "all") -> int:
+    async def channel_count(
+        self,
+        account_id: int,
+        kind: ChatKind | None = None,
+        archive: ArchiveFilter = "all",
+        role: RoleFilter | None = None,
+    ) -> int:
         sql = f"SELECT COUNT(*) FROM channels c WHERE c.account_id = ? AND c.gone = 0 AND {_ARCHIVE_COND}"  # noqa: S608 - the only interpolation is a module constant
         params: list[Any] = [account_id, archive, archive]
 
         if kind is not None:
             sql += " AND c.kind = ?"
             params.append(kind)
+
+        if role is not None:
+            sql += f" AND {_ROLE_COND}"
+            params.append(role)
 
         async with self.conn.execute(sql, params) as cur:
             row = await cur.fetchone()
@@ -406,12 +427,13 @@ class Database:
         account_id: int,
         *,
         kind: ChatKind = "channel",
+        role: RoleFilter = "member",
         archive: ArchiveFilter = "all",
         sort: SortMode = "dead",
         reverse: bool = False,
         undecided_only: bool = True,
     ) -> list[ChannelRow]:
-        where = ["c.account_id = ?", "c.gone = 0", "c.kind = ?", _ARCHIVE_COND]
+        where = ["c.account_id = ?", "c.gone = 0", "c.kind = ?", _ARCHIVE_COND, _ROLE_COND]
 
         if undecided_only:
             where.append("(d.decision IS NULL OR d.decision = 'skip')")
@@ -428,7 +450,7 @@ class Database:
         order = f"(d.decision = 'skip') ASC, {key_desc if reverse else key}, c.title COLLATE NOCASE"
         sql = f"{_CHANNEL_SELECT} WHERE {' AND '.join(where)} ORDER BY {order}"
 
-        async with self.conn.execute(sql, (account_id, kind, archive, archive)) as cur:
+        async with self.conn.execute(sql, (account_id, kind, archive, archive, role)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
     # --- decisions ---------------------------------------------------------------------
@@ -517,7 +539,13 @@ class Database:
         await self.conn.commit()
         return cur.rowcount > 0
 
-    async def reset_decisions(self, account_id: int, only: Decision | None = None, kind: ChatKind | None = None) -> int:
+    async def reset_decisions(
+        self,
+        account_id: int,
+        only: Decision | None = None,
+        kind: ChatKind | None = None,
+        role: RoleFilter = "member",
+    ) -> int:
         """Forget non-action decisions (keep/skip) and pending ones; applied actions stay."""
         sql = """
             DELETE FROM decisions WHERE account_id = ?
@@ -530,8 +558,11 @@ class Database:
             params = (*params, only)
 
         if kind is not None:
-            sql += " AND channel_id IN (SELECT channel_id FROM channels WHERE account_id = ? AND kind = ?)"
-            params = (*params, account_id, kind)
+            sql += (
+                " AND channel_id IN (SELECT c.channel_id FROM channels c"
+                " WHERE c.account_id = ? AND c.kind = ? AND ((? = 'managed') = (c.role != 'member')))"
+            )
+            params = (*params, account_id, kind, role)
 
         cur = await self.conn.execute(sql, params)
         await self.conn.commit()
@@ -542,7 +573,11 @@ class Database:
         await self.conn.commit()
 
     async def decision_counts(
-        self, account_id: int, kind: ChatKind = "channel", archive: ArchiveFilter = "all"
+        self,
+        account_id: int,
+        kind: ChatKind = "channel",
+        archive: ArchiveFilter = "all",
+        role: RoleFilter = "member",
     ) -> dict[str, int]:
         """Final decisions per kind for channels still in the list ("skip" is not one)."""
         async with self.conn.execute(
@@ -551,9 +586,10 @@ class Database:
             JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
             WHERE d.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision != 'skip'
               AND (? = 'all' OR c.is_archived = (? = 'archived'))
+              AND ((? = 'managed') = (c.role != 'member'))
             GROUP BY d.decision
             """,
-            (account_id, kind, archive, archive),
+            (account_id, kind, archive, archive, role),
         ) as cur:
             rows = list(await cur.fetchall())
 
@@ -561,7 +597,13 @@ class Database:
         counts.update({str(decision): int(n) for decision, n in rows})
         return counts
 
-    async def decision_trail(self, account_id: int, kind: ChatKind = "channel", archive: ArchiveFilter = "all") -> str:
+    async def decision_trail(
+        self,
+        account_id: int,
+        kind: ChatKind = "channel",
+        archive: ArchiveFilter = "all",
+        role: RoleFilter = "member",
+    ) -> str:
         """Final decisions in the order they were made, one letter each (k/u/m/a)."""
         async with self.conn.execute(
             """
@@ -569,9 +611,10 @@ class Database:
             JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
             WHERE d.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision != 'skip'
               AND (? = 'all' OR c.is_archived = (? = 'archived'))
+              AND ((? = 'managed') = (c.role != 'member'))
             ORDER BY d.decided_at, d.rowid
             """,
-            (account_id, kind, archive, archive),
+            (account_id, kind, archive, archive, role),
         ) as cur:
             rows = list(await cur.fetchall())
 
@@ -584,6 +627,7 @@ class Database:
         status: DecisionStatus | None = None,
         decisions: Sequence[Decision] = ACTION_DECISIONS,
         kind: ChatKind | None = None,
+        role: RoleFilter | None = None,
     ) -> list[ChannelRow]:
         placeholders = ",".join("?" for _ in decisions)
         # Rows that undo an applied action are work for the apply job too, whatever the decision.
@@ -598,21 +642,29 @@ class Database:
             sql += " AND c.kind = ?"
             params.append(kind)
 
+        if role is not None:
+            sql += f" AND {_ROLE_COND}"
+            params.append(role)
+
         sql += " ORDER BY d.decided_at, d.rowid"
 
         async with self.conn.execute(sql, params) as cur:
             return [_row_to_channel(row) async for row in cur]
 
     async def list_trail(
-        self, account_id: int, kind: ChatKind = "channel", archive: ArchiveFilter = "all"
+        self,
+        account_id: int,
+        kind: ChatKind = "channel",
+        archive: ArchiveFilter = "all",
+        role: RoleFilter = "member",
     ) -> list[ChannelRow]:
         """Channels with a final decision, in the order decided (same order as the trail)."""
         sql = f"""{_CHANNEL_SELECT}
             WHERE c.account_id = ? AND c.gone = 0 AND c.kind = ? AND d.decision IS NOT NULL
-              AND d.decision != 'skip' AND {_ARCHIVE_COND}
+              AND d.decision != 'skip' AND {_ARCHIVE_COND} AND {_ROLE_COND}
             ORDER BY d.decided_at, d.rowid"""
 
-        async with self.conn.execute(sql, (account_id, kind, archive, archive)) as cur:
+        async with self.conn.execute(sql, (account_id, kind, archive, archive, role)) as cur:
             return [_row_to_channel(row) async for row in cur]
 
     async def mark_decision(

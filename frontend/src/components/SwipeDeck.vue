@@ -8,11 +8,16 @@ import type { HistoryEntry } from '@/stores/deck'
 import AppIcon, { type IconName } from './AppIcon.vue'
 import ChannelCard from './ChannelCard.vue'
 
-const props = defineProps<{ items: Channel[]; returning: HistoryEntry | null }>()
+const props = withDefaults(
+  defineProps<{ items: Channel[]; returning: HistoryEntry | null; canLeave?: boolean }>(),
+  { canLeave: true },
+)
 const emit = defineEmits<{
   decide: [decision: Decision]
   /** A card starts flying away (button, key, zone or drag); `from` is where it was. */
   flinging: [decision: Decision, from: DOMRect]
+  /** The decision was turned down (leaving a chat the user owns while that is off). */
+  refused: [decision: Decision]
 }>()
 const { t } = useI18n()
 
@@ -109,7 +114,7 @@ const stamp = computed<{ decision: Decision; strength: number } | null>(() => {
   if (preview.value && !dragging.value) return { decision: preview.value, strength: 0.35 }
   if (Math.abs(dx.value) > Math.abs(dy.value)) {
     if (dx.value > 12) return { decision: 'keep', strength: Math.min(1, dx.value / SWIPE_X) }
-    if (dx.value < -12)
+    if (dx.value < -12 && props.canLeave)
       return { decision: 'unsubscribe', strength: Math.min(1, -dx.value / SWIPE_X) }
   } else if (dy.value > 12) {
     return { decision: 'skip', strength: Math.min(1, dy.value / SWIPE_Y) }
@@ -198,6 +203,13 @@ function onPointerUp(e: PointerEvent) {
 
 function fling(decision: Decision): boolean {
   if (busy.value || !visible.value.length) return false
+  if (decision === 'unsubscribe' && !props.canLeave) {
+    preview.value = null
+    dx.value = 0
+    dy.value = 0
+    emit('refused', decision)
+    return false
+  }
   const card = front?.querySelector('article')
   if (card) emit('flinging', decision, card.getBoundingClientRect())
   preview.value = null

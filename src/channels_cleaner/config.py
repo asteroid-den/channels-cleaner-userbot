@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     mock_supergroups: int = 60
     mock_2fa: bool = False
 
+    # Leaving a chat the user created is off unless asked for: it may orphan the chat.
+    allow_owner_leave: bool = False
+
     # Pause between consecutive apply actions (seconds, randomised within the range).
     apply_delay_min: float = 1.5
     apply_delay_max: float = 3.0

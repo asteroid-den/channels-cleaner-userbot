@@ -11,9 +11,11 @@ import { useKindI18n } from '@/composables/useKindI18n'
 import { useHotkeys } from '@/composables/useHotkeys'
 import { useApplyStore } from '@/stores/apply'
 import { useDeckStore } from '@/stores/deck'
+import { useUiStore } from '@/stores/ui'
 
 const { t, tk } = useKindI18n()
 const deck = useDeckStore()
+const ui = useUiStore()
 const apply = useApplyStore()
 const router = useRouter()
 const swiper = useTemplateRef<InstanceType<typeof SwipeDeck>>('swiper')
@@ -118,10 +120,17 @@ function zoneMove(e: PointerEvent) {
   el.style.setProperty('--my', `${e.clientY - r.top}px`)
 }
 function zoneEnter(decision: 'keep' | 'unsubscribe') {
+  if (decision === 'unsubscribe' && !canLeave.value) return
   if (swiper.value && !swiper.value.busy) swiper.value.preview = decision
 }
 function zoneLeave() {
   if (swiper.value) swiper.value.preview = null
+}
+
+// --- leaving a chat the user owns is off unless the app was started with --allow-owner-leave ----
+const canLeave = computed(() => deck.current?.role !== 'owner' || ui.allowOwnerLeave)
+function onRefused() {
+  ui.toast(t('deck.ownerLeaveOff'), 'info')
 }
 
 // --- derived ---------------------------------------------------------------------------------
@@ -267,8 +276,10 @@ const ZONES = [
             ref="swiper"
             :items="deck.items"
             :returning="deck.returning"
+            :can-leave="canLeave"
             @decide="deck.decide"
             @flinging="onFlinging"
+            @refused="onRefused"
           />
         </div>
       </div>
@@ -278,7 +289,11 @@ const ZONES = [
           v-for="k in KEYS"
           :key="k.id"
           class="key"
-          :class="[k.cls, pressed === k.id ? 'pressed' : '']"
+          :class="[
+            k.cls,
+            pressed === k.id ? 'pressed' : '',
+            k.id === 'unsubscribe' && !canLeave ? 'opacity-40' : '',
+          ]"
           :aria-keyshortcuts="k.shortcut"
           @click="act(k.id)"
         >

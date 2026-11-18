@@ -161,7 +161,13 @@ Reading is cheap: channel details and the last 100 post dates are fetched lazily
 time, and cached for 72 hours. Actions run one after another with a random 1.5–3 s pause. If
 Telegram replies with a flood wait, the job sleeps for the time it was told to (the UI shows a
 countdown) and carries on. You can stop the job at any point; whatever wasn't applied stays
-queued. Channels you own or administer are never shown.
+queued.
+
+Channels and supergroups you own or administer have a deck of their own (open the settings menu
+and pick "I run it"). Leaving a chat as an admin costs you your admin rights, so the review screen
+warns about it. Leaving a chat you **created** is switched off by default, because it may leave the
+chat without an owner; start the app with `--allow-owner-leave` (or `CC_ALLOW_OWNER_LEAVE=1`) if you
+want that, for example to clean up test groups of your own.
 
 ## Configuration
 
@@ -173,6 +179,7 @@ Everything is optional. Use environment variables or a `.env` file in the workin
 | `--host` | `CC_HOST` | `127.0.0.1` | Address to listen on |
 | `--port` | `CC_PORT` | `8765` | Port |
 | `--no-browser` | `CC_NO_BROWSER=1` | off | Don't open a browser tab |
+| `--allow-owner-leave` | `CC_ALLOW_OWNER_LEAVE=1` | off | Allow leaving chats you created (see above) |
 | `--mock` | `CC_MOCK=1` | off | Fake Telegram backend |
 | | `CC_MOCK_CHANNELS` | `120` | Number of generated channels |
 | | `CC_MOCK_SUPERGROUPS` | `60` | Number of generated supergroups |

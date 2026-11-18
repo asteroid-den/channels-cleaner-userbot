@@ -98,6 +98,9 @@ const rate = computed(() =>
             <span v-else class="inline-flex items-center gap-1"
               ><AppIcon name="lock" :size="11" />{{ tk('deck.private') }}</span
             >
+            <span v-if="channel.role !== 'member'" class="tag bg-accent-soft text-accent">{{
+              t(`deck.role.${channel.role}`)
+            }}</span>
             <template v-if="channel.is_muted"><span>·</span>{{ t('deck.muted') }}</template>
             <template v-if="channel.is_archived"><span>·</span>{{ t('deck.archived') }}</template>
           </div>

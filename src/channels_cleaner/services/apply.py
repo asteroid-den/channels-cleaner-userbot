@@ -36,6 +36,7 @@ class ApplyItem:
     error: str | None = None
     #: an applied mute/archive to take back first (the decision was changed since)
     reverts: str | None = None
+    role: str = "member"
 
 
 @dataclass(slots=True)
@@ -95,6 +96,7 @@ class ApplyService:
                     title=row.title,
                     has_photo=row.has_photo,
                     reverts=row.reverts,
+                    role=row.role,
                 )
                 for row in pending
             ],
@@ -124,6 +126,11 @@ class ApplyService:
         return self._cancel.is_set()
 
     async def _execute(self, item: ApplyItem) -> None:
+        # Normally refused when the decision is made; this covers one queued while the flag was on
+        if item.decision == "unsubscribe" and item.role == "owner" and not self._settings.allow_owner_leave:
+            msg = "Leaving a chat you own is off (start with --allow-owner-leave)"
+            raise GatewayError(msg)
+
         # Leaving makes any earlier mute/archive moot; otherwise take it back first.
         if item.reverts and item.decision != "unsubscribe":
             undo = {"mute": self._gw.unmute, "archive": self._gw.unarchive}[item.reverts]
