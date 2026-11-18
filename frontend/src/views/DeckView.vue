@@ -163,7 +163,8 @@ const ZONES = [
 </script>
 
 <template>
-  <div class="flex flex-1 flex-col">
+  <!-- overflow-y-clip: the cursor glow of the side zones runs past the zone, but not past the page -->
+  <div class="flex flex-1 flex-col overflow-y-clip">
     <!-- progress, centred right above the deck -->
     <div v-if="deck.loaded && !showSync" class="relative z-20 flex justify-center px-6 pt-4">
       <div class="w-full max-w-[760px]"><DeckProgress /></div>
@@ -324,17 +325,21 @@ const ZONES = [
 
 /* The glow is not clipped by the zone: it runs on under the card, which covers it. */
 .zone {
+  --glow-r: 420px;
   cursor: pointer;
 }
 .zone::before {
   content: '';
   position: absolute;
-  inset: 0;
+  /* The layer reaches a glow radius past the zone, so the gradient fades out instead of being cut
+     by a horizontal line at the top and bottom of the zone. */
+  inset: calc(-1 * var(--glow-r)) 0;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s;
   background: radial-gradient(
-    420px circle at calc(var(--mx, 50%) + var(--glow-shift, 0px)) var(--my, 50%),
+    var(--glow-r) circle at calc(var(--mx, 50%) + var(--glow-shift, 0px))
+      calc(var(--my, 50%) + var(--glow-r)),
     var(--zone-color),
     transparent 70%
   );
