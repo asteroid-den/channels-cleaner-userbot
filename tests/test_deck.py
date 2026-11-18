@@ -159,8 +159,8 @@ async def test_channels_and_supergroups_are_separate_decks(client: httpx.AsyncCl
     groups = await get_json(client, "/api/channels", params={"kind": "supergroup"})
     assert channels["counts"]["total"] == len(channels["items"])
     assert groups["counts"]["total"] == len(groups["items"])
-    assert channels["counts"]["total"] + channels["counts"]["role_totals"]["managed"] == 40
-    assert groups["counts"]["total"] + groups["counts"]["role_totals"]["managed"] == 25
+    assert channels["counts"]["total"] + channels["counts"]["role_totals"]["managed"]["channel"] == 40
+    assert groups["counts"]["total"] + groups["counts"]["role_totals"]["managed"]["supergroup"] == 25
     assert {item["kind"] for item in channels["items"]} == {"channel"}
     assert {item["kind"] for item in groups["items"]} == {"supergroup"}
 
@@ -262,7 +262,8 @@ async def test_chats_the_user_runs_have_their_own_deck(client: httpx.AsyncClient
     assert {i["role"] for i in mine["items"]} <= {"admin", "owner"}
     assert {i["role"] for i in others["items"]} == {"member"}
     assert mine["counts"]["role_totals"] == others["counts"]["role_totals"]
-    assert mine["counts"]["role_totals"]["managed"] == len(mine["items"])
+    assert mine["counts"]["role_totals"]["managed"]["channel"] == len(mine["items"])
+    assert mine["counts"]["role_totals"]["member"]["supergroup"] > 0  # both kinds, whichever deck is open
 
     # a decision lands in the deck of the chat's own role
     pick = mine["items"][0]["id"]

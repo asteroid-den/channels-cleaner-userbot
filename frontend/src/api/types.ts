@@ -68,7 +68,8 @@ export interface DeckCounts {
   total: number
   /** Chats of each kind / in each archive filter, as the settings menu offers them. */
   kind_totals: Record<ChatKind, number>
-  role_totals: Record<RoleFilter, number>
+  /** Chats per role and kind: the settings menu shows the total and the split. */
+  role_totals: Record<RoleFilter, Record<ChatKind, number>>
   archive_totals: Record<ArchiveFilter, number>
   undecided: number
   pending: number
