@@ -151,3 +151,47 @@ async def test_changing_an_applied_mute_queues_the_way_back(client: httpx.AsyncC
         "applied",
         None,
     )
+
+
+async def test_channels_and_supergroups_are_separate_decks(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    channels = await get_json(client, "/api/channels")
+    groups = await get_json(client, "/api/channels", params={"kind": "supergroup"})
+    assert channels["counts"]["total"] == 40
+    assert groups["counts"]["total"] == 25
+    assert {item["kind"] for item in channels["items"]} == {"channel"}
+    assert {item["kind"] for item in groups["items"]} == {"supergroup"}
+
+    cid, gid = channels["items"][0]["id"], groups["items"][0]["id"]
+    await client.put(f"/api/decisions/{cid}", json={"decision": "keep"})
+    r = await client.put(f"/api/decisions/{gid}", json={"decision": "unsubscribe"})
+    counts = r.json()["counts"]  # the kind comes from the channel itself
+    assert counts["total"] == 25
+    assert counts["trail"] == "u"
+    assert counts["pending"] == 1
+    assert counts["pending_other"] == 0
+
+    channels = await get_json(client, "/api/channels")
+    assert channels["counts"]["trail"] == "k"
+    assert channels["counts"]["pending"] == 1  # review and apply cover both kinds
+    assert channels["counts"]["pending_other"] == 1
+
+    trail = await get_json(client, "/api/decisions/trail", params={"kind": "supergroup"})
+    assert [t["id"] for t in trail["items"]] == [gid]
+    assert (await get_json(client, "/api/stats", params={"kind": "supergroup"}))["subscribed"] == 25
+
+
+async def test_sync_keeps_both_kinds_and_resyncs_old_lists(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    account = ctx.auth.account_id
+    assert await ctx.db.channel_count(account) == 65
+    assert await ctx.db.get_setting(account, "synced_kinds") is True
+
+    ctx.sync.start(account)
+    await wait_for(lambda: _idle(ctx))
+    assert await ctx.db.channel_count(account, "supergroup") == 25
+    assert await ctx.db.channel_count(account, "channel") == 40
+
+
+async def _idle(ctx: AppContext) -> bool:
+    return not ctx.sync.state.running
