@@ -5,15 +5,17 @@ import { useI18n } from 'vue-i18n'
 import { api } from '@/api/client'
 import type { Stats } from '@/api/types'
 import AppIcon from '@/components/AppIcon.vue'
+import { useDeckStore } from '@/stores/deck'
 import { compactNumber } from '@/utils/format'
 
 const { t, locale } = useI18n()
+const deck = useDeckStore()
 const stats = ref<Stats | null>(null)
 
 const AGE_ORDER = ['week', 'month', 'quarter', 'half_year', 'year', 'older', 'never'] as const
 
 async function load() {
-  stats.value = await api.get<Stats>('/api/stats')
+  stats.value = await api.get<Stats>(`/api/stats?kind=${deck.kind}`)
 }
 onMounted(load)
 
@@ -32,7 +34,7 @@ const tiles = computed(() => [
 const ageMax = computed(() => Math.max(1, ...Object.values(stats.value?.last_post_age ?? {})))
 
 async function retryFailed() {
-  await api.post('/api/decisions/retry-failed')
+  await api.post(`/api/decisions/retry-failed?kind=${deck.kind}`)
   await load()
 }
 </script>
@@ -115,7 +117,7 @@ async function retryFailed() {
           <a
             v-for="fmt in ['csv', 'json']"
             :key="fmt"
-            :href="`/api/export?format=${fmt}`"
+            :href="`/api/export?format=${fmt}&kind=${deck.kind}`"
             class="key uppercase"
             download
           >

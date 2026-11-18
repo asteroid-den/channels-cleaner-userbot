@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
 
 import type { DeckCounts } from '@/api/types'
+import { useKindI18n } from '@/composables/useKindI18n'
 import { useDeckStore } from '@/stores/deck'
 
 import TrailLoupe from './TrailLoupe.vue'
 
-const { t } = useI18n()
+const { t, tk } = useKindI18n()
 const deck = useDeckStore()
 
 /**
@@ -138,7 +138,7 @@ const runs = computed(() => {
         class="pointer-events-none relative h-2.5 w-full rounded-full bg-surface-3"
         :title="deck.eta !== null ? t('deck.eta', { m: t('time.minutes', deck.eta) }) : undefined"
         role="progressbar"
-        :aria-label="t('deck.progressLabel')"
+        :aria-label="tk('deck.progressLabel')"
         :aria-valuemin="0"
         :aria-valuemax="shown.total"
         :aria-valuenow="decided"

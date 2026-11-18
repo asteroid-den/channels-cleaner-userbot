@@ -41,6 +41,29 @@ const onDeck = computed(() => auth.authorized && route.name === 'deck' && deck.l
       v-if="auth.authorized && route.name === 'deck'"
       class="flex shrink-0 overflow-hidden rounded-lg border border-border-2 text-[12.5px]"
       role="group"
+      :aria-label="t('header.kind')"
+    >
+      <button
+        v-for="k in ['channel', 'supergroup'] as const"
+        :key="k"
+        class="relative border-r border-border-2 px-3 py-1.5 transition-colors last:border-r-0"
+        :class="deck.kind === k ? 'bg-text text-bg' : 'text-muted hover:text-text'"
+        :aria-pressed="deck.kind === k"
+        @click="deck.setKind(k)"
+      >
+        {{ t(k === 'channel' ? 'header.kindChannel' : 'header.kindGroup') }}
+        <span
+          v-if="deck.kind !== k && deck.counts.pending_other > 0"
+          class="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-accent"
+          :title="t('header.pendingElsewhere')"
+        />
+      </button>
+    </div>
+
+    <div
+      v-if="auth.authorized && route.name === 'deck'"
+      class="flex shrink-0 overflow-hidden rounded-lg border border-border-2 text-[12.5px]"
+      role="group"
       :aria-label="t('header.sort')"
     >
       <button

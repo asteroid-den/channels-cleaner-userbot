@@ -20,6 +20,7 @@ export interface AuthState {
 export type Decision = 'keep' | 'unsubscribe' | 'mute' | 'archive' | 'skip'
 export type ActionDecision = 'unsubscribe' | 'mute' | 'archive'
 export type SortMode = 'dead' | 'unread'
+export type ChatKind = 'channel' | 'supergroup'
 
 export interface Pulse {
   /** 26 weekly post counts, oldest first; null = week not covered by the fetched history. */
@@ -31,6 +32,7 @@ export interface Pulse {
 
 export interface Channel {
   id: number
+  kind: ChatKind
   title: string
   username: string | null
   link: string | null
@@ -59,6 +61,8 @@ export interface DeckCounts {
   total: number
   undecided: number
   pending: number
+  /** Pending actions of the other kind: review and apply cover both. */
+  pending_other: number
   /** Final decisions per kind for channels still in the list. */
   by_decision: Record<FinalDecision, number>
   /** Final decisions in the order they were made: k(eep) u(nsubscribe) m(ute) a(rchive). */

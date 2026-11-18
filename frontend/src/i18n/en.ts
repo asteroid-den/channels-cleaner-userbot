@@ -1,4 +1,26 @@
 export default {
+  // Wording that differs for supergroups; used instead of the same key outside "group." (see useKindI18n)
+  group: {
+    sync: { title: 'Collecting your channels and groups' },
+    deck: {
+      verdict: {
+        rate: 'messages a week',
+        since: 'since the last message',
+        silent: 'without a single message',
+        never: 'messages, ever',
+      },
+      lastPostAt: 'last message {when}',
+      progressLabel: 'Groups sorted',
+      pulseTruncated: 'last {n} messages',
+      emptyNoChannels: 'You are not in any supergroups (that you don’t own).',
+      emptyText: 'You have made a decision for every group.',
+      subscribers: 'member | members',
+      lastPost: 'Last message',
+      neverPosted: 'No messages yet',
+      neverPostedLong: 'Nobody has written in this group yet',
+      private: 'Private group',
+    },
+  },
   app: { name: 'Channels Cleaner', tagline: 'Swipe through your Telegram channels' },
   common: {
     back: 'Back',
@@ -10,6 +32,10 @@ export default {
     mockMode: 'Mock mode',
   },
   header: {
+    kind: 'Kind of chat',
+    kindChannel: 'Channels',
+    kindGroup: 'Supergroups',
+    pendingElsewhere: 'Has actions waiting for review',
     sort: 'Order',
     sortDead: 'Dead first',
     sortUnread: 'Most unread',
@@ -21,7 +47,7 @@ export default {
   },
   account: {
     menu: 'Account',
-    resync: 'Refresh channel list',
+    resync: 'Refresh channel and group list',
     resetKeeps: 'Show kept channels again',
     resetAll: 'Reset all decisions',
     results: 'Results & export',
@@ -68,8 +94,8 @@ export default {
     },
   },
   sync: {
-    title: 'Collecting your channels',
-    found: 'No channels yet | Found {n} channel | Found {n} channels',
+    title: 'Collecting your channels and groups',
+    found: 'Nothing yet | Found {n} chat | Found {n} chats',
     floodWait: 'Telegram asked us to slow down — resuming in {s}s',
     error: 'Could not load channels: {msg}',
   },

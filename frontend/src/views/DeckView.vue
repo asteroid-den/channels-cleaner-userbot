@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
 import type { Decision } from '@/api/types'
 import AppIcon from '@/components/AppIcon.vue'
 import SwipeDeck from '@/components/SwipeDeck.vue'
 import { useChannelColor } from '@/composables/useChannelColor'
+import { useKindI18n } from '@/composables/useKindI18n'
 import { useHotkeys } from '@/composables/useHotkeys'
 import { useApplyStore } from '@/stores/apply'
 import { useDeckStore } from '@/stores/deck'
 
-const { t } = useI18n()
+const { t, tk } = useKindI18n()
 const deck = useDeckStore()
 const apply = useApplyStore()
 const router = useRouter()
@@ -169,7 +169,7 @@ const ZONES = [
   >
     <div class="font-mono text-6xl font-bold tabular-nums">{{ deck.sync?.fetched ?? 0 }}</div>
     <div>
-      <h1 class="text-lg font-semibold">{{ t('sync.title') }}</h1>
+      <h1 class="text-lg font-semibold">{{ tk('sync.title') }}</h1>
       <p class="mt-1 text-muted">{{ t('sync.found', deck.sync?.fetched ?? 0) }}</p>
     </div>
     <div class="skeleton h-1 w-64" />
@@ -191,7 +191,7 @@ const ZONES = [
     <div>
       <h1 class="text-2xl font-bold">{{ t('deck.emptyTitle') }}</h1>
       <p class="mt-1 text-muted">
-        {{ deck.counts.total ? t('deck.emptyText') : t('deck.emptyNoChannels') }}
+        {{ deck.counts.total ? tk('deck.emptyText') : tk('deck.emptyNoChannels') }}
       </p>
       <p v-if="deck.sync?.error" class="mt-3 text-sm text-danger">
         {{ t('sync.error', { msg: deck.sync.error }) }}
