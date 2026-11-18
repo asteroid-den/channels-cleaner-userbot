@@ -117,9 +117,10 @@ const runs = computed(() => {
 </script>
 
 <template>
-  <div class="flex w-full items-center gap-3.5">
+  <!-- the bar sits in the middle column, so it is centred over the deck; the count hangs off its left -->
+  <div class="grid w-full grid-cols-[1fr_minmax(140px,460px)_1fr] items-center gap-3.5">
     <span
-      class="min-w-[5.5rem] origin-right text-right font-mono text-[15px] font-bold tabular-nums"
+      class="origin-right justify-self-end text-right font-mono text-[15px] font-bold tabular-nums"
       :class="pulse ? 'count-bump' : ''"
       @animationend="pulse = false"
     >
@@ -128,7 +129,7 @@ const runs = computed(() => {
 
     <div
       ref="hit"
-      class="relative flex h-7 min-w-[140px] flex-1 items-center"
+      class="relative flex h-7 items-center"
       :class="deck.trail.length ? 'cursor-pointer' : ''"
       @pointermove="onBarMove"
       @pointerleave="onLeave"

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 
 import type { Decision } from '@/api/types'
 import AppIcon from '@/components/AppIcon.vue'
+import DeckProgress from '@/components/DeckProgress.vue'
 import SwipeDeck from '@/components/SwipeDeck.vue'
 import { useChannelColor } from '@/composables/useChannelColor'
 import { useKindI18n } from '@/composables/useKindI18n'
@@ -162,139 +163,149 @@ const ZONES = [
 </script>
 
 <template>
-  <!-- gathering the list -->
-  <section
-    v-if="showSync"
-    class="flex flex-1 flex-col items-center justify-center gap-4 text-center"
-  >
-    <div class="font-mono text-6xl font-bold tabular-nums">{{ deck.sync?.fetched ?? 0 }}</div>
-    <div>
-      <h1 class="text-lg font-semibold">{{ tk('sync.title') }}</h1>
-      <p class="mt-1 text-muted">{{ t('sync.found', deck.sync?.fetched ?? 0) }}</p>
+  <div class="flex flex-1 flex-col">
+    <!-- progress, centred right above the deck -->
+    <div v-if="deck.loaded && !showSync" class="relative z-20 flex justify-center px-6 pt-4">
+      <div class="w-full max-w-[760px]"><DeckProgress /></div>
     </div>
-    <div class="skeleton h-1 w-64" />
-    <p v-if="deck.sync?.flood_wait" class="text-sm text-warn">
-      {{ t('sync.floodWait', { s: deck.sync.flood_wait }) }}
-    </p>
-  </section>
 
-  <!-- everything decided -->
-  <section
-    v-else-if="empty"
-    class="flex flex-1 flex-col items-center justify-center gap-5 text-center"
-  >
-    <div
-      class="flex h-16 w-16 items-center justify-center rounded-2xl bg-success-soft text-success"
+    <!-- gathering the list -->
+    <section
+      v-if="showSync"
+      class="flex flex-1 flex-col items-center justify-center gap-4 text-center"
     >
-      <AppIcon name="check" :size="30" :stroke="2.5" />
-    </div>
-    <div>
-      <h1 class="text-2xl font-bold">{{ t('deck.emptyTitle') }}</h1>
-      <p class="mt-1 text-muted">
-        {{
-          deck.counts.total
-            ? tk('deck.emptyText')
-            : deck.prefs.archive !== 'all'
-              ? t('deck.emptyFilter')
-              : tk('deck.emptyNoChannels')
-        }}
-      </p>
-      <p v-if="deck.sync?.error" class="mt-3 text-sm text-danger">
-        {{ t('sync.error', { msg: deck.sync.error }) }}
-      </p>
-    </div>
-    <div class="flex gap-2">
-      <button v-if="deck.history.length" class="key" @click="undo">
-        <kbd>⌫</kbd>{{ t('actions.undo') }}
-      </button>
-      <RouterLink v-if="deck.counts.pending" to="/review" class="key">
-        {{ t('deck.applyCta', { n: deck.counts.pending }) }}<kbd>↵</kbd>
-      </RouterLink>
-      <RouterLink v-else to="/results" class="key">{{ t('account.results') }}</RouterLink>
-    </div>
-  </section>
-
-  <!-- the deck -->
-  <section v-else-if="deck.loaded" class="glow relative flex min-h-0 flex-1 flex-col items-center">
-    <h1 class="sr-only">{{ t('app.name') }}</h1>
-    <p class="sr-only" aria-live="polite">
-      <template v-if="deck.current">
-        {{ deck.current.title }} ·
-        {{ t('deck.position', { pos: deck.position, total: deck.counts.total }) }}
-      </template>
-    </p>
-
-    <div class="relative w-full flex-1 pt-8">
-      <p
-        v-if="deck.rewinding && deck.cursor !== null"
-        class="absolute top-2 left-1/2 z-10 -translate-x-1/2 text-[12.5px] whitespace-nowrap text-muted"
-      >
-        {{ t('deck.rewinding', { n: deck.cursor + 1, total: deck.trail.length }) }}
-        <span class="text-faint">· Ctrl ← / →</span>
-      </p>
-      <!-- clickable side zones: the same as swiping toward them -->
-      <button
-        v-for="z in ZONES"
-        :key="z.id"
-        tabindex="-1"
-        aria-hidden="true"
-        class="zone absolute inset-y-0 w-[calc(50%-260px)]"
-        :class="z.cls"
-        @pointermove="zoneMove"
-        @pointerenter="zoneEnter(z.id)"
-        @pointerleave="zoneLeave"
-        @click="act(z.id)"
-      >
-        <span class="zone-hint" :class="z.hint">
-          <kbd v-if="z.id === 'unsubscribe'">←</kbd>{{ t(z.label)
-          }}<kbd v-if="z.id === 'keep'">→</kbd>
-        </span>
-      </button>
-
-      <div class="relative mx-auto h-[min(540px,calc(100vh-220px))] min-h-[420px] w-[460px]">
-        <SwipeDeck
-          ref="swiper"
-          :items="deck.items"
-          :returning="deck.returning"
-          @decide="deck.decide"
-          @flinging="onFlinging"
-        />
+      <div class="font-mono text-6xl font-bold tabular-nums">{{ deck.sync?.fetched ?? 0 }}</div>
+      <div>
+        <h1 class="text-lg font-semibold">{{ tk('sync.title') }}</h1>
+        <p class="mt-1 text-muted">{{ t('sync.found', deck.sync?.fetched ?? 0) }}</p>
       </div>
-    </div>
+      <div class="skeleton h-1 w-64" />
+      <p v-if="deck.sync?.flood_wait" class="text-sm text-warn">
+        {{ t('sync.floodWait', { s: deck.sync.flood_wait }) }}
+      </p>
+    </section>
 
-    <div class="relative z-10 flex flex-wrap justify-center gap-2 pt-4 pb-7">
-      <button
-        v-for="k in KEYS"
-        :key="k.id"
-        class="key"
-        :class="[k.cls, pressed === k.id ? 'pressed' : '']"
-        :aria-keyshortcuts="k.shortcut"
-        @click="act(k.id)"
-      >
-        <kbd v-if="!k.kbdAfter">{{ k.kbd }}</kbd>{{ t(k.label)
-        }}<kbd v-if="k.kbdAfter">{{ k.kbd }}</kbd>
-      </button>
-    </div>
-    <!-- like "back to top" on a long page: back to where the undecided channels start -->
-    <Transition
-      enter-from-class="opacity-0 translate-y-2"
-      leave-to-class="opacity-0 translate-y-2"
-      enter-active-class="transition duration-200 ease-out"
-      leave-active-class="transition duration-150"
+    <!-- everything decided -->
+    <section
+      v-else-if="empty"
+      class="flex flex-1 flex-col items-center justify-center gap-5 text-center"
     >
-      <button
-        v-if="deck.rewinding"
-        class="fixed right-6 bottom-6 z-20 flex items-center gap-2 rounded-full bg-text px-4 py-2.5 text-[13px] font-semibold text-bg shadow-card"
-        @click="deck.toEnd()"
+      <div
+        class="flex h-16 w-16 items-center justify-center rounded-2xl bg-success-soft text-success"
       >
-        {{ t('deck.toEnd', { n: deck.counts.undecided }) }}
-        <AppIcon name="arrowRight" :size="15" />
-      </button>
-    </Transition>
-  </section>
+        <AppIcon name="check" :size="30" :stroke="2.5" />
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold">{{ t('deck.emptyTitle') }}</h1>
+        <p class="mt-1 text-muted">
+          {{
+            deck.counts.total
+              ? tk('deck.emptyText')
+              : deck.prefs.archive !== 'all'
+                ? t('deck.emptyFilter')
+                : tk('deck.emptyNoChannels')
+          }}
+        </p>
+        <p v-if="deck.sync?.error" class="mt-3 text-sm text-danger">
+          {{ t('sync.error', { msg: deck.sync.error }) }}
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <button v-if="deck.history.length" class="key" @click="undo">
+          <kbd>⌫</kbd>{{ t('actions.undo') }}
+        </button>
+        <RouterLink v-if="deck.counts.pending" to="/review" class="key">
+          {{ t('deck.applyCta', { n: deck.counts.pending }) }}<kbd>↵</kbd>
+        </RouterLink>
+        <RouterLink v-else to="/results" class="key">{{ t('account.results') }}</RouterLink>
+      </div>
+    </section>
 
-  <div v-else class="flex flex-1 items-center justify-center">
-    <div class="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-text" />
+    <!-- the deck -->
+    <section
+      v-else-if="deck.loaded"
+      class="glow relative flex min-h-0 flex-1 flex-col items-center"
+    >
+      <h1 class="sr-only">{{ t('app.name') }}</h1>
+      <p class="sr-only" aria-live="polite">
+        <template v-if="deck.current">
+          {{ deck.current.title }} ·
+          {{ t('deck.position', { pos: deck.position, total: deck.counts.total }) }}
+        </template>
+      </p>
+
+      <div class="relative w-full flex-1 pt-8">
+        <p
+          v-if="deck.rewinding && deck.cursor !== null"
+          class="absolute top-2 left-1/2 z-10 -translate-x-1/2 text-[12.5px] whitespace-nowrap text-muted"
+        >
+          {{ t('deck.rewinding', { n: deck.cursor + 1, total: deck.trail.length }) }}
+          <span class="text-faint">· Ctrl ← / →</span>
+        </p>
+        <!-- clickable side zones: the same as swiping toward them -->
+        <button
+          v-for="z in ZONES"
+          :key="z.id"
+          tabindex="-1"
+          aria-hidden="true"
+          class="zone absolute inset-y-0 w-[calc(50%-260px)]"
+          :class="z.cls"
+          @pointermove="zoneMove"
+          @pointerenter="zoneEnter(z.id)"
+          @pointerleave="zoneLeave"
+          @click="act(z.id)"
+        >
+          <span class="zone-hint" :class="z.hint">
+            <kbd v-if="z.id === 'unsubscribe'">←</kbd>{{ t(z.label)
+            }}<kbd v-if="z.id === 'keep'">→</kbd>
+          </span>
+        </button>
+
+        <div class="relative mx-auto h-[min(540px,calc(100vh-220px))] min-h-[420px] w-[460px]">
+          <SwipeDeck
+            ref="swiper"
+            :items="deck.items"
+            :returning="deck.returning"
+            @decide="deck.decide"
+            @flinging="onFlinging"
+          />
+        </div>
+      </div>
+
+      <div class="relative z-10 flex flex-wrap justify-center gap-2 pt-4 pb-7">
+        <button
+          v-for="k in KEYS"
+          :key="k.id"
+          class="key"
+          :class="[k.cls, pressed === k.id ? 'pressed' : '']"
+          :aria-keyshortcuts="k.shortcut"
+          @click="act(k.id)"
+        >
+          <kbd v-if="!k.kbdAfter">{{ k.kbd }}</kbd>{{ t(k.label)
+          }}<kbd v-if="k.kbdAfter">{{ k.kbd }}</kbd>
+        </button>
+      </div>
+      <!-- like "back to top" on a long page: back to where the undecided channels start -->
+      <Transition
+        enter-from-class="opacity-0 translate-y-2"
+        leave-to-class="opacity-0 translate-y-2"
+        enter-active-class="transition duration-200 ease-out"
+        leave-active-class="transition duration-150"
+      >
+        <button
+          v-if="deck.rewinding"
+          class="fixed right-6 bottom-6 z-20 flex items-center gap-2 rounded-full bg-text px-4 py-2.5 text-[13px] font-semibold text-bg shadow-card"
+          @click="deck.toEnd()"
+        >
+          {{ t('deck.toEnd', { n: deck.counts.undecided }) }}
+          <AppIcon name="arrowRight" :size="15" />
+        </button>
+      </Transition>
+    </section>
+
+    <div v-else class="flex flex-1 items-center justify-center">
+      <div class="h-8 w-8 animate-spin rounded-full border-2 border-border border-t-text" />
+    </div>
   </div>
 </template>
 

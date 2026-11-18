@@ -80,7 +80,9 @@ Key behaviours / decisions (agreed with the user):
   Wording that differs for groups lives under `group.*` in i18n (`useKindI18n().tk`).
 - Archive filter (all / active / archived) lives in the deck prefs (`prefs.archive`, per account) and narrows
   the deck, trail and its counters for either kind; endpoints that return counts without `?archive=` read it
-  from the saved prefs. Header: kind | archive | sort.
+  from the saved prefs. Header: one wide settings button (`DeckSettings.vue`: kind, archive filter, sort, reverse,
+  reset; counts come from `counts.kind_totals` / `archive_totals`) — the progress bar lives in DeckView, centred
+  right above the deck (mockup D in `mockups/header-layout.html`). Switching kind is deliberately two clicks.
 - Idea for later (user is thinking about it): extra tabs for chats the user owns/admins (2x2 with kind);
   leaving an owned/admin chat is destructive, so `unsubscribe` would need to be off by default there.
 - Decisions: keep/skip are final immediately; unsubscribe/mute/archive are `pending` until the
@@ -97,9 +99,9 @@ Key behaviours / decisions (agreed with the user):
 Flat panels + hairlines, data first. Fonts bundled via @fontsource: Jost (headings + verdict figure),
 Onest (text), JetBrains Mono (numbers/keys). v1 token names kept (`surface`, `border`, `muted`,
 `accent`, `danger`…) with new values, plus `ch`/`ch2` = current channel colour from its avatar.
-Deck (deck-v2, chosen from mockups/deck-v2.html): no side columns. Header = sort + progress bar
-(decided/total, segmented by decision, '+1' chip flies in) + summary pill (popover: counters, ETA,
-history+undo, next, Review). Fanned stack; card layout C (one verdict figure). Left/right of the
+Deck (deck-v2, chosen from mockups/deck-v2.html): no side columns. Header = deck settings button
++ summary pill (popover: counters, ETA, history+undo, next, Review); the progress bar (decided/total,
+segmented by decision, '+1' chip flies in) sits centred above the deck. Fanned stack; card layout C (one verdict figure). Left/right of the
 card are click zones (unsubscribe/keep) with cursor glow + card lean. Keycaps under the stage.
 Progress bar = chronological trail of decisions (counts.trail, one letter each). Rewind: hover the
 bar → TrailLoupe (15 fanned avatars), click to jump; Ctrl+←/→ step through decided cards; deck =

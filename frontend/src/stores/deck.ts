@@ -58,6 +58,8 @@ export const useDeckStore = defineStore('deck', () => {
   const history = ref<HistoryEntry[]>([])
   const counts = ref<DeckCounts>({
     total: 0,
+    kind_totals: { channel: 0, supergroup: 0 },
+    archive_totals: { all: 0, active: 0, archived: 0 },
     undecided: 0,
     pending: 0,
     pending_other: 0,
@@ -171,6 +173,14 @@ export const useDeckStore = defineStore('deck', () => {
     await load()
   }
 
+  /** Several prefs at once (the settings menu's reset); one reload. */
+  async function setPrefs(next: Prefs) {
+    if (next.archive !== prefs.value.archive) {
+      history.value = []
+      returning.value = null
+    }
+    await savePrefs(next)
+  }
   const setSort = (sort: SortMode) => savePrefs({ ...prefs.value, sort })
   async function setArchive(archive: ArchiveFilter) {
     if (archive === prefs.value.archive) return
@@ -419,6 +429,7 @@ export const useDeckStore = defineStore('deck', () => {
     load,
     setKind,
     setArchive,
+    setPrefs,
     setSort,
     toggleReverse,
     decide,
