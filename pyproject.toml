@@ -1,5 +1,5 @@
 [project]
-name = "channels-cleaner"
+name = "telegram-channels-cleaner"
 dynamic = ["version"]
 description = "Tinder-like cleanup of your Telegram channel subscriptions, running locally"
 readme = "README.md"
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-channels-cleaner = "channels_cleaner.cli:main"
+telegram-channels-cleaner = "channels_cleaner.cli:main"
 
 [dependency-groups]
 dev = [

@@ -1,4 +1,4 @@
-"""``channels-cleaner`` entry point: start the local server and open the browser."""
+"""``telegram-channels-cleaner`` entry point: start the local server and open the browser."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ def port_busy_message(host: str, port: int, url: str) -> str:
         first = f"Port {port} on {host} is already taken by another program."
         hint = "Stop that program, or pick another port:"
 
-    return f"✗ {first}\n  {hint}\n  uv run channels-cleaner --port {port + 1}"
+    return f"✗ {first}\n  {hint}\n  uv run telegram-channels-cleaner --port {port + 1}"
 
 
 def open_when_ready(server: uvicorn.Server, url: str, timeout: float = 30.0) -> None:
@@ -82,7 +82,7 @@ def open_when_ready(server: uvicorn.Server, url: str, timeout: float = 30.0) -> 
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(prog="channels-cleaner", description=__doc__)
+    parser = argparse.ArgumentParser(prog="telegram-channels-cleaner", description=__doc__)
     parser.add_argument("--host", help="bind address (default 127.0.0.1)")
     parser.add_argument("--port", type=int, help="port (default 8765)")
     parser.add_argument("--mock", action="store_true", help="use fake Telegram data")

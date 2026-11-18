@@ -38,7 +38,7 @@ def default_data_dir() -> Path:
     else:
         base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
 
-    return base / "channels-cleaner"
+    return base / "telegram-channels-cleaner"
 
 
 class Settings(BaseSettings):

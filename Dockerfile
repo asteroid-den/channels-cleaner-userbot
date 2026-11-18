@@ -39,4 +39,4 @@ ENV PATH=/app/.venv/bin:$PATH \
     CC_NO_BROWSER=1
 VOLUME /data
 EXPOSE 8765
-CMD ["channels-cleaner"]
+CMD ["telegram-channels-cleaner"]

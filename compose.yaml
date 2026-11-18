@@ -1,7 +1,7 @@
 services:
-  channels-cleaner:
+  telegram-channels-cleaner:
     build: .
-    image: channels-cleaner
+    image: telegram-channels-cleaner
     ports:
       # localhost only: the app has no login of its own
       - "127.0.0.1:8765:8765"

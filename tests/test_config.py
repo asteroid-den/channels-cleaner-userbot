@@ -19,7 +19,7 @@ def test_installed_app_uses_user_data_dir(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("sys.platform", "linux")
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
-    assert default_data_dir() == tmp_path / "xdg" / "channels-cleaner"
+    assert default_data_dir() == tmp_path / "xdg" / "telegram-channels-cleaner"
 
 
 @pytest.mark.skipif(os.name != "posix", reason="POSIX permissions")

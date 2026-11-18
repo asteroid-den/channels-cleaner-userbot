@@ -1,7 +1,7 @@
 # Channels Cleaner
 
-[![CI](https://github.com/asteroid-den/channels-cleaner-userbot/actions/workflows/ci.yml/badge.svg)](https://github.com/asteroid-den/channels-cleaner-userbot/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/channels-cleaner)](https://pypi.org/project/channels-cleaner/)
+[![CI](https://github.com/asteroid-den/telegram-channels-cleaner/actions/workflows/ci.yml/badge.svg)](https://github.com/asteroid-den/telegram-channels-cleaner/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/telegram-channels-cleaner)](https://pypi.org/project/telegram-channels-cleaner/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Go through every Telegram channel you're subscribed to, one card at a time, and get rid of the
@@ -46,14 +46,14 @@ You need Python 3.12+ and either [uv](https://docs.astral.sh/uv/) or [pipx](http
 The package includes the built UI, so no Node.js is required.
 
 ```bash
-uvx channels-cleaner
+uvx telegram-channels-cleaner
 ```
 
 or install it once and run it whenever you like:
 
 ```bash
-pipx install channels-cleaner
-channels-cleaner
+pipx install telegram-channels-cleaner
+telegram-channels-cleaner
 ```
 
 A browser tab opens at <http://127.0.0.1:8765>. On your phone, open Telegram →
@@ -65,7 +65,7 @@ phone number and code; a two-step verification password is asked for when it's s
 Mock mode replaces Telegram with 120 generated channels:
 
 ```bash
-uvx channels-cleaner --mock
+uvx telegram-channels-cleaner --mock
 ```
 
 The QR code "scans" itself after a few seconds. The phone code is `12345`; with `CC_MOCK_2FA=1`
@@ -74,8 +74,8 @@ the 2FA password is `mock`. The screenshots above are from mock mode.
 ### Docker
 
 ```bash
-docker run --rm -p 127.0.0.1:8765:8765 -v channels-cleaner:/data \
-  ghcr.io/asteroid-den/channels-cleaner-userbot:latest
+docker run --rm -p 127.0.0.1:8765:8765 -v telegram-channels-cleaner:/data \
+  ghcr.io/asteroid-den/telegram-channels-cleaner:latest
 ```
 
 Then open <http://127.0.0.1:8765>. Or from a checkout: `docker compose up -d`. Keep the
@@ -85,10 +85,10 @@ on your Telegram account.
 ### From source
 
 ```bash
-git clone https://github.com/asteroid-den/channels-cleaner-userbot.git
-cd channels-cleaner-userbot
+git clone https://github.com/asteroid-den/telegram-channels-cleaner.git
+cd telegram-channels-cleaner
 npm --prefix frontend ci && npm --prefix frontend run build   # Node.js 22.18+
-uv run channels-cleaner
+uv run telegram-channels-cleaner
 ```
 
 ## Keyboard
@@ -127,9 +127,9 @@ Letter keys work on any keyboard layout. On macOS, <kbd>Cmd</kbd> works in place
 
 | How you run it | Location |
 | --- | --- |
-| `uvx` / `pipx` on Linux | `~/.local/share/channels-cleaner` (or `$XDG_DATA_HOME`) |
-| `uvx` / `pipx` on macOS | `~/Library/Application Support/channels-cleaner` |
-| `uvx` / `pipx` on Windows | `%APPDATA%\channels-cleaner` |
+| `uvx` / `pipx` on Linux | `~/.local/share/telegram-channels-cleaner` (or `$XDG_DATA_HOME`) |
+| `uvx` / `pipx` on macOS | `~/Library/Application Support/telegram-channels-cleaner` |
+| `uvx` / `pipx` on Windows | `%APPDATA%\telegram-channels-cleaner` |
 | From source | `./data` in the checkout |
 | Docker | the `/data` volume |
 
@@ -188,7 +188,7 @@ Everything is optional. Use environment variables or a `.env` file in the workin
 uv sync
 npm --prefix frontend ci
 
-uv run channels-cleaner --mock --dev   # API only, on :8765
+uv run telegram-channels-cleaner --mock --dev   # API only, on :8765
 npm --prefix frontend run dev          # UI with hot reload on :5173, proxies /api
 ```
 
@@ -217,7 +217,7 @@ Push a `v*` tag matching `__version__` in
 [`src/channels_cleaner/__init__.py`](src/channels_cleaner/__init__.py). The
 [release workflow](.github/workflows/release.yml) builds the wheel with the UI, publishes it to
 PyPI through trusted publishing and pushes a multi-arch image to GHCR. One-time setup: on
-pypi.org, add a pending trusted publisher for project `channels-cleaner` with workflow
+pypi.org, add a pending trusted publisher for project `telegram-channels-cleaner` with workflow
 `release.yml` and environment `pypi`, and create an environment named `pypi` in the
 repository settings.
 

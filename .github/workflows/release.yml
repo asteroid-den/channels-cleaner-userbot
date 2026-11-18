@@ -1,7 +1,7 @@
 name: Release
 
 # Push a tag like v1.0.0 to publish the package to PyPI and the image to GHCR.
-# PyPI uses trusted publishing: this repository is a publisher of the "channels-cleaner" project on pypi.org
+# PyPI uses trusted publishing: this repository is a publisher of the "telegram-channels-cleaner" project on pypi.org
 # (workflow: release.yml, environment: pypi).
 on:
   push:
