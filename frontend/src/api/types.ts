@@ -61,6 +61,9 @@ export type FinalDecision = Exclude<Decision, 'skip'>
 
 export interface DeckCounts {
   total: number
+  /** Chats of each kind / in each archive filter, as the settings menu offers them. */
+  kind_totals: Record<ChatKind, number>
+  archive_totals: Record<ArchiveFilter, number>
   undecided: number
   pending: number
   /** Pending actions of the other kind: review and apply cover both. */
