@@ -1,3 +1,3 @@
 """Channels Cleaner — Tinder-like cleanup of Telegram channel subscriptions."""
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
