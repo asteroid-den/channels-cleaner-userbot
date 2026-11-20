@@ -55,6 +55,9 @@ data dir, host/port, mock knobs, apply delay range.
 src/channels_cleaner/
   cli.py          port pre-check (friendly msg if our app already runs), opens browser only after
                   uvicorn started; browser.py opens it quietly (xdg-open/open/os.startfile)
+  logs.py         console + data/logs/app.log (rotating, 4×1 MB, never DEBUG); uvicorn runs with log_config=None
+                  so its records (request crashes too) go through the same handlers
+  healthcheck.py  `python -m channels_cleaner.healthcheck` = the Docker HEALTHCHECK (GET /api/health on CC_PORT)
   app.py          FastAPI factory, error→HTTP mapping, SPA fallback for static/
   context.py      AppContext wires everything; boot task runs auth.start(); clears "skip" on start
   config.py       Settings (pydantic-settings, CC_ prefix)
@@ -203,5 +206,7 @@ The user rejected the retro "press" look; wants modern digital but not generic S
 - Watch flood waits from the extra GetHistory call per card on big accounts; lower prefetch depth if needed.
 - What Telegram does when a creator leaves their own chat (`--allow-owner-leave`) is untested.
 - `deck.counts` runs ~14 small COUNT queries on each decision: fine at a few thousand chats.
+- Base images in the Dockerfile are pinned by tag + digest and CI's Python to 3.12.16: no Dependabot, bump by
+  hand (`docker buildx imagetools inspect <image>:<tag>`).
 - Optional: bundle only latin+cyrillic font subsets; 5 moderate `npm audit` issues are dev-only.
 - Spec extras agreed for later: multi-account support (DB already keyed by account_id).
