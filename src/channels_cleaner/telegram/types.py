@@ -4,12 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
 
-MediaKind = Literal["photo", "video", "animation", "document", "audio", "voice", "poll", "sticker", "other"]
-ChatKind = Literal["channel", "supergroup"]
-#: what the user is in that chat: a plain member, an admin, or the creator
-ChatRole = Literal["member", "admin", "owner"]
+from channels_cleaner.enums import ChatKind, ChatRole, MediaKind
 
 
 @dataclass(slots=True, frozen=True)
@@ -43,8 +39,8 @@ class ChannelInfo:
     last_post_at: datetime | None
     last_post_text: str | None
     last_post_media: MediaKind | None
-    kind: ChatKind = "channel"
-    role: ChatRole = "member"
+    kind: ChatKind = ChatKind.CHANNEL
+    role: ChatRole = ChatRole.MEMBER
 
 
 @dataclass(slots=True, frozen=True)
