@@ -11,8 +11,8 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 
 from channels_cleaner import __version__
 from channels_cleaner.api import errors
-from channels_cleaner.api.guard import LocalOnlyMiddleware
-from channels_cleaner.api.routes import router
+from channels_cleaner.api.middlewares import LocalOnlyMiddleware
+from channels_cleaner.api.routers import router
 from channels_cleaner.config import Settings
 from channels_cleaner.context import AppContext
 

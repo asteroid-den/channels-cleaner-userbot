@@ -84,6 +84,10 @@ jobs:
       - name: Run Prettier check
         run: npm run format:check
 
+      - name: Check the API types match the schema
+        # schema.d.ts is generated from openapi.json; the backend's tests check that one against the API
+        run: npm run api:check
+
       - name: Run Vitest
         run: npm run test
 

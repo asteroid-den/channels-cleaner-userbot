@@ -349,6 +349,6 @@ async def test_reset_and_undo_tell_what_they_removed(client: httpx.AsyncClient, 
     await client.put(f"/api/decisions/{first}", json={"decision": "keep"})
     await client.put(f"/api/decisions/{second}", json={"decision": "unsubscribe"})
 
-    assert (await client.delete(f"/api/decisions/{second}")).json()["ok"] is True
-    assert (await client.delete(f"/api/decisions/{second}")).json()["ok"] is False
+    assert (await client.delete(f"/api/decisions/{second}")).json()["removed"] is True
+    assert (await client.delete(f"/api/decisions/{second}")).json()["removed"] is False
     assert (await client.post("/api/decisions/reset", json={})).json()["removed"] == 1

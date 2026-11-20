@@ -15,7 +15,9 @@
     "format": "prettier --write src/",
     "format:check": "prettier --check src/",
     "test": "vitest run --passWithNoTests",
-    "type-check": "vue-tsc -b"
+    "type-check": "vue-tsc -b",
+    "api:types": "openapi-typescript openapi.json -o src/api/schema.d.ts",
+    "api:check": "openapi-typescript openapi.json -o src/api/schema.d.ts --check"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
@@ -41,6 +43,7 @@
     "eslint-plugin-vue": "^10.12.1",
     "jiti": "^2.7.0",
     "jsdom": "^29.1.1",
+    "openapi-typescript": "7.13.0",
     "prettier": "^3.10.1",
     "tailwindcss": "^4.3.5",
     "typescript": "~6.0.3",
@@ -48,5 +51,10 @@
     "vite": "^8.3.6",
     "vitest": "^4.1.12",
     "vue-tsc": "^3.3.14"
+  },
+  "overrides": {
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
   }
 }

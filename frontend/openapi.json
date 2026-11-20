@@ -1,0 +1,4790 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Channels Cleaner"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Get Health",
+        "operationId": "get_health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Health Api Health Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/state": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Auth State",
+        "operationId": "get_auth_state_api_auth_state_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Auth State Api Auth State Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/events": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Auth Events",
+        "operationId": "get_auth_events_api_auth_events_get",
+        "responses": {
+          "200": {
+            "description": "Server-sent events: a snapshot first, then changes",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Auth Events Api Auth Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/qr/start": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Qr Login",
+        "operationId": "post_qr_login_api_auth_qr_start_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Qr Login Api Auth Qr Start Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginStepUnexpectedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/phone/send-code": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Send Code",
+        "operationId": "post_send_code_api_auth_phone_send_code_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendCodeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Send Code Api Auth Phone Send Code Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginStepUnexpectedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloodWaitError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPhoneError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/phone/sign-in": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Sign In",
+        "operationId": "post_sign_in_api_auth_phone_sign_in_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignInRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Sign In Api Auth Phone Sign In Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginStepUnexpectedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloodWaitError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidCodeError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Password",
+        "operationId": "post_password_api_auth_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Password Api Auth Password Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginStepUnexpectedError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloodWaitError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramError"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidPasswordError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/cancel": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Cancel Login",
+        "operationId": "post_cancel_login_api_auth_cancel_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Cancel Login Api Auth Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Post Logout",
+        "operationId": "post_logout_api_auth_logout_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Logout Api Auth Logout Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyJobRunningError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/channels/sync": {
+      "post": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Post Sync",
+        "operationId": "post_sync_api_channels_sync_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Sync Api Channels Sync Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/channels/sync/events": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Get Sync Events",
+        "operationId": "get_sync_events_api_channels_sync_events_get",
+        "responses": {
+          "200": {
+            "description": "Server-sent events: a snapshot first, then changes",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Sync Events Api Channels Sync Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/channels": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Get Channels",
+        "operationId": "get_channels_api_channels_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ChatKind",
+              "default": "channel"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RoleFilter",
+              "default": "member"
+            }
+          },
+          {
+            "name": "archive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ArchiveFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Archive"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortMode",
+              "default": "dead"
+            }
+          },
+          {
+            "name": "reverse",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Reverse"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "undecided",
+                "all"
+              ],
+              "type": "string",
+              "default": "undecided",
+              "title": "State"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Channels Api Channels Get"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/channels/{channel_id}/full": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Get Channel Full",
+        "operationId": "get_channel_full_api_channels__channel_id__full_get",
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Channel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Channel Full Api Channels  Channel Id  Full Get"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelNotFoundError"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloodWaitError"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramError"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/api/channels/{channel_id}/avatar": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Get Channel Avatar",
+        "operationId": "get_channel_avatar_api_channels__channel_id__avatar_get",
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Channel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The picture, cached by Telegram's file id",
+            "content": {
+              "image/*": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Channel Avatar Api Channels  Channel Id  Avatar Get"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ChannelNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PictureNotFoundError"
+                    }
+                  ],
+                  "title": "Response 404 Get Channel Avatar Api Channels  Channel Id  Avatar Get"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloodWaitError"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramError"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/api/channels/{channel_id}/thumb": {
+      "get": {
+        "tags": [
+          "channels"
+        ],
+        "summary": "Get Channel Thumb",
+        "operationId": "get_channel_thumb_api_channels__channel_id__thumb_get",
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Channel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The picture, cached by Telegram's file id",
+            "content": {
+              "image/*": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Channel Thumb Api Channels  Channel Id  Thumb Get"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ChannelNotFoundError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PictureNotFoundError"
+                    }
+                  ],
+                  "title": "Response 404 Get Channel Thumb Api Channels  Channel Id  Thumb Get"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FloodWaitError"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TelegramError"
+                }
+              }
+            },
+            "description": "Bad Gateway"
+          }
+        }
+      }
+    },
+    "/api/decisions/{channel_id}": {
+      "put": {
+        "tags": [
+          "decisions"
+        ],
+        "summary": "Put Decision",
+        "operationId": "put_decision_api_decisions__channel_id__put",
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Channel Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Put Decision Api Decisions  Channel Id  Put"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ApplyJobRunningError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OwnerLeaveNotEnabledError"
+                    }
+                  ],
+                  "title": "Response 409 Put Decision Api Decisions  Channel Id  Put"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelNotFoundError"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "decisions"
+        ],
+        "summary": "Delete Decision",
+        "operationId": "delete_decision_api_decisions__channel_id__delete",
+        "parameters": [
+          {
+            "name": "channel_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Channel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoDecisionResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Delete Decision Api Decisions  Channel Id  Delete"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyJobRunningError"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelNotFoundError"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/decisions/trail": {
+      "get": {
+        "tags": [
+          "decisions"
+        ],
+        "summary": "Get Decisions Trail",
+        "description": "Decided chats in the order decided: what the progress bar shows, for rewinding.",
+        "operationId": "get_decisions_trail_api_decisions_trail_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ChatKind",
+              "default": "channel"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RoleFilter",
+              "default": "member"
+            }
+          },
+          {
+            "name": "archive",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ArchiveFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Archive"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Decisions Trail Api Decisions Trail Get"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/decisions": {
+      "get": {
+        "tags": [
+          "decisions"
+        ],
+        "summary": "Get Decisions",
+        "operationId": "get_decisions_api_decisions_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DecisionStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelListResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Decisions Api Decisions Get"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/decisions/reset": {
+      "post": {
+        "tags": [
+          "decisions"
+        ],
+        "summary": "Post Reset Decisions",
+        "operationId": "post_reset_decisions_api_decisions_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetDecisionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetDecisionsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Reset Decisions Api Decisions Reset Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyJobRunningError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/decisions/retry-failed": {
+      "post": {
+        "tags": [
+          "decisions"
+        ],
+        "summary": "Post Retry Failed",
+        "operationId": "post_retry_failed_api_decisions_retry_failed_post",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ChatKind",
+              "default": "channel"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RoleFilter",
+              "default": "member"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RetryFailedResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Retry Failed Api Decisions Retry Failed Post"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/apply": {
+      "post": {
+        "tags": [
+          "apply"
+        ],
+        "summary": "Post Apply",
+        "operationId": "post_apply_api_apply_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Apply Api Apply Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyJobRunningError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apply/cancel": {
+      "post": {
+        "tags": [
+          "apply"
+        ],
+        "summary": "Post Cancel Apply",
+        "operationId": "post_cancel_apply_api_apply_cancel_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Post Cancel Apply Api Apply Cancel Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apply/state": {
+      "get": {
+        "tags": [
+          "apply"
+        ],
+        "summary": "Get Apply State",
+        "operationId": "get_apply_state_api_apply_state_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplyStateResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Apply State Api Apply State Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/apply/events": {
+      "get": {
+        "tags": [
+          "apply"
+        ],
+        "summary": "Get Apply Events",
+        "operationId": "get_apply_events_api_apply_events_get",
+        "responses": {
+          "200": {
+            "description": "Server-sent events: a snapshot first, then changes",
+            "content": {
+              "text/event-stream": {}
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Apply Events Api Apply Events Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/prefs": {
+      "get": {
+        "tags": [
+          "results"
+        ],
+        "summary": "Get Prefs",
+        "operationId": "get_prefs_api_prefs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckPrefsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Prefs Api Prefs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "results"
+        ],
+        "summary": "Put Prefs",
+        "operationId": "put_prefs_api_prefs_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeckPrefsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeckPrefsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Put Prefs Api Prefs Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats": {
+      "get": {
+        "tags": [
+          "results"
+        ],
+        "summary": "Get Stats",
+        "operationId": "get_stats_api_stats_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ChatKind",
+              "default": "channel"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RoleFilter",
+              "default": "member"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Stats Api Stats Get"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/export": {
+      "get": {
+        "tags": [
+          "results"
+        ],
+        "summary": "Get Export",
+        "operationId": "get_export_api_export_get",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "csv",
+                "json"
+              ],
+              "type": "string",
+              "default": "csv",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ChatKind",
+              "default": "channel"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/RoleFilter",
+              "default": "member"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The chats left, as a file to save",
+            "content": {
+              "text/csv": {},
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExportRow"
+                  },
+                  "title": "Response 200 Get Export Api Export Get"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HostNotAllowedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CrossOriginRefusedError"
+                    }
+                  ],
+                  "title": "Response 403 Get Export Api Export Get"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestError"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpInternalError"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotAuthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ApplyItem": {
+        "properties": {
+          "channel_id": {
+            "type": "integer",
+            "title": "Channel Id"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "has_photo": {
+            "type": "boolean",
+            "title": "Has Photo"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "reverts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "role": {
+            "$ref": "#/components/schemas/ChatRole"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel_id",
+          "decision",
+          "title",
+          "has_photo",
+          "status",
+          "error",
+          "reverts",
+          "role"
+        ],
+        "title": "ApplyItem"
+      },
+      "ApplyJobRunningError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "apply_job_running",
+            "title": "Type",
+            "default": "apply_job_running"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Wait for the running apply job to finish"
+          }
+        },
+        "type": "object",
+        "title": "ApplyJobRunningError"
+      },
+      "ApplyStateResponse": {
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "running",
+              "finished",
+              "cancelled",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "done": {
+            "type": "integer",
+            "title": "Done"
+          },
+          "failed": {
+            "type": "integer",
+            "title": "Failed"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "flood_wait_until": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flood Wait Until"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ApplyItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "status",
+          "total",
+          "done",
+          "failed",
+          "current",
+          "flood_wait_until",
+          "items"
+        ],
+        "title": "ApplyStateResponse"
+      },
+      "ArchiveFilter": {
+        "type": "string",
+        "enum": [
+          "all",
+          "active",
+          "archived"
+        ],
+        "title": "ArchiveFilter",
+        "description": "Which part of the chat list the deck shows."
+      },
+      "AuthStateResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "starting",
+              "unauthorized",
+              "qr",
+              "code",
+              "password",
+              "authorized"
+            ],
+            "title": "Status"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/User"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "qr_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qr Url"
+          },
+          "qr_expires_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qr Expires At"
+          },
+          "password_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Password Hint"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "user",
+          "qr_url",
+          "qr_expires_at",
+          "password_hint",
+          "phone",
+          "error"
+        ],
+        "title": "AuthStateResponse"
+      },
+      "Channel": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChatKind"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ChatRole"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About"
+          },
+          "members_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Members Count"
+          },
+          "unread_count": {
+            "type": "integer",
+            "title": "Unread Count"
+          },
+          "is_muted": {
+            "type": "boolean",
+            "title": "Is Muted"
+          },
+          "is_archived": {
+            "type": "boolean",
+            "title": "Is Archived"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb Url"
+          },
+          "last_post_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Post At"
+          },
+          "last_post_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Post Text"
+          },
+          "last_post_media": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "full_loaded": {
+            "type": "boolean",
+            "title": "Full Loaded"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "pulse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pulse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reverts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "role",
+          "title",
+          "username",
+          "link",
+          "about",
+          "members_count",
+          "unread_count",
+          "is_muted",
+          "is_archived",
+          "avatar_url",
+          "thumb_url",
+          "last_post_at",
+          "last_post_text",
+          "last_post_media",
+          "full_loaded",
+          "decision",
+          "decision_status",
+          "error",
+          "pulse"
+        ],
+        "title": "Channel"
+      },
+      "ChannelListResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Channel"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ChannelListResponse"
+      },
+      "ChannelNotFoundError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "channel_not_found",
+            "title": "Type",
+            "default": "channel_not_found"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Unknown chat"
+          },
+          "channel_id": {
+            "type": "integer",
+            "title": "Channel Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel_id"
+        ],
+        "title": "ChannelNotFoundError"
+      },
+      "ChannelResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChatKind"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ChatRole"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "about": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "About"
+          },
+          "members_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Members Count"
+          },
+          "unread_count": {
+            "type": "integer",
+            "title": "Unread Count"
+          },
+          "is_muted": {
+            "type": "boolean",
+            "title": "Is Muted"
+          },
+          "is_archived": {
+            "type": "boolean",
+            "title": "Is Archived"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb Url"
+          },
+          "last_post_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Post At"
+          },
+          "last_post_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Post Text"
+          },
+          "last_post_media": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MediaKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "full_loaded": {
+            "type": "boolean",
+            "title": "Full Loaded"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "pulse": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pulse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reverts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "role",
+          "title",
+          "username",
+          "link",
+          "about",
+          "members_count",
+          "unread_count",
+          "is_muted",
+          "is_archived",
+          "avatar_url",
+          "thumb_url",
+          "last_post_at",
+          "last_post_text",
+          "last_post_media",
+          "full_loaded",
+          "decision",
+          "decision_status",
+          "error",
+          "pulse"
+        ],
+        "title": "ChannelResponse"
+      },
+      "ChatKind": {
+        "type": "string",
+        "enum": [
+          "channel",
+          "supergroup"
+        ],
+        "title": "ChatKind"
+      },
+      "ChatRole": {
+        "type": "string",
+        "enum": [
+          "member",
+          "admin",
+          "owner"
+        ],
+        "title": "ChatRole",
+        "description": "What the user is in a chat."
+      },
+      "CheckPasswordRequest": {
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "password"
+        ],
+        "title": "CheckPasswordRequest"
+      },
+      "CrossOriginRefusedError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "cross_origin_refused",
+            "title": "Type",
+            "default": "cross_origin_refused"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Requests from other sites are refused"
+          }
+        },
+        "type": "object",
+        "title": "CrossOriginRefusedError"
+      },
+      "Decision": {
+        "type": "string",
+        "enum": [
+          "keep",
+          "unsubscribe",
+          "mute",
+          "archive",
+          "skip"
+        ],
+        "title": "Decision"
+      },
+      "DecisionRequest": {
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/Decision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "decision"
+        ],
+        "title": "DecisionRequest"
+      },
+      "DecisionResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DeckCounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "counts"
+        ],
+        "title": "DecisionResponse"
+      },
+      "DecisionStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "applied",
+          "failed"
+        ],
+        "title": "DecisionStatus"
+      },
+      "DeckCounts": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "kind_totals": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/ChatKind"
+            },
+            "type": "object",
+            "title": "Kind Totals"
+          },
+          "role_totals": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "propertyNames": {
+                "$ref": "#/components/schemas/ChatKind"
+              },
+              "type": "object"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/RoleFilter"
+            },
+            "type": "object",
+            "title": "Role Totals"
+          },
+          "archive_totals": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/ArchiveFilter"
+            },
+            "type": "object",
+            "title": "Archive Totals"
+          },
+          "undecided": {
+            "type": "integer",
+            "title": "Undecided"
+          },
+          "pending": {
+            "type": "integer",
+            "title": "Pending"
+          },
+          "pending_other": {
+            "type": "integer",
+            "title": "Pending Other"
+          },
+          "by_decision": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/Decision"
+            },
+            "type": "object",
+            "title": "By Decision"
+          },
+          "trail": {
+            "type": "string",
+            "title": "Trail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "kind_totals",
+          "role_totals",
+          "archive_totals",
+          "undecided",
+          "pending",
+          "pending_other",
+          "by_decision",
+          "trail"
+        ],
+        "title": "DeckCounts"
+      },
+      "DeckPrefsRequest": {
+        "properties": {
+          "sort": {
+            "$ref": "#/components/schemas/SortMode",
+            "default": "dead"
+          },
+          "reverse": {
+            "type": "boolean",
+            "title": "Reverse",
+            "default": false
+          },
+          "archive": {
+            "$ref": "#/components/schemas/ArchiveFilter",
+            "default": "all"
+          }
+        },
+        "type": "object",
+        "title": "DeckPrefsRequest"
+      },
+      "DeckPrefsResponse": {
+        "properties": {
+          "sort": {
+            "$ref": "#/components/schemas/SortMode",
+            "default": "dead"
+          },
+          "reverse": {
+            "type": "boolean",
+            "title": "Reverse",
+            "default": false
+          },
+          "archive": {
+            "$ref": "#/components/schemas/ArchiveFilter",
+            "default": "all"
+          },
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "DeckPrefsResponse"
+      },
+      "DeckResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Channel"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DeckCounts"
+          },
+          "sync": {
+            "$ref": "#/components/schemas/SyncState"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "counts",
+          "sync"
+        ],
+        "title": "DeckResponse"
+      },
+      "ErrorDetail": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Loc"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Msg"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg"
+        ],
+        "title": "ErrorDetail"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "retry_after": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retry After"
+          },
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ErrorDetail"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "description": "The body of every error (api/errors.py); which fields come along depends on the type."
+      },
+      "ExportRow": {
+        "properties": {
+          "channel_id": {
+            "type": "integer",
+            "title": "Channel Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link"
+          },
+          "members_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Members Count"
+          },
+          "last_post_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Post At"
+          },
+          "unsubscribed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unsubscribed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel_id",
+          "title",
+          "username",
+          "link",
+          "members_count",
+          "last_post_at",
+          "unsubscribed_at"
+        ],
+        "title": "ExportRow",
+        "description": "A chat left, as /api/export lists it."
+      },
+      "FloodWaitError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "flood_wait",
+            "title": "Type",
+            "default": "flood_wait"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Telegram asks to wait before the next request"
+          },
+          "retry_after": {
+            "type": "integer",
+            "title": "Retry After"
+          }
+        },
+        "type": "object",
+        "required": [
+          "retry_after"
+        ],
+        "title": "FloodWaitError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "mock": {
+            "type": "boolean",
+            "title": "Mock"
+          },
+          "allow_owner_leave": {
+            "type": "boolean",
+            "title": "Allow Owner Leave"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "mock",
+          "allow_owner_leave"
+        ],
+        "title": "HealthResponse"
+      },
+      "HostNotAllowedError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "host_not_allowed",
+            "title": "Type",
+            "default": "host_not_allowed"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Open the app at http://localhost"
+          }
+        },
+        "type": "object",
+        "title": "HostNotAllowedError"
+      },
+      "HttpInternalError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "internal_error",
+            "title": "Type",
+            "default": "internal_error"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Something went wrong in the app; its log has the details"
+          }
+        },
+        "type": "object",
+        "title": "HttpInternalError"
+      },
+      "InvalidCodeError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "invalid_code",
+            "title": "Type",
+            "default": "invalid_code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "That code is not valid"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "InvalidCodeError"
+      },
+      "InvalidPasswordError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "invalid_password",
+            "title": "Type",
+            "default": "invalid_password"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Wrong password"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "InvalidPasswordError"
+      },
+      "InvalidPhoneError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "invalid_phone",
+            "title": "Type",
+            "default": "invalid_phone"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "That phone number is not valid"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "InvalidPhoneError"
+      },
+      "InvalidRequestError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "invalid_request",
+            "title": "Type",
+            "default": "invalid_request"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "The request doesn't fit the API"
+          },
+          "details": {
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "type": "array",
+            "title": "Details"
+          }
+        },
+        "type": "object",
+        "required": [
+          "details"
+        ],
+        "title": "InvalidRequestError"
+      },
+      "LoginStepUnexpectedError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "login_step_unexpected",
+            "title": "Type",
+            "default": "login_step_unexpected"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "The login is not at that step"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "LoginStepUnexpectedError"
+      },
+      "LogoutRequest": {
+        "properties": {
+          "wipe_data": {
+            "type": "boolean",
+            "title": "Wipe Data",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "LogoutRequest"
+      },
+      "MediaKind": {
+        "type": "string",
+        "enum": [
+          "photo",
+          "video",
+          "animation",
+          "document",
+          "audio",
+          "voice",
+          "poll",
+          "sticker",
+          "other"
+        ],
+        "title": "MediaKind"
+      },
+      "NotAuthorizedError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "not_authorized",
+            "title": "Type",
+            "default": "not_authorized"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Log in to Telegram first"
+          }
+        },
+        "type": "object",
+        "title": "NotAuthorizedError"
+      },
+      "OwnerLeaveNotEnabledError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "owner_leave_not_enabled",
+            "title": "Type",
+            "default": "owner_leave_not_enabled"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Leaving a chat you own is off (start with --allow-owner-leave to allow it)"
+          }
+        },
+        "type": "object",
+        "title": "OwnerLeaveNotEnabledError"
+      },
+      "PictureNotFoundError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "picture_not_found",
+            "title": "Type",
+            "default": "picture_not_found"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "The chat has no such picture"
+          },
+          "channel_id": {
+            "type": "integer",
+            "title": "Channel Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "channel_id"
+        ],
+        "title": "PictureNotFoundError"
+      },
+      "Pulse": {
+        "properties": {
+          "weeks": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Weeks"
+          },
+          "per_week": {
+            "type": "number",
+            "title": "Per Week"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated"
+          },
+          "sample": {
+            "type": "integer",
+            "title": "Sample"
+          }
+        },
+        "type": "object",
+        "required": [
+          "weeks",
+          "per_week",
+          "truncated",
+          "sample"
+        ],
+        "title": "Pulse"
+      },
+      "ResetDecisionsRequest": {
+        "properties": {
+          "only": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Decision"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ChatKind",
+            "default": "channel"
+          },
+          "role": {
+            "$ref": "#/components/schemas/RoleFilter",
+            "default": "member"
+          }
+        },
+        "type": "object",
+        "title": "ResetDecisionsRequest"
+      },
+      "ResetDecisionsResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "removed": {
+            "type": "integer",
+            "title": "Removed"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DeckCounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "removed",
+          "counts"
+        ],
+        "title": "ResetDecisionsResponse"
+      },
+      "RetryFailedResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DeckCounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "counts"
+        ],
+        "title": "RetryFailedResponse"
+      },
+      "RoleFilter": {
+        "type": "string",
+        "enum": [
+          "member",
+          "managed"
+        ],
+        "title": "RoleFilter",
+        "description": "The two decks: chats the user is just in, and the ones they run (admin or owner)."
+      },
+      "SendCodeRequest": {
+        "properties": {
+          "phone": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 5,
+            "title": "Phone"
+          }
+        },
+        "type": "object",
+        "required": [
+          "phone"
+        ],
+        "title": "SendCodeRequest"
+      },
+      "SignInRequest": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "SignInRequest"
+      },
+      "SortMode": {
+        "type": "string",
+        "enum": [
+          "dead",
+          "unread"
+        ],
+        "title": "SortMode"
+      },
+      "StatsResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "subscribed": {
+            "type": "integer",
+            "title": "Subscribed"
+          },
+          "unread_total": {
+            "type": "integer",
+            "title": "Unread Total"
+          },
+          "unread_cleared": {
+            "type": "integer",
+            "title": "Unread Cleared"
+          },
+          "decisions": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "propertyNames": {
+                "$ref": "#/components/schemas/DecisionStatus"
+              },
+              "type": "object"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/Decision"
+            },
+            "type": "object",
+            "title": "Decisions"
+          },
+          "last_post_age": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Last Post Age"
+          }
+        },
+        "type": "object",
+        "required": [
+          "subscribed",
+          "unread_total",
+          "unread_cleared",
+          "decisions",
+          "last_post_age"
+        ],
+        "title": "StatsResponse"
+      },
+      "SyncState": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "fetched": {
+            "type": "integer",
+            "title": "Fetched"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "flood_wait": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flood Wait"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "running",
+          "fetched",
+          "total",
+          "last_synced_at",
+          "flood_wait",
+          "error"
+        ],
+        "title": "SyncState"
+      },
+      "SyncStateResponse": {
+        "properties": {
+          "running": {
+            "type": "boolean",
+            "title": "Running"
+          },
+          "fetched": {
+            "type": "integer",
+            "title": "Fetched"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Synced At"
+          },
+          "flood_wait": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flood Wait"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "running",
+          "fetched",
+          "total",
+          "last_synced_at",
+          "flood_wait",
+          "error"
+        ],
+        "title": "SyncStateResponse"
+      },
+      "TelegramError": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": false,
+            "title": "Ok",
+            "default": false
+          },
+          "type": {
+            "type": "string",
+            "const": "telegram_error",
+            "title": "Type",
+            "default": "telegram_error"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": "Telegram refused the request"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "reason"
+        ],
+        "title": "TelegramError"
+      },
+      "UndoDecisionResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok",
+            "default": true
+          },
+          "removed": {
+            "type": "boolean",
+            "title": "Removed"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/DeckCounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "removed",
+          "counts"
+        ],
+        "title": "UndoDecisionResponse"
+      },
+      "User": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "first_name",
+          "last_name",
+          "username"
+        ],
+        "title": "User"
+      }
+    }
+  }
+}

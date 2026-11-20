@@ -10,7 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Literal
 
-from channels_cleaner.api.errors import FloodWait, InvalidCode, InvalidPassword, InvalidPhone, LoginStepMismatch
+from channels_cleaner.api.errors import FloodWait, InvalidCode, InvalidPassword, InvalidPhone, LoginStepUnexpected
 from channels_cleaner.database import DAO, DatabaseManager
 from channels_cleaner.database.models import base
 from channels_cleaner.events import EventBus
@@ -185,7 +185,7 @@ class AuthService:
     async def sign_in(self, code: str) -> None:
         async with self._lock:
             if self.state.status != "code":
-                raise LoginStepMismatch(reason="No code was requested")
+                raise LoginStepUnexpected(reason="No code was requested")
 
             try:
                 user = await self._gw.sign_in_code(code)
@@ -214,7 +214,7 @@ class AuthService:
     async def check_password(self, password: str) -> None:
         async with self._lock:
             if self.state.status != "password":
-                raise LoginStepMismatch(reason="Password is not expected now")
+                raise LoginStepUnexpected(reason="Password is not expected now")
 
             try:
                 user = await self._gw.check_password(password)
@@ -261,4 +261,4 @@ class AuthService:
 
     def _require_unauthorized(self) -> None:
         if self.state.status == "authorized":
-            raise LoginStepMismatch(reason="Already authorized")
+            raise LoginStepUnexpected(reason="Already authorized")

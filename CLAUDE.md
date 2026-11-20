@@ -14,7 +14,8 @@ Talk to the user in **Russian**. Code, comments, commits and README are in Engli
   `ghcr.io/asteroid-den/telegram-channels-cleaner` (amd64+arm64, public). 1.0.0/1.0.1 shipped as
   `channels-cleaner`; that PyPI project is gone. Their user data dir was `channels-cleaner`: `config.py` moves it to
   `telegram-channels-cleaner` on first start. Tag `v0.9.0` = the old generic UI (local only).
-- Each PR bumps `__version__` (`chore: bump version to X.Y.Z`); the user tags and pushes the tag.
+- PRs don't bump `__version__`: it is set in its own commit (`chore: bump version to X.Y.Z`) right before a release,
+  then the user tags and pushes the tag. 1.5.1/1.5.2 were never tagged: everything after 1.5.0 ships as 1.6.0.
 - Work goes through branches + PRs into `main` (merge commits). Push only when the user says so
   for that push; **never push tags** — the user tags releases (`release.yml` checks the tag
   against `__version__`, publishes to PyPI via trusted publishing, then GHCR).
@@ -38,7 +39,9 @@ uv run telegram-channels-cleaner --mock                # fake Telegram; real acc
 uv run telegram-channels-cleaner --mock --dev          # API only; plus `npm --prefix frontend run dev` (:5173)
 ```
 Checks (= CI): `uv run ruff check && uv run ruff format --check && uv run pyright && uv run pytest`;
-`cd frontend && npm run lint && npm run format:check && npm run test && npm run build`.
+`cd frontend && npm run lint && npm run format:check && npm run api:check && npm run test && npm run build`.
+**After any change to an API model or route**: `uv run python -m channels_cleaner.api.openapi && npm --prefix frontend
+run api:types`, commit both `frontend/openapi.json` and `frontend/src/api/schema.d.ts` (a test and CI check they're current).
 **Before every commit with Python changes**: `python3 -I .local/unstick_blocks.py src/channels_cleaner tests`
 then `uv run ruff format` — blank lines around if/for/while/try/with/match and before elif/else/except/finally
 (user's style). `--check` only reports. `.local/` is local-only (in `.git/info/exclude`), not in the repo or CI.
@@ -70,8 +73,17 @@ src/channels_cleaner/
     device_profiles.json  36 TDesktop-like profiles (user's 24 + 12 added); picked once per
                   session and persisted as data/sessions/account.device.json — never re-rolled
   services/       auth (state machine), sync, channels (lazy full info + pulse + media cache),
-                  apply (sequential job, 1.5–3 s jitter, FloodWait sleep+retry, cancel), stats
-  api/routes.py   all /api endpoints (auth, channels, decisions, apply, prefs, stats, export)
+                  apply (sequential job, 1.5–3 s jitter, FloodWait sleep+retry, cancel), stats,
+                  deck (prefs + the deck's counters, COUNT queries), decisions (decide/undo, owner-leave rule)
+  api/routers/    /api endpoints, a module per area (health, auth, channels, decisions, apply, results =
+                  prefs/stats/export), assembled in routers/__init__.py; each returns a model from
+                  api/models.py (from_attributes), so /openapi.json is the whole contract. Named like get-gem:
+                  bodies `…Request`, answers `…Response(OkResponse)` (`ok: true`), parts plain nouns (Channel,
+                  DeckCounts, ApplyItem); route functions `get_…`/`post_…`/`put_…`/`delete_…`
+  api/dependencies.py  ContextDep, DAODep, AccountIdDep (as mercury's DAODep/RuntimeDep)
+  api/middlewares.py   LocalOnlyMiddleware; api/utils.py — the 200s of non-JSON routes for OpenAPI
+  api/openapi.py  dumps it to frontend/openapi.json → openapi-typescript → frontend/src/api/schema.d.ts;
+                  api/types.ts only names those types (and spells out enum-keyed maps OpenAPI can't express)
 frontend/src/     Vue 3 + Vite + TS, Pinia, vue-router, vue-i18n (en/ru), Tailwind v4
   stores/         auth (SSE), deck (queue, undo history, prefetch 8 ahead), apply (SSE), ui
   components/     SwipeDeck (pointer swipe + fly-out), ChannelCard, PulseChart, AppHeader…
@@ -102,7 +114,7 @@ Database (2026-11-20, replaced the hand-written aiosqlite layer):
   (render_as_batch) because SQLite alters by copying tables; UtcDateTime renders as `sa.Text()`.
 
 Safety (2026-11-20, after an audit run from the mercury session):
-- `api/guard.py` LocalOnlyMiddleware: Host must be localhost/127.0.0.1/::1 (or the host given by name with
+- `api/middlewares.py` LocalOnlyMiddleware: Host must be localhost/127.0.0.1/::1 (or the host given by name with
   --host); POST/PUT/DELETE need `Origin == http://<Host>` and `Sec-Fetch-Site` same-origin/none when present.
   Requests without them (curl, tests) pass. Tests use `base_url="http://localhost"`. Vite proxies with
   changeOrigin: false so Host and Origin stay the dev server's. Phone access will need real auth on top.
@@ -113,12 +125,17 @@ Safety (2026-11-20, after an audit run from the mercury session):
 - Migrations: `migrate.backup()` copies the DB to `<name>.before-<version>` before any change; legacy steps run
   with their version row in one explicit transaction (executescript would commit on its own).
 
-Errors (1.5.2), like mercury's HttpError: `api/errors.py` has one dataclass per error with `CODE` (HTTP status),
-`TYPE` (what the UI acts on, `ApiError.type` in client.ts) and `MESSAGE`; fields go into the body
+Errors, base as get-gem's: `api/errors.py` has `BaseError`, a class per HTTP status under it (`BadRequest`,
+`NotFound`, `Conflict`, `TooManyRequests`, `BadGateway`…) that sets `CODE`, and one dataclass per error under those
+with `TYPE` (snake case of the class name; what the UI acts on, `ApiError.type` in client.ts) and `MESSAGE`
+(upper case as in mercury: `type` would shadow the builtin); fields go into the body
 `{"ok": false, "type", "message", …fields}` (`reason` = what Telegram said, `retry_after`, `channel_id`, `details`).
 Services and routes raise these classes directly; the gateway's own errors (telegram/types.py) stay HTTP-free and
 are translated in `_translate`, as are Starlette's 404/405, validation (422) and any other exception (500). The
-guard builds its 403s from the same classes. A test checks every class is complete and TYPEs are unique.
+guard builds its 403s from the same classes. Each route lists its errors in `responses=errors.error_responses(…)`
+(plus `COMMON_ERRORS`: the guard's 403s, 422, 500) — in OpenAPI as `<Name>Error` models; the test client checks
+every error answer against what its route lists (conftest `check_error_is_declared`, like mercury's jsonrpc
+plugin). A test checks every class is complete and TYPEs are unique. "No picture" is `PictureNotFound` (JSON 404).
 `kurigram_gateway._telegram_errors()`
 maps FloodWait/RPCError/OSError/TimeoutError to the gateway's errors; downloads raise on network errors instead of
 caching "no picture". Started offline, `context._boot` retries (2, 5, 10, 30, 60 s…) and publishes `connect_failed`;
@@ -185,7 +202,6 @@ The user rejected the retro "press" look; wants modern digital but not generic S
 - Card drag fix (fe87e4c) verified in Chrome only — user to confirm in Firefox.
 - Watch flood waits from the extra GetHistory call per card on big accounts; lower prefetch depth if needed.
 - What Telegram does when a creator leaves their own chat (`--allow-owner-leave`) is untested.
-- `_deck_counts` runs ~14 queries and loads every undecided row just to count it, on each decision: fine at a
-  few hundred chats, a `COUNT` would do if it ever shows.
+- `deck.counts` runs ~14 small COUNT queries on each decision: fine at a few thousand chats.
 - Optional: bundle only latin+cyrillic font subsets; 5 moderate `npm audit` issues are dev-only.
 - Spec extras agreed for later: multi-account support (DB already keyed by account_id).

@@ -3,7 +3,15 @@
 from datetime import datetime
 
 from channels_cleaner.database import DAO
-from channels_cleaner.enums import ACTION_DECISIONS, REVERSIBLE_ACTIONS, Decision, DecisionStatus
+from channels_cleaner.enums import ACTION_DECISIONS, REVERSIBLE_ACTIONS, ChatRole, Decision, DecisionStatus
+
+
+def leaves_owned_chat(decision: Decision, role: ChatRole, *, allowed: bool) -> bool:
+    """Whether the decision leaves a chat the user created while that is off (--allow-owner-leave).
+
+    Checked when the decision is made, and again when it is applied: one queued while the flag was on.
+    """
+    return decision is Decision.UNSUBSCRIBE and role is ChatRole.OWNER and not allowed
 
 
 async def decide(dao: DAO, account_id: int, channel_id: int, decision: Decision, now: datetime) -> None:

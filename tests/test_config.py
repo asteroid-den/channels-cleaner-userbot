@@ -5,7 +5,9 @@ import stat
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
+from channels_cleaner.cli import settings_error_message
 from channels_cleaner.config import Settings, default_data_dir
 
 
@@ -84,3 +86,31 @@ def test_leaving_owned_chats_is_off_unless_asked_for(monkeypatch: pytest.MonkeyP
     assert Settings(_env_file=None).allow_owner_leave is False  # pyright: ignore[reportCallIssue]
     monkeypatch.setenv("CC_ALLOW_OWNER_LEAVE", "1")
     assert Settings(_env_file=None).allow_owner_leave is True  # pyright: ignore[reportCallIssue]
+
+
+@pytest.mark.parametrize(
+    "values",
+    [{"apply_delay_min": 5, "apply_delay_max": 1}, {"apply_delay_min": -1}, {"port": 0}, {"mock_channels": -3}],
+)
+def test_settings_that_make_no_sense_are_refused(tmp_path: Path, values: dict[str, float]) -> None:
+    with pytest.raises(ValidationError):
+        Settings(data_dir=tmp_path, _env_file=None, **values)  # pyright: ignore[reportCallIssue]
+
+
+def test_a_bad_setting_is_named_as_its_variable(tmp_path: Path) -> None:
+    with pytest.raises(ValidationError) as caught:
+        Settings(data_dir=tmp_path, port=70000, _env_file=None)  # pyright: ignore[reportCallIssue]
+
+    message = settings_error_message(caught.value)
+
+    assert "CC_PORT" in message
+
+
+def test_the_env_file_of_another_project_is_harmless(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text("DATABASE_URL=postgres://x\nSECRET_KEY=abc\nCC_PORT=9001\n")
+
+    settings = Settings(data_dir=tmp_path)
+
+    # Only its CC_ keys count
+    assert settings.port == 9001
