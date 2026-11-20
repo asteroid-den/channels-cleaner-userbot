@@ -17,7 +17,7 @@ from channels_cleaner.context import AppContext
 from channels_cleaner.database import DAO
 from channels_cleaner.database import utils as db_utils
 from channels_cleaner.database.models import Channel, base
-from channels_cleaner.enums import ArchiveFilter, ChatKind, ChatRole, Decision, DecisionStatus, RoleFilter, SortMode
+from channels_cleaner.enums import ArchiveFilter, ChatKind, DecisionStatus, RoleFilter, SortMode
 from channels_cleaner.services import decisions, stats
 from channels_cleaner.services.apply import TOPIC as APPLY_TOPIC
 from channels_cleaner.services.auth import TOPIC as AUTH_TOPIC
@@ -130,17 +130,16 @@ async def _deck_counts(
     archive: ArchiveFilter | None = None,
 ) -> dict[str, Any]:
     archive = await _archive_filter(dao, account, archive)
-    undecided = await dao.list_channels(account, kind=kind, role=role, archive=archive, undecided_only=True)
     # Pending work covers every kind and role: one review screen, one apply job
-    pending = len(await dao.list_decided(account, status=DecisionStatus.PENDING))
-    here = len(await dao.list_decided(account, status=DecisionStatus.PENDING, kind=kind, role=role))
+    pending = await dao.count_pending(account)
+    here = await dao.count_pending(account, kind, role)
     return {
         "total": await dao.count_channels(account, kind, archive, role),
         # how many chats each choice in the deck settings menu would show
         "kind_totals": {k: await dao.count_channels(account, k, archive, role) for k in ChatKind},
         "role_totals": {r: {k: await dao.count_channels(account, k, archive, r) for k in ChatKind} for r in RoleFilter},
         "archive_totals": {a: await dao.count_channels(account, kind, a, role) for a in ArchiveFilter},
-        "undecided": len(undecided),
+        "undecided": await dao.count_undecided(account, kind, role, archive),
         "pending": pending,
         "pending_other": pending - here,
         "by_decision": await dao.decision_counts(account, kind, archive, role),
@@ -230,9 +229,8 @@ async def decision_set(
         raise ApplyRunning
 
     chat = await _chat(dao, account, channel_id)
-    leaving = body.decision is Decision.UNSUBSCRIBE
 
-    if leaving and chat.role is ChatRole.OWNER and not ctx.settings.allow_owner_leave:
+    if decisions.leaves_owned_chat(body.decision, chat.role, allowed=ctx.settings.allow_owner_leave):
         raise OwnerLeaveOff
 
     await decisions.decide(dao, account, channel_id, body.decision, base.utc_now())

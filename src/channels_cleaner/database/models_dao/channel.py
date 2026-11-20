@@ -179,6 +179,47 @@ class ChannelDAO:
         result = await self.session.execute(statement)
         return [(last_post_at, unread) for last_post_at, unread in result]
 
+    async def count_undecided(self, account_id: int, kind: ChatKind, role: RoleFilter, archive: ArchiveFilter) -> int:
+        """Chats of a deck still waiting for a decision ("later" ones included)."""
+        statement = (
+            select(func.count())
+            .select_from(Channel)
+            .outerjoin(Channel.decision)
+            .where(
+                Channel.account_id == account_id,
+                Channel.gone.is_(False),
+                Channel.kind == kind,
+                utils.archive_is(archive),
+                utils.role_is(role),
+                or_(ChannelDecision.decision.is_(None), ChannelDecision.decision == Decision.SKIP),
+            )
+        )
+
+        result = await self.session.execute(statement)
+        return result.scalar_one()
+
+    async def count_pending(self, account_id: int, kind: ChatKind | None = None, role: RoleFilter | None = None) -> int:
+        """Decisions the apply job still has to carry out (the same rows list_decided gives it)."""
+        statement = (
+            select(func.count())
+            .select_from(Channel)
+            .join(Channel.decision)
+            .where(
+                Channel.account_id == account_id,
+                ChannelDecision.status == DecisionStatus.PENDING,
+                or_(ChannelDecision.decision.in_(ACTION_DECISIONS), ChannelDecision.reverts.is_not(None)),
+            )
+        )
+
+        if kind is not None:
+            statement = statement.where(Channel.kind == kind)
+
+        if role is not None:
+            statement = statement.where(utils.role_is(role))
+
+        result = await self.session.execute(statement)
+        return result.scalar_one()
+
     async def get_channel(self, account_id: int, channel_id: int) -> Channel | None:
         statement = (
             select(Channel)

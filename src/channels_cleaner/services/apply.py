@@ -16,6 +16,7 @@ from channels_cleaner.database import DAO, DatabaseManager
 from channels_cleaner.database.models import base
 from channels_cleaner.enums import ChatRole, Decision, DecisionStatus, JobStatus
 from channels_cleaner.events import EventBus
+from channels_cleaner.services import decisions
 from channels_cleaner.telegram.gateway import TelegramGateway
 from channels_cleaner.telegram.types import FloodWaitError, GatewayError
 
@@ -142,7 +143,7 @@ class ApplyService:
         # Normally refused when the decision is made; this covers one queued while the flag was on
         leaving = item.decision is Decision.UNSUBSCRIBE
 
-        if leaving and item.role is ChatRole.OWNER and not self._settings.allow_owner_leave:
+        if decisions.leaves_owned_chat(item.decision, item.role, allowed=self._settings.allow_owner_leave):
             msg = "Leaving a chat you own is off (start with --allow-owner-leave)"
             raise GatewayError(msg)
 
