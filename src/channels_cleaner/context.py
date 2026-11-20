@@ -7,7 +7,8 @@ import logging
 from dataclasses import dataclass, field
 
 from channels_cleaner.config import Settings
-from channels_cleaner.db import Database
+from channels_cleaner.database import DAO, DatabaseManager
+from channels_cleaner.database.models import base
 from channels_cleaner.events import EventBus
 from channels_cleaner.services.apply import ApplyService
 from channels_cleaner.services.auth import AuthService
@@ -34,7 +35,7 @@ def make_gateway(settings: Settings) -> TelegramGateway:
 @dataclass
 class AppContext:
     settings: Settings
-    db: Database
+    database: DatabaseManager
     bus: EventBus
     gateway: TelegramGateway
     auth: AuthService
@@ -46,24 +47,30 @@ class AppContext:
     @classmethod
     def create(cls, settings: Settings, gateway: TelegramGateway | None = None) -> AppContext:
         settings.ensure_dirs()
-        db = Database(settings.db_path)
+        database = DatabaseManager(settings.db_path)
         bus = EventBus()
         gw = gateway or make_gateway(settings)
         return cls(
             settings=settings,
-            db=db,
+            database=database,
             bus=bus,
             gateway=gw,
-            auth=AuthService(gw, db, bus),
-            sync=SyncService(gw, db, bus),
-            channels=ChannelsService(gw, db, settings),
-            apply=ApplyService(gw, db, bus, settings),
+            auth=AuthService(gw, database, bus),
+            sync=SyncService(gw, database, bus),
+            channels=ChannelsService(gw, database, settings),
+            apply=ApplyService(gw, database, bus, settings),
         )
 
     async def startup(self) -> None:
-        await self.db.open()
-        await self.db.interrupt_running_jobs()
-        await self.db.clear_skips()  # "skip" means "not now", so it lasts one launch
+        await self.database.migrate()
+
+        async with self.database.session() as session:
+            dao = DAO(session)
+            await dao.interrupt_running_jobs(base.utc_now())
+            # "Skip" means "not now", so it lasts one launch
+            await dao.clear_skips()
+            await dao.commit()
+
         self.auth.on_login(self._after_login)
         self._boot_task = asyncio.create_task(self._boot(), name="boot")
 
@@ -79,10 +86,12 @@ class AppContext:
     async def _after_login(self, user: TgUser) -> None:
         await self.sync.load(user.id)
 
-        if (
-            await self.db.channel_count(user.id) == 0
-            or await self.db.get_setting(user.id, SCOPE_SETTING) != SCOPE_VERSION
-        ):
+        async with self.database.session() as session:
+            dao = DAO(session)
+            empty = await dao.count_channels(user.id) == 0
+            outdated = await dao.get_setting(user.id, SCOPE_SETTING) != SCOPE_VERSION
+
+        if empty or outdated:
             self.sync.start(user.id)
 
     async def wait_ready(self) -> None:
@@ -97,4 +106,4 @@ class AppContext:
         await self.sync.stop()
         await self.auth.stop()
         await self.gateway.stop()
-        await self.db.close()
+        await self.database.dispose()

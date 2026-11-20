@@ -17,18 +17,17 @@ from pyrogram.raw.types.auth.login_token import LoginToken
 from pyrogram.raw.types.message import Message
 
 from channels_cleaner.config import Settings
+from channels_cleaner.enums import ChatKind, ChatRole, MediaKind
 from channels_cleaner.telegram import device_profiles
 from channels_cleaner.telegram.device_profiles import DeviceProfile
 from channels_cleaner.telegram.types import (
     ChannelFull,
     ChannelInfo,
-    ChatKind,
     FloodWaitError,
     GatewayError,
     InvalidCodeError,
     InvalidPasswordError,
     InvalidPhoneError,
-    MediaKind,
     NotAuthorizedError,
     PasswordNeededError,
     QrExpiredError,
@@ -41,24 +40,24 @@ log = logging.getLogger(__name__)
 SESSION_NAME = "account"
 
 _MEDIA_KINDS: dict[Any, MediaKind] = {
-    enums.MessageMediaType.PHOTO: "photo",
-    enums.MessageMediaType.LIVE_PHOTO: "photo",
-    enums.MessageMediaType.VIDEO: "video",
-    enums.MessageMediaType.VIDEO_NOTE: "video",
-    enums.MessageMediaType.ANIMATION: "animation",
-    enums.MessageMediaType.DOCUMENT: "document",
-    enums.MessageMediaType.AUDIO: "audio",
-    enums.MessageMediaType.VOICE: "voice",
-    enums.MessageMediaType.POLL: "poll",
-    enums.MessageMediaType.STICKER: "sticker",
+    enums.MessageMediaType.PHOTO: MediaKind.PHOTO,
+    enums.MessageMediaType.LIVE_PHOTO: MediaKind.PHOTO,
+    enums.MessageMediaType.VIDEO: MediaKind.VIDEO,
+    enums.MessageMediaType.VIDEO_NOTE: MediaKind.VIDEO,
+    enums.MessageMediaType.ANIMATION: MediaKind.ANIMATION,
+    enums.MessageMediaType.DOCUMENT: MediaKind.DOCUMENT,
+    enums.MessageMediaType.AUDIO: MediaKind.AUDIO,
+    enums.MessageMediaType.VOICE: MediaKind.VOICE,
+    enums.MessageMediaType.POLL: MediaKind.POLL,
+    enums.MessageMediaType.STICKER: MediaKind.STICKER,
 }
 
 # A forum (a supergroup with topics) is a separate type in Kurigram but a supergroup for Telegram
 # and for its 1000 channels-and-supergroups limit. Basic groups and channel DMs are not covered.
 _CHAT_KINDS: dict[Any, ChatKind] = {
-    enums.ChatType.CHANNEL: "channel",
-    enums.ChatType.SUPERGROUP: "supergroup",
-    enums.ChatType.FORUM: "supergroup",
+    enums.ChatType.CHANNEL: ChatKind.CHANNEL,
+    enums.ChatType.SUPERGROUP: ChatKind.SUPERGROUP,
+    enums.ChatType.FORUM: ChatKind.SUPERGROUP,
 }
 
 # Telegram uses this as "muted forever".
@@ -342,7 +341,7 @@ class KurigramGateway:
             text = top.text or top.caption
 
             if top.media is not None:
-                media = _MEDIA_KINDS.get(top.media, "other")
+                media = _MEDIA_KINDS.get(top.media, MediaKind.OTHER)
 
         photo = chat.photo
         return ChannelInfo(
@@ -360,7 +359,7 @@ class KurigramGateway:
             last_post_text=str(text) if text else None,
             last_post_media=media,
             kind=kind,
-            role="owner" if chat.is_creator else "admin" if chat.is_admin else "member",
+            role=ChatRole.OWNER if chat.is_creator else ChatRole.ADMIN if chat.is_admin else ChatRole.MEMBER,
         )
 
     async def get_full(self, channel_id: int) -> ChannelFull:

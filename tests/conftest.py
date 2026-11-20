@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ import pytest
 from channels_cleaner.app import create_app
 from channels_cleaner.config import Settings
 from channels_cleaner.context import AppContext
+from channels_cleaner.database import DAO
 from channels_cleaner.telegram.mock_gateway import MockGateway
 
 
@@ -50,6 +52,12 @@ async def client(ctx: AppContext) -> AsyncIterator[httpx.AsyncClient]:
 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
             yield c
+
+
+@contextlib.asynccontextmanager
+async def open_dao(ctx: AppContext) -> AsyncIterator[DAO]:
+    async with ctx.database.session() as session:
+        yield DAO(session)
 
 
 # Polls state the app exposes over HTTP: there is no event to wait on from the outside

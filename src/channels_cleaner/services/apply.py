@@ -11,7 +11,9 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
 from channels_cleaner.config import Settings
-from channels_cleaner.db import Database
+from channels_cleaner.database import DAO, DatabaseManager
+from channels_cleaner.database.models import base
+from channels_cleaner.enums import ChatRole, Decision, DecisionStatus, JobStatus
 from channels_cleaner.events import EventBus
 from channels_cleaner.telegram.gateway import TelegramGateway
 from channels_cleaner.telegram.types import FloodWaitError, GatewayError
@@ -20,7 +22,8 @@ log = logging.getLogger(__name__)
 
 TOPIC = "apply"
 
-JobStatus = Literal["idle", "running", "finished", "cancelled", "error"]
+#: the job as the UI sees it; "idle" before any job, the rest is written down as a JobStatus
+ApplyStatus = Literal["idle", "running", "finished", "cancelled", "error"]
 ItemStatus = Literal["queued", "running", "done", "failed"]
 
 _MAX_FLOOD_RETRIES = 5
@@ -29,20 +32,20 @@ _MAX_FLOOD_RETRIES = 5
 @dataclass(slots=True)
 class ApplyItem:
     channel_id: int
-    decision: str
+    decision: Decision
     title: str
     has_photo: bool
     status: ItemStatus = "queued"
     error: str | None = None
     #: an applied mute/archive to take back first (the decision was changed since)
-    reverts: str | None = None
-    role: str = "member"
+    reverts: Decision | None = None
+    role: ChatRole = ChatRole.MEMBER
 
 
 @dataclass(slots=True)
 class ApplyState:
     job_id: int | None = None
-    status: JobStatus = "idle"
+    status: ApplyStatus = "idle"
     total: int = 0
     done: int = 0
     failed: int = 0
@@ -59,9 +62,9 @@ class ApplyBusyError(RuntimeError):
 
 
 class ApplyService:
-    def __init__(self, gateway: TelegramGateway, db: Database, bus: EventBus, settings: Settings) -> None:
+    def __init__(self, gateway: TelegramGateway, database: DatabaseManager, bus: EventBus, settings: Settings) -> None:
         self._gw = gateway
-        self._db = db
+        self._database = database
         self._bus = bus
         self._settings = settings
         self.state = ApplyState()
@@ -78,27 +81,35 @@ class ApplyService:
             msg = "An apply job is already running"
             raise ApplyBusyError(msg)
 
-        pending = await self._db.list_decided(account_id, status="pending")
+        async with self._database.session() as session:
+            dao = DAO(session)
+            pending = [
+                (channel, channel.decision)
+                for channel in await dao.list_decided(account_id, status=DecisionStatus.PENDING)
+                if channel.decision is not None
+            ]
 
-        if not pending:
-            self.state = ApplyState(status="finished")
-            return self.state
+            if not pending:
+                self.state = ApplyState(status="finished")
+                return self.state
 
-        job_id = await self._db.create_job(account_id, len(pending))
+            job = await dao.create_job(account_id, len(pending), base.utc_now())
+            await dao.commit()
+
         self.state = ApplyState(
-            job_id=job_id,
+            job_id=job.id,
             status="running",
             total=len(pending),
             items=[
                 ApplyItem(
-                    channel_id=row.channel_id,
-                    decision=row.decision or "unsubscribe",
-                    title=row.title,
-                    has_photo=row.has_photo,
-                    reverts=row.reverts,
-                    role=row.role,
+                    channel_id=channel.channel_id,
+                    decision=decision.decision,
+                    title=channel.title,
+                    has_photo=channel.photo_file_id is not None,
+                    reverts=decision.reverts,
+                    role=channel.role,
                 )
-                for row in pending
+                for channel, decision in pending
             ],
         )
         self._cancel.clear()
@@ -127,19 +138,21 @@ class ApplyService:
 
     async def _execute(self, item: ApplyItem) -> None:
         # Normally refused when the decision is made; this covers one queued while the flag was on
-        if item.decision == "unsubscribe" and item.role == "owner" and not self._settings.allow_owner_leave:
+        leaving = item.decision is Decision.UNSUBSCRIBE
+
+        if leaving and item.role is ChatRole.OWNER and not self._settings.allow_owner_leave:
             msg = "Leaving a chat you own is off (start with --allow-owner-leave)"
             raise GatewayError(msg)
 
         # Leaving makes any earlier mute/archive moot; otherwise take it back first.
-        if item.reverts and item.decision != "unsubscribe":
-            undo = {"mute": self._gw.unmute, "archive": self._gw.unarchive}[item.reverts]
+        if item.reverts and not leaving:
+            undo = {Decision.MUTE: self._gw.unmute, Decision.ARCHIVE: self._gw.unarchive}[item.reverts]
             await undo(item.channel_id)
 
         action = {
-            "unsubscribe": self._gw.leave,
-            "mute": self._gw.mute,
-            "archive": self._gw.archive,
+            Decision.UNSUBSCRIBE: self._gw.leave,
+            Decision.MUTE: self._gw.mute,
+            Decision.ARCHIVE: self._gw.archive,
         }.get(item.decision)
 
         if action is not None:
@@ -171,7 +184,7 @@ class ApplyService:
                         break
 
                 self._report(item, await self._apply_one(account_id, item))
-                await self._db.update_job(job_id, done=state.done, failed=state.failed)
+                await self._save_job(job_id)
 
             state.current = None
             state.status = "cancelled" if self._cancel.is_set() else "finished"
@@ -185,8 +198,58 @@ class ApplyService:
                 if item.status == "running":
                     item.status = "queued"
 
-            await self._db.update_job(job_id, done=state.done, failed=state.failed, status=state.status)
+            await self._save_job(job_id, finished=True)
             self._bus.publish(TOPIC, "finished", **state.snapshot())
+
+    async def _save_job(self, job_id: int, *, finished: bool = False) -> None:
+        state = self.state
+
+        async with self._database.session() as session:
+            dao = DAO(session)
+            await dao.update_job(
+                job_id,
+                done=state.done,
+                failed=state.failed,
+                status=JobStatus(state.status) if finished else None,
+                finished_at=base.utc_now() if finished else None,
+            )
+            await dao.commit()
+
+    async def _record(self, account_id: int, item: ApplyItem) -> None:
+        """Write down how the item went, and what the chat looks like in Telegram now."""
+        async with self._database.session() as session:
+            dao = DAO(session)
+            now = base.utc_now()
+
+            if item.status == "failed":
+                await dao.mark_decision(account_id, item.channel_id, DecisionStatus.FAILED, error=item.error, now=now)
+                await dao.commit()
+                return
+
+            await dao.mark_decision(account_id, item.channel_id, DecisionStatus.APPLIED, now=now)
+
+            if item.decision is Decision.UNSUBSCRIBE:
+                await dao.set_channel_gone(account_id, item.channel_id)
+
+            else:
+                # The mute or archive taken back is off now, the decision's own one is on
+                flags: dict[Decision, bool] = {}
+
+                if item.reverts is not None:
+                    flags[item.reverts] = False
+
+                if item.decision in {Decision.MUTE, Decision.ARCHIVE}:
+                    flags[item.decision] = True
+
+                if flags:
+                    await dao.set_channel_flags(
+                        account_id,
+                        item.channel_id,
+                        muted=flags.get(Decision.MUTE),
+                        archived=flags.get(Decision.ARCHIVE),
+                    )
+
+            await dao.commit()
 
     def _report(self, item: ApplyItem, result: ItemStatus) -> None:
         """Count the item's outcome and tell the UI."""
@@ -235,30 +298,14 @@ class ApplyService:
             except GatewayError as exc:
                 item.status = "failed"
                 item.error = str(exc) or type(exc).__name__
-                await self._db.mark_decision(account_id, item.channel_id, "failed", item.error)
+                await self._record(account_id, item)
                 return item.status
 
             item.status = "done"
-            await self._db.mark_decision(account_id, item.channel_id, "applied")
-
-            if item.reverts == "mute" and item.decision != "unsubscribe":
-                await self._db.set_channel_flags(account_id, item.channel_id, muted=False)
-
-            elif item.reverts == "archive" and item.decision != "unsubscribe":
-                await self._db.set_channel_flags(account_id, item.channel_id, archived=False)
-
-            if item.decision == "unsubscribe":
-                await self._db.set_channel_gone(account_id, item.channel_id)
-
-            elif item.decision == "mute":
-                await self._db.set_channel_flags(account_id, item.channel_id, muted=True)
-
-            elif item.decision == "archive":
-                await self._db.set_channel_flags(account_id, item.channel_id, archived=True)
-
+            await self._record(account_id, item)
             return item.status
 
         item.status = "failed"
         item.error = "Too many flood waits"
-        await self._db.mark_decision(account_id, item.channel_id, "failed", item.error)
+        await self._record(account_id, item)
         return item.status

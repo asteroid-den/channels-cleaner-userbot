@@ -10,7 +10,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Literal
 
-from channels_cleaner.db import Database
+from channels_cleaner.database import DAO, DatabaseManager
+from channels_cleaner.database.models import base
 from channels_cleaner.events import EventBus
 from channels_cleaner.telegram.gateway import TelegramGateway
 from channels_cleaner.telegram.types import (
@@ -55,9 +56,9 @@ class AuthError(Exception):
 
 
 class AuthService:
-    def __init__(self, gateway: TelegramGateway, db: Database, bus: EventBus) -> None:
+    def __init__(self, gateway: TelegramGateway, database: DatabaseManager, bus: EventBus) -> None:
         self._gw = gateway
-        self._db = db
+        self._database = database
         self._bus = bus
         self.state = AuthState()
         self._lock = asyncio.Lock()
@@ -101,7 +102,12 @@ class AuthService:
 
     async def _logged_in(self, user: TgUser) -> None:
         profile = self._gw.device_profile
-        await self._db.upsert_account(user, profile.to_json() if profile else None)
+
+        async with self._database.session() as session:
+            dao = DAO(session)
+            await dao.upsert_account(user, profile.to_json() if profile else None, base.utc_now())
+            await dao.commit()
+
         self.state = AuthState(status="authorized", user=user)
         self._publish()
 
@@ -234,7 +240,10 @@ class AuthService:
             await self._gw.log_out()
 
             if wipe_data and user is not None:
-                await self._db.wipe_account(user.id)
+                async with self._database.session() as session:
+                    dao = DAO(session)
+                    await dao.wipe_account(user.id)
+                    await dao.commit()
 
             self.state = AuthState(status="starting")
             user_after = await self._gw.start()

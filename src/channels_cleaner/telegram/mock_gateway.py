@@ -12,18 +12,16 @@ from html import escape
 from pathlib import Path
 
 from channels_cleaner.config import Settings
+from channels_cleaner.enums import ChatKind, ChatRole, MediaKind
 from channels_cleaner.telegram.device_profiles import DeviceProfile, all_profiles
 from channels_cleaner.telegram.types import (
     ChannelFull,
     ChannelInfo,
-    ChatKind,
-    ChatRole,
     FloodWaitError,
     GatewayError,
     InvalidCodeError,
     InvalidPasswordError,
     InvalidPhoneError,
-    MediaKind,
     NotAuthorizedError,
     PasswordNeededError,
     QrToken,
@@ -125,18 +123,29 @@ _GROUP_TEXTS = [
     "+1, тоже интересно",
     "Reminder: please keep it on topic.",
 ]
-_MEDIA: list[MediaKind | None] = [None, None, None, "photo", "photo", "video", "document", "poll"]
+_MEDIA: list[MediaKind | None] = [
+    None,
+    None,
+    None,
+    MediaKind.PHOTO,
+    MediaKind.PHOTO,
+    MediaKind.VIDEO,
+    MediaKind.DOCUMENT,
+    MediaKind.POLL,
+]
 _COLORS = ["#e17076", "#7bc862", "#e5ca77", "#65aadd", "#a695e7", "#ee7aae", "#6ec9cb", "#faa774"]
 
 
-_ID_BASE: dict[ChatKind, int] = {"channel": -1001000000000, "supergroup": -1002000000000}
+_ID_BASE: dict[ChatKind, int] = {ChatKind.CHANNEL: -1001000000000, ChatKind.SUPERGROUP: -1002000000000}
 
 
-def _generate(count: int, seed: int = 42, kind: ChatKind = "channel") -> dict[int, tuple[ChannelInfo, ChannelFull]]:
-    rng = random.Random(seed if kind == "channel" else seed + 1000)
+def _generate(
+    count: int, seed: int = 42, kind: ChatKind = ChatKind.CHANNEL
+) -> dict[int, tuple[ChannelInfo, ChannelFull]]:
+    rng = random.Random(seed if kind is ChatKind.CHANNEL else seed + 1000)
     now = datetime.now(UTC)
     channels: dict[int, tuple[ChannelInfo, ChannelFull]] = {}
-    group = kind == "supergroup"
+    group = kind is ChatKind.SUPERGROUP
     texts = _GROUP_TEXTS if group else _TEXTS
 
     for i in range(count):
@@ -168,7 +177,7 @@ def _generate(count: int, seed: int = 42, kind: ChatKind = "channel") -> dict[in
         members = int(rng.lognormvariate(8, 1.6))
         # its own generator, so the roles don't shift what everything else is generated from
         role_roll = random.Random(f"{seed}/{kind}/{i}").random()
-        role: ChatRole = "owner" if role_roll < 0.04 else "admin" if role_roll < 0.11 else "member"
+        role = ChatRole.OWNER if role_roll < 0.04 else ChatRole.ADMIN if role_roll < 0.11 else ChatRole.MEMBER
         info = ChannelInfo(
             id=channel_id,
             title=title,
@@ -251,7 +260,7 @@ class MockGateway:
     def _generate_all(self, seed: int) -> dict[int, tuple[ChannelInfo, ChannelFull]]:
         return {
             **_generate(self._settings.mock_channels, seed),
-            **_generate(self._settings.mock_supergroups, seed, "supergroup"),
+            **_generate(self._settings.mock_supergroups, seed, ChatKind.SUPERGROUP),
         }
 
     @property
@@ -412,7 +421,7 @@ class MockGateway:
     async def download_post_thumb(self, channel_id: int, message_id: int, dest: Path) -> Path | None:
         entry = self._channels.get(channel_id)
 
-        if entry is None or entry[0].last_post_media not in {"photo", "video"}:
+        if entry is None or entry[0].last_post_media not in {MediaKind.PHOTO, MediaKind.VIDEO}:
             return None
 
         path = dest.with_suffix(".svg")

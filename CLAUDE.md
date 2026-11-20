@@ -55,7 +55,14 @@ src/channels_cleaner/
   app.py          FastAPI factory, error→HTTP mapping, SPA fallback for static/
   context.py      AppContext wires everything; boot task runs auth.start(); clears "skip" on start
   config.py       Settings (pydantic-settings, CC_ prefix)
-  db.py           aiosqlite, hand-written migrations (MIGRATIONS list; #2 added channels.pulse)
+  enums.py        StrEnums (ChatKind, ChatRole, MediaKind, Decision, DecisionStatus, JobStatus, SortMode,
+                  ArchiveFilter, RoleFilter); values = lowercase names, the strings the DB/API/UI always had
+  database/       SQLAlchemy 2.1 async over aiosqlite, laid out like mercury: models/ (one file per table,
+                  data only), models_dao/ (one DAO class per model, combined in dao.DAO(session)), manager.py
+                  (engine, WAL, 15 s busy timeout, async_sessionmaker(expire_on_commit=False)), types.py
+                  (UtcDateTime), utils.py (query conditions), migrate.py + legacy.py (see below)
+  migrations/     Alembic inside the package (`channels_cleaner:migrations`), applied on every start
+  services/decisions.py  decide/undo: the reverts logic that used to live in db.set_decision
   events.py       in-process pub/sub → SSE (api/sse.py: snapshot event first, then live, pings)
   pulse.py        weekly post counts (26 weeks) from ≤100 post dates; unseen weeks = None
   telegram/
@@ -71,6 +78,28 @@ frontend/src/     Vue 3 + Vite + TS, Pinia, vue-router, vue-i18n (en/ru), Tailwi
   views/          Login, Deck (3 columns), Review, Apply (avatar deck animation), Results
   utils/color.ts  dominant avatar colour → --ch/--ch2 CSS vars (useChannelColor composable)
 ```
+
+Database (2026-11-20, replaced the hand-written aiosqlite layer):
+- Routes take a `Dao` dependency (session per request) and commit after writes; services open their own
+  `async with database.session()` per unit of work. DAO methods don't commit; three steps
+  (`statement` → blank line → `result = await …execute` → `return`), like mercury.
+- Enums: `type_annotation_map` maps `enum.Enum` to a non-native `sa.Enum` with `values_callable` — the DB keeps
+  the lowercase values (not SQLAlchemy's default member names), no CHECK. Migrations spell enum values out as
+  strings, one `sa.Enum` object per type.
+- Time: `UtcDateTime` (TEXT, ISO 8601 with `+00:00`), aware UTC in Python, refuses naive datetimes. The stock
+  DateTime on SQLite writes `2026-11-17 20:00:00` without the offset: mixed formats sort wrong, reads come back
+  naive, the UI would show local times. The API now sends `…Z` (pydantic), the UI parses either.
+- Writes are Core statements (sqlite upserts, bulk updates); they don't refresh objects already in the session's
+  identity map, so every DAO select that returns ORM objects uses `populate_existing=True` — without it a second
+  read in the same session could hand back a stale decision (flaky tests showed it; the map is weak-referenced).
+- `decisions` has no id: ties on decided_at are ordered by `decisions.rowid` (utils.DECISION_ROWID).
+  No foreign keys (the old schema had none); Channel.decision is a viewonly relationship with an explicit join.
+- Migrations: `migrate.upgrade()` runs in a thread at startup. A database from before (has `schema_version`) is
+  brought to legacy step 5, its tables renamed to `legacy_*`, Alembic creates the baseline revision
+  (`685f08492209`), rows are copied over, `legacy_*` dropped — copied, not stamped, so every database has the same
+  declared types and `alembic check` holds everywhere. Restartable at every step (tests/test_migrations.py).
+  New revision: `uv run alembic revision --autogenerate -m "…"` (file name `YYYYMMDD_<rev>_<slug>.py`), batch mode
+  (render_as_batch) because SQLite alters by copying tables; UtcDateTime renders as `sa.Text()`.
 
 Key behaviours / decisions (agreed with the user):
 - Broadcast channels and supergroups (`channels.kind`, migration 4); plain basic groups are not covered.

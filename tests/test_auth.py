@@ -4,7 +4,7 @@ import httpx
 
 from channels_cleaner.context import AppContext
 from channels_cleaner.telegram.mock_gateway import MOCK_CODE, MOCK_PASSWORD
-from tests.conftest import get_json, login, wait_for
+from tests.conftest import get_json, login, open_dao, wait_for
 
 
 async def test_starts_unauthorized(client: httpx.AsyncClient) -> None:
@@ -64,4 +64,6 @@ async def test_logout_with_wipe(client: httpx.AsyncClient, ctx: AppContext) -> N
 
     out = await client.post("/api/auth/logout", json={"wipe_data": True})
     assert out.json()["status"] == "unauthorized"
-    assert await ctx.db.channel_count(777000111) == 0
+
+    async with open_dao(ctx) as dao:
+        assert await dao.count_channels(777000111) == 0

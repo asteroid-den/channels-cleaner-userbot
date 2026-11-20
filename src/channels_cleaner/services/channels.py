@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from channels_cleaner.config import Settings
-from channels_cleaner.db import ChannelRow, Database
+from channels_cleaner.database import DAO, DatabaseManager
+from channels_cleaner.database.models import Channel, base
+from channels_cleaner.enums import MediaKind
 from channels_cleaner.pulse import HISTORY_LIMIT, compute_pulse
 from channels_cleaner.telegram.gateway import TelegramGateway
 from channels_cleaner.telegram.types import ChannelFull
@@ -23,31 +25,31 @@ class ChannelNotFoundError(LookupError):
 
 
 class ChannelsService:
-    def __init__(self, gateway: TelegramGateway, db: Database, settings: Settings) -> None:
+    def __init__(self, gateway: TelegramGateway, database: DatabaseManager, settings: Settings) -> None:
         self._gw = gateway
-        self._db = db
+        self._database = database
         self._settings = settings
         # Telegram is touchy about GetFullChannel bursts: one at a time is plenty for a deck.
         self._full_sem = asyncio.Semaphore(1)
         self._media_sem = asyncio.Semaphore(2)
         self._inflight: dict[tuple[str, int], asyncio.Future[object]] = {}
 
-    async def _row(self, account_id: int, channel_id: int) -> ChannelRow:
-        row = await self._db.get_channel(account_id, channel_id)
+    async def _row(self, account_id: int, channel_id: int) -> Channel:
+        async with self._database.session() as session:
+            row = await DAO(session).get_channel(account_id, channel_id)
 
         if row is None:
             raise ChannelNotFoundError(channel_id)
 
         return row
 
-    def _is_fresh(self, fetched_at: str | None) -> bool:
-        if not fetched_at:
+    def _is_fresh(self, fetched_at: datetime | None) -> bool:
+        if fetched_at is None:
             return False
 
-        age = datetime.now(UTC) - datetime.fromisoformat(fetched_at)
-        return age < timedelta(hours=self._settings.full_info_ttl_hours)
+        return base.utc_now() - fetched_at < timedelta(hours=self._settings.full_info_ttl_hours)
 
-    async def get_full(self, account_id: int, channel_id: int) -> ChannelRow:
+    async def get_full(self, account_id: int, channel_id: int) -> Channel:
         row = await self._row(account_id, channel_id)
 
         # Rows cached before the pulse existed are refreshed once to get it.
@@ -68,7 +70,11 @@ class ChannelsService:
                     full: ChannelFull = await self._gw.get_full(channel_id)
                     dates = await self._gw.recent_post_dates(channel_id, HISTORY_LIMIT)
 
-                await self._db.save_full(account_id, channel_id, full, compute_pulse(dates, limit=HISTORY_LIMIT))
+                async with self._database.session() as session:
+                    dao = DAO(session)
+                    pulse = compute_pulse(dates, limit=HISTORY_LIMIT)
+                    await dao.save_full(account_id, channel_id, full, pulse, base.utc_now())
+                    await dao.commit()
 
             finally:
                 # Waiters just re-read the row; if this fetch failed they get it without extras.
@@ -121,7 +127,7 @@ class ChannelsService:
     async def post_thumb(self, account_id: int, channel_id: int) -> Path | None:
         row = await self._row(account_id, channel_id)
 
-        if not row.last_post_id or row.last_post_media not in {"photo", "video", "animation"}:
+        if not row.last_post_id or row.last_post_media not in {MediaKind.PHOTO, MediaKind.VIDEO, MediaKind.ANIMATION}:
             return None
 
         directory = self._media_dir(account_id)
