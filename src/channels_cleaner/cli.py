@@ -15,6 +15,7 @@ import urllib.request
 from typing import Any
 
 import uvicorn
+from pydantic import ValidationError
 
 from channels_cleaner.app import STATIC_DIR, create_app
 from channels_cleaner.browser import open_url
@@ -81,6 +82,43 @@ def open_when_ready(server: uvicorn.Server, url: str, timeout: float = 30.0) -> 
         time.sleep(0.1)
 
 
+def settings_error_message(error: ValidationError) -> str:
+    """The settings that don't fit, as CC_ variables: a flag's value is checked before the server starts too."""
+    lines = ["Invalid settings:"]
+
+    for item in error.errors():
+        name = "_".join(str(part) for part in item["loc"]).upper()
+        lines.append(f"  CC_{name}: {item['msg']}" if name else f"  {item['msg']}")
+
+    return "\n".join(lines)
+
+
+def _settings(args: argparse.Namespace) -> Settings:
+    """Settings from the environment and .env, with the flags given on top; exits with a message if they don't fit."""
+    overrides: dict[str, Any] = {}  # flags given on the command line, checked by Settings
+
+    if args.host:
+        overrides["host"] = args.host
+
+    if args.port:
+        overrides["port"] = args.port
+
+    if args.mock:
+        overrides["mock"] = True
+
+    if args.allow_owner_leave:
+        overrides["allow_owner_leave"] = True
+
+    try:
+        settings = Settings(**overrides)
+
+    except ValidationError as e:
+        print(settings_error_message(e), file=sys.stderr)
+        sys.exit(2)
+
+    return settings
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="telegram-channels-cleaner", description=__doc__)
     parser.add_argument("--host", help="bind address (default 127.0.0.1)")
@@ -96,21 +134,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
-    overrides: dict[str, Any] = {}  # flags given on the command line, checked by Settings
-
-    if args.host:
-        overrides["host"] = args.host
-
-    if args.port:
-        overrides["port"] = args.port
-
-    if args.mock:
-        overrides["mock"] = True
-
-    if args.allow_owner_leave:
-        overrides["allow_owner_leave"] = True
-
-    settings = Settings(**overrides)
+    settings = _settings(args)
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,

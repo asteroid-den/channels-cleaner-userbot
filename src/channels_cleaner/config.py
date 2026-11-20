@@ -8,8 +8,9 @@ import sys
 import tomllib
 from functools import cached_property
 from pathlib import Path
+from typing import Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 log = logging.getLogger(__name__)
@@ -80,6 +81,8 @@ def _adopt_legacy_dir(legacy: Path, data_dir: Path) -> None:
 
 
 class Settings(BaseSettings):
+    # A .env in the working directory is documented for installed copies too (README, "Configuration"). Only CC_ keys
+    # are read from it: the .env of whatever project the app is started in is no error and changes nothing else
     model_config = SettingsConfigDict(env_prefix="CC_", env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     api_id: int = TDESKTOP_API_ID
@@ -87,23 +90,31 @@ class Settings(BaseSettings):
 
     data_dir: Path = Field(default_factory=default_data_dir)
     host: str = "127.0.0.1"
-    port: int = 8765
+    port: int = Field(default=8765, ge=1, le=65535)
 
     mock: bool = False
     # Mock-only knobs, handy for exercising UI edge cases.
-    mock_channels: int = 120
-    mock_supergroups: int = 60
+    mock_channels: int = Field(default=120, ge=0)
+    mock_supergroups: int = Field(default=60, ge=0)
     mock_2fa: bool = False
 
     # Leaving a chat the user created is off unless asked for: it may orphan the chat.
     allow_owner_leave: bool = False
 
     # Pause between consecutive apply actions (seconds, randomised within the range).
-    apply_delay_min: float = 1.5
-    apply_delay_max: float = 3.0
+    apply_delay_min: float = Field(default=1.5, ge=0)
+    apply_delay_max: float = Field(default=3.0, ge=0)
 
     # How long GetFullChannel results stay fresh.
-    full_info_ttl_hours: int = 72
+    full_info_ttl_hours: int = Field(default=72, ge=0)
+
+    @model_validator(mode="after")
+    def _delay_range(self) -> Self:
+        if self.apply_delay_min > self.apply_delay_max:
+            msg = f"CC_APPLY_DELAY_MIN ({self.apply_delay_min}) is above CC_APPLY_DELAY_MAX ({self.apply_delay_max})"
+            raise ValueError(msg)
+
+        return self
 
     @cached_property
     def sessions_dir(self) -> Path:
