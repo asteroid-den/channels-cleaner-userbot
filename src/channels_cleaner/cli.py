@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import errno
 import json
-import logging
 import os
 import socket
 import sys
@@ -17,6 +16,7 @@ from typing import Any
 import uvicorn
 from pydantic import ValidationError
 
+from channels_cleaner import logs
 from channels_cleaner.app import STATIC_DIR, create_app
 from channels_cleaner.browser import open_url
 from channels_cleaner.config import Settings
@@ -136,13 +136,9 @@ def main(argv: list[str] | None = None) -> None:
 
     settings = _settings(args)
 
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
-    )
-
-    if not args.verbose:
-        logging.getLogger("pyrogram").setLevel(logging.WARNING)
+    # Before the log file goes in: the data dir is made private first
+    settings.ensure_dirs()
+    log_file = logs.setup(settings.log_dir, verbose=args.verbose)
 
     # In a container the server listens on all interfaces; the browser still uses localhost.
     shown_host = "127.0.0.1" if settings.host in {"0.0.0.0", "::"} else settings.host  # noqa: S104 - not a bind
@@ -160,6 +156,7 @@ def main(argv: list[str] | None = None) -> None:
     mode = " (mock mode)" if settings.mock else ""
     print(f"Channels Cleaner{mode} → {url}  (Ctrl+C to stop)")
     print(f"Data: {settings.data_dir.resolve()}")
+    print(f"Log:  {log_file.resolve()}")
 
     server = uvicorn.Server(
         uvicorn.Config(
@@ -167,6 +164,8 @@ def main(argv: list[str] | None = None) -> None:
             host=settings.host,
             port=settings.port,
             log_level="info" if args.verbose else "warning",
+            # Its records go through ours: to the console and the log file, crashes of a request included
+            log_config=None,
         )
     )
 
