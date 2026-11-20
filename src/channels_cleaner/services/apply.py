@@ -70,17 +70,23 @@ class ApplyService:
         self.state = ApplyState()
         self._task: asyncio.Task[None] | None = None
         self._cancel = asyncio.Event()
+        # Held from the check to the task's creation: a second start in between would run the same queue twice
+        self._starting = asyncio.Lock()
         self._rng = random.Random()  # noqa: S311 - pause jitter, not cryptography
 
     @property
     def running(self) -> bool:
-        return self._task is not None and not self._task.done()
+        return self._starting.locked() or (self._task is not None and not self._task.done())
 
     async def start(self, account_id: int) -> ApplyState:
         if self.running:
             msg = "An apply job is already running"
             raise ApplyBusyError(msg)
 
+        async with self._starting:
+            return await self._start(account_id)
+
+    async def _start(self, account_id: int) -> ApplyState:
         async with self._database.session() as session:
             dao = DAO(session)
             pending = [
@@ -222,11 +228,20 @@ class ApplyService:
             now = base.utc_now()
 
             if item.status == "failed":
-                await dao.mark_decision(account_id, item.channel_id, DecisionStatus.FAILED, error=item.error, now=now)
+                await dao.mark_decision(
+                    account_id,
+                    item.channel_id,
+                    DecisionStatus.FAILED,
+                    expected=item.decision,
+                    error=item.error,
+                    now=now,
+                )
                 await dao.commit()
                 return
 
-            await dao.mark_decision(account_id, item.channel_id, DecisionStatus.APPLIED, now=now)
+            await dao.mark_decision(
+                account_id, item.channel_id, DecisionStatus.APPLIED, expected=item.decision, now=now
+            )
 
             if item.decision is Decision.UNSUBSCRIBE:
                 await dao.set_channel_gone(account_id, item.channel_id)
@@ -270,7 +285,25 @@ class ApplyService:
                 failed=state.failed,
             )
 
+    async def _still_wanted(self, account_id: int, item: ApplyItem) -> bool:
+        """Whether the decision is still the one queued: edits are refused while applying, this is the last guard."""
+        async with self._database.session() as session:
+            current = await DAO(session).get_decision(account_id, item.channel_id)
+
+        return (
+            current is not None
+            and current.status is DecisionStatus.PENDING
+            and current.decision is item.decision
+            and current.reverts is item.reverts
+        )
+
     async def _apply_one(self, account_id: int, item: ApplyItem) -> ItemStatus:
+        if not await self._still_wanted(account_id, item):
+            # Nothing done in Telegram, nothing written: the decision in the database is someone else's now
+            item.status = "failed"
+            item.error = "The decision changed while applying"
+            return item.status
+
         for _ in range(_MAX_FLOOD_RETRIES + 1):
             try:
                 await self._execute(item)

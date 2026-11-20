@@ -137,7 +137,7 @@ async def test_changing_an_applied_mute_queues_the_way_back(client: httpx.AsyncC
     async with open_dao(ctx) as dao:
         now = base.utc_now()
         await decisions.decide(dao, account, cid, Decision.MUTE, now)
-        await dao.mark_decision(account, cid, DecisionStatus.APPLIED, now=now)
+        await dao.mark_decision(account, cid, DecisionStatus.APPLIED, expected=Decision.MUTE, now=now)
 
         await decisions.decide(dao, account, cid, Decision.KEEP, now)
         pending = await dao.list_decided(account, status=DecisionStatus.PENDING)

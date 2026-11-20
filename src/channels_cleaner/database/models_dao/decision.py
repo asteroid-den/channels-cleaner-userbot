@@ -117,13 +117,20 @@ class DecisionDAO:
         channel_id: int,
         status: DecisionStatus,
         *,
+        expected: Decision,
         error: str | None = None,
         now: datetime,
     ) -> None:
+        """Record how the queued ``expected`` decision went; a decision changed meanwhile is left as it is."""
         applied = status is DecisionStatus.APPLIED
         statement = (
             update(ChannelDecision)
-            .where(ChannelDecision.account_id == account_id, ChannelDecision.channel_id == channel_id)
+            .where(
+                ChannelDecision.account_id == account_id,
+                ChannelDecision.channel_id == channel_id,
+                ChannelDecision.decision == expected,
+                ChannelDecision.status == DecisionStatus.PENDING,
+            )
             .values(
                 status=status,
                 error=error,
