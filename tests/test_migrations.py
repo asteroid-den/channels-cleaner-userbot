@@ -145,3 +145,44 @@ async def test_concurrent_writers_wait_for_each_other(tmp_path: Path) -> None:
         assert [await DAO(session).get_setting(1, f"key-{n}") for n in range(30)] == list(range(30))
 
     await manager.dispose()
+
+
+def test_a_legacy_step_that_fails_leaves_nothing_behind(tmp_path: Path) -> None:
+    path = tmp_path / "cleaner.sqlite3"
+    _legacy_database(path, 1)
+
+    with closing(sqlite3.connect(path, isolation_level=None)) as connection:
+        with pytest.raises(sqlite3.OperationalError):
+            legacy._transaction(  # noqa: SLF001
+                connection,
+                ["ALTER TABLE channels ADD COLUMN pulse TEXT", "INSERT INTO no_such_table VALUES (1)"],
+            )
+
+        columns = {row[1] for row in connection.execute("PRAGMA table_info(channels)")}
+
+    # Rolled back as a whole: the next start adds the column again instead of tripping over it
+    assert "pulse" not in columns
+    migrate.upgrade(path)
+    command.check(migrate.alembic_config(path))
+
+
+def test_a_database_is_backed_up_before_it_is_migrated(tmp_path: Path) -> None:
+    path = tmp_path / "cleaner.sqlite3"
+    _legacy_database(path, len(legacy.LEGACY_MIGRATIONS))
+
+    migrate.upgrade(path)
+
+    backups = list(tmp_path.glob("cleaner.sqlite3.before-*"))
+    assert len(backups) == 1
+    assert "schema_version" in _tables(backups[0])
+
+    # Up to date: nothing to change, nothing to copy
+    backups[0].unlink()
+    migrate.upgrade(path)
+    assert not list(tmp_path.glob("cleaner.sqlite3.before-*"))
+
+
+def test_a_new_database_needs_no_backup(tmp_path: Path) -> None:
+    migrate.upgrade(tmp_path / "fresh.sqlite3")
+
+    assert not list(tmp_path.glob("*.before-*"))

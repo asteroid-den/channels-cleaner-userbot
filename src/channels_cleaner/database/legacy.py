@@ -97,16 +97,38 @@ def _tables(connection: sqlite3.Connection) -> set[str]:
     return {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
 
 
+def _transaction(connection: sqlite3.Connection, statements: list[str]) -> None:
+    """Run the statements all or nothing. SQLite's DDL is transactional, but executescript commits on its own."""
+    connection.execute("BEGIN")
+
+    try:
+        for statement in statements:
+            connection.execute(statement)
+
+    except BaseException:
+        connection.execute("ROLLBACK")
+        raise
+
+    connection.execute("COMMIT")
+
+
+def _statements(script: str) -> list[str]:
+    # The legacy scripts are plain DDL: no semicolons inside strings or triggers
+    return [statement.strip() for statement in script.split(";") if statement.strip()]
+
+
 def set_aside(path: Path) -> bool:
     """Bring a database from before Alembic to the last legacy step and rename its tables out of the way.
 
     Returns whether set-aside tables are waiting for their rows to move, now or since an earlier start that stopped.
+    Every step commits together with its version row, so a start cut short at any point is finished by the next one.
     """
     if not path.exists():
         return False
 
-    # closing(): a sqlite3 connection used as a context manager commits but stays open
-    with closing(sqlite3.connect(path)) as connection:
+    # closing(): a sqlite3 connection used as a context manager commits but stays open.
+    # isolation_level=None: no implicit transactions, _transaction() opens them
+    with closing(sqlite3.connect(path, isolation_level=None)) as connection:
         tables = _tables(connection)
 
         if "schema_version" in tables:
@@ -114,18 +136,14 @@ def set_aside(path: Path) -> bool:
 
             for version, script in enumerate(LEGACY_MIGRATIONS, start=1):
                 if version > current:
-                    # executescript commits on its own; the version row makes a repeated start skip the step
-                    connection.executescript(script)
+                    # The version is enumerate()'s int
+                    row = f"INSERT INTO schema_version (version) VALUES ({version})"  # noqa: S608
+                    _transaction(connection, [*_statements(script), row])
 
-                    with connection:
-                        connection.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
-
-            with connection:
-                for table in TABLES:
-                    connection.execute(f"ALTER TABLE {table} RENAME TO {_ASIDE}{table}")
-
-                connection.execute("DROP TABLE schema_version")
-
+            _transaction(
+                connection,
+                [*(f"ALTER TABLE {table} RENAME TO {_ASIDE}{table}" for table in TABLES), "DROP TABLE schema_version"],
+            )
             tables = _tables(connection)
 
         return any(table.startswith(_ASIDE) for table in tables)

@@ -224,6 +224,10 @@ async def channel_thumb(channel_id: int, ctx: Ctx, account: AccountId) -> Respon
 async def decision_set(
     channel_id: int, body: schemas.DecisionBody, ctx: Ctx, dao: Dao, account: AccountId
 ) -> dict[str, Any]:
+    # The apply job works from the queue as it started: a change now would be applied as the old decision
+    if ctx.apply.running:
+        raise HTTPException(409, "Decisions are locked while applying")
+
     chat = await _chat(dao, account, channel_id)
     leaving = body.decision is Decision.UNSUBSCRIBE
 

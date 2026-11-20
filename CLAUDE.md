@@ -101,6 +101,18 @@ Database (2026-11-20, replaced the hand-written aiosqlite layer):
   New revision: `uv run alembic revision --autogenerate -m "…"` (file name `YYYYMMDD_<rev>_<slug>.py`), batch mode
   (render_as_batch) because SQLite alters by copying tables; UtcDateTime renders as `sa.Text()`.
 
+Safety (2026-11-20, after an audit run from the mercury session):
+- `api/guard.py` LocalOnlyMiddleware: Host must be localhost/127.0.0.1/::1 (or the host given by name with
+  --host); POST/PUT/DELETE need `Origin == http://<Host>` and `Sec-Fetch-Site` same-origin/none when present.
+  Requests without them (curl, tests) pass. Tests use `base_url="http://localhost"`. Vite proxies with
+  changeOrigin: false so Host and Origin stay the dev server's. Phone access will need real auth on top.
+- Apply: `start()` holds a lock from the check to the task (`running` is true meanwhile); `PUT /decisions` is
+  409 while applying, like DELETE and reset; before each action the job re-reads the decision and skips it
+  (failed, nothing written) if it changed; `mark_decision(expected=…)` updates only that pending decision.
+- `./data` only when the cwd is this app's own checkout (pyproject name), never a `data/` of another project.
+- Migrations: `migrate.backup()` copies the DB to `<name>.before-<version>` before any change; legacy steps run
+  with their version row in one explicit transaction (executescript would commit on its own).
+
 Key behaviours / decisions (agreed with the user):
 - Broadcast channels and supergroups (`channels.kind`, migration 4); plain basic groups are not covered.
   Chats the user owns/admins are included with `channels.role` (member/admin/owner, migration 5) and have

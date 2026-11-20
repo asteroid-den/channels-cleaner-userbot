@@ -9,10 +9,30 @@ import pytest
 from channels_cleaner.config import Settings, default_data_dir
 
 
+def _checkout(root: Path, name: str) -> None:
+    (root / "src" / "channels_cleaner").mkdir(parents=True)
+    (root / "pyproject.toml").write_text(f'[project]\nname = "{name}"\n')
+
+
 def test_checkout_keeps_local_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    (tmp_path / "data").mkdir()
+    _checkout(tmp_path, "telegram-channels-cleaner")
     assert default_data_dir() == Path("data")
+
+
+@pytest.mark.parametrize("other", ["data folder only", "other project"])
+def test_data_folder_of_another_project_is_left_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, other: str
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.platform", "linux")
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
+    (tmp_path / "data").mkdir()
+
+    if other == "other project":
+        _checkout(tmp_path, "someone-elses-app")
+
+    assert default_data_dir() == tmp_path / "xdg" / "telegram-channels-cleaner"
 
 
 def test_installed_app_uses_user_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

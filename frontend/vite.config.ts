@@ -17,7 +17,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    proxy: { '/api': { target: backend, changeOrigin: true } },
+    // The browser's Host goes through as it is: the API checks it against the page's Origin
+    proxy: { '/api': { target: backend, changeOrigin: false } },
   },
   test: {
     environment: 'jsdom',
