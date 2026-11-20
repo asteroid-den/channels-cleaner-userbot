@@ -11,8 +11,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health */
-        get: operations["health_api_health_get"];
+        /** Get Health */
+        get: operations["get_health_api_health_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -28,8 +28,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Auth State */
-        get: operations["auth_state_api_auth_state_get"];
+        /** Get Auth State */
+        get: operations["get_auth_state_api_auth_state_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -45,8 +45,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Auth Events */
-        get: operations["auth_events_api_auth_events_get"];
+        /** Get Auth Events */
+        get: operations["get_auth_events_api_auth_events_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -64,8 +64,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Auth Qr Start */
-        post: operations["auth_qr_start_api_auth_qr_start_post"];
+        /** Post Qr Login */
+        post: operations["post_qr_login_api_auth_qr_start_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -81,8 +81,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Auth Send Code */
-        post: operations["auth_send_code_api_auth_phone_send_code_post"];
+        /** Post Send Code */
+        post: operations["post_send_code_api_auth_phone_send_code_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -98,8 +98,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Auth Sign In */
-        post: operations["auth_sign_in_api_auth_phone_sign_in_post"];
+        /** Post Sign In */
+        post: operations["post_sign_in_api_auth_phone_sign_in_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -115,8 +115,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Auth Password */
-        post: operations["auth_password_api_auth_password_post"];
+        /** Post Password */
+        post: operations["post_password_api_auth_password_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -132,8 +132,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Auth Cancel */
-        post: operations["auth_cancel_api_auth_cancel_post"];
+        /** Post Cancel Login */
+        post: operations["post_cancel_login_api_auth_cancel_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -149,8 +149,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Auth Logout */
-        post: operations["auth_logout_api_auth_logout_post"];
+        /** Post Logout */
+        post: operations["post_logout_api_auth_logout_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -166,8 +166,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Channels Sync */
-        post: operations["channels_sync_api_channels_sync_post"];
+        /** Post Sync */
+        post: operations["post_sync_api_channels_sync_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -181,8 +181,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Channels Sync Events */
-        get: operations["channels_sync_events_api_channels_sync_events_get"];
+        /** Get Sync Events */
+        get: operations["get_sync_events_api_channels_sync_events_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -198,8 +198,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Channels List */
-        get: operations["channels_list_api_channels_get"];
+        /** Get Channels */
+        get: operations["get_channels_api_channels_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -215,8 +215,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Channel Full */
-        get: operations["channel_full_api_channels__channel_id__full_get"];
+        /** Get Channel Full */
+        get: operations["get_channel_full_api_channels__channel_id__full_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -232,8 +232,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Channel Avatar */
-        get: operations["channel_avatar_api_channels__channel_id__avatar_get"];
+        /** Get Channel Avatar */
+        get: operations["get_channel_avatar_api_channels__channel_id__avatar_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -249,8 +249,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Channel Thumb */
-        get: operations["channel_thumb_api_channels__channel_id__thumb_get"];
+        /** Get Channel Thumb */
+        get: operations["get_channel_thumb_api_channels__channel_id__thumb_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -267,11 +267,11 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Decision Set */
-        put: operations["decision_set_api_decisions__channel_id__put"];
+        /** Put Decision */
+        put: operations["put_decision_api_decisions__channel_id__put"];
         post?: never;
-        /** Decision Undo */
-        delete: operations["decision_undo_api_decisions__channel_id__delete"];
+        /** Delete Decision */
+        delete: operations["delete_decision_api_decisions__channel_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -285,10 +285,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Decisions Trail
+         * Get Decisions Trail
          * @description Decided chats in the order decided: what the progress bar shows, for rewinding.
          */
-        get: operations["decisions_trail_api_decisions_trail_get"];
+        get: operations["get_decisions_trail_api_decisions_trail_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -304,8 +304,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Decisions List */
-        get: operations["decisions_list_api_decisions_get"];
+        /** Get Decisions */
+        get: operations["get_decisions_api_decisions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -323,8 +323,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Decisions Reset */
-        post: operations["decisions_reset_api_decisions_reset_post"];
+        /** Post Reset Decisions */
+        post: operations["post_reset_decisions_api_decisions_reset_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -340,8 +340,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Decisions Retry Failed */
-        post: operations["decisions_retry_failed_api_decisions_retry_failed_post"];
+        /** Post Retry Failed */
+        post: operations["post_retry_failed_api_decisions_retry_failed_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -357,8 +357,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Apply Start */
-        post: operations["apply_start_api_apply_post"];
+        /** Post Apply */
+        post: operations["post_apply_api_apply_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -374,8 +374,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Apply Cancel */
-        post: operations["apply_cancel_api_apply_cancel_post"];
+        /** Post Cancel Apply */
+        post: operations["post_cancel_apply_api_apply_cancel_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -389,8 +389,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Apply State */
-        get: operations["apply_state_api_apply_state_get"];
+        /** Get Apply State */
+        get: operations["get_apply_state_api_apply_state_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -406,8 +406,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Apply Events */
-        get: operations["apply_events_api_apply_events_get"];
+        /** Get Apply Events */
+        get: operations["get_apply_events_api_apply_events_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -423,10 +423,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Prefs Get */
-        get: operations["prefs_get_api_prefs_get"];
-        /** Prefs Put */
-        put: operations["prefs_put_api_prefs_put"];
+        /** Get Prefs */
+        get: operations["get_prefs_api_prefs_get"];
+        /** Put Prefs */
+        put: operations["put_prefs_api_prefs_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -441,8 +441,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Stats Get */
-        get: operations["stats_get_api_stats_get"];
+        /** Get Stats */
+        get: operations["get_stats_api_stats_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -458,8 +458,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Export */
-        get: operations["export_api_export_get"];
+        /** Get Export */
+        get: operations["get_export_api_export_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -472,8 +472,8 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** ApplyItemOut */
-        ApplyItemOut: {
+        /** ApplyItem */
+        ApplyItem: {
             /** Channel Id */
             channel_id: number;
             decision: components["schemas"]["Decision"];
@@ -491,8 +491,28 @@ export interface components {
             reverts: components["schemas"]["Decision"] | null;
             role: components["schemas"]["ChatRole"];
         };
-        /** ApplyStateOut */
-        ApplyStateOut: {
+        /** ApplyJobRunningError */
+        ApplyJobRunningError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default apply_job_running
+             * @constant
+             */
+            type: "apply_job_running";
+            /**
+             * Message
+             * @default Wait for the running apply job to finish
+             */
+            message: string;
+        };
+        /** ApplyStateResponse */
+        ApplyStateResponse: {
             /** Job Id */
             job_id: number | null;
             /**
@@ -511,7 +531,13 @@ export interface components {
             /** Flood Wait Until */
             flood_wait_until: number | null;
             /** Items */
-            items: components["schemas"]["ApplyItemOut"][];
+            items: components["schemas"]["ApplyItem"][];
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
         };
         /**
          * ArchiveFilter
@@ -519,14 +545,20 @@ export interface components {
          * @enum {string}
          */
         ArchiveFilter: "all" | "active" | "archived";
-        /** AuthStateOut */
-        AuthStateOut: {
+        /** AuthStateResponse */
+        AuthStateResponse: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
             /**
              * Status
              * @enum {string}
              */
             status: "starting" | "unauthorized" | "qr" | "code" | "password" | "authorized";
-            user: components["schemas"]["TgUserOut"] | null;
+            user: components["schemas"]["User"] | null;
             /** Qr Url */
             qr_url: string | null;
             /** Qr Expires At */
@@ -538,13 +570,8 @@ export interface components {
             /** Error */
             error: string | null;
         };
-        /** ChannelListOut */
-        ChannelListOut: {
-            /** Items */
-            items: components["schemas"]["ChannelOut"][];
-        };
-        /** ChannelOut */
-        ChannelOut: {
+        /** Channel */
+        Channel: {
             /** Id */
             id: number;
             kind: components["schemas"]["ChatKind"];
@@ -583,12 +610,84 @@ export interface components {
             pulse: components["schemas"]["Pulse"] | null;
             reverts?: components["schemas"]["Decision"] | null;
         };
-        /** ChannelsOut */
-        ChannelsOut: {
+        /** ChannelListResponse */
+        ChannelListResponse: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
             /** Items */
-            items: components["schemas"]["ChannelOut"][];
-            counts: components["schemas"]["DeckCounts"];
-            sync: components["schemas"]["SyncStateOut"];
+            items: components["schemas"]["Channel"][];
+        };
+        /** ChannelNotFoundError */
+        ChannelNotFoundError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default channel_not_found
+             * @constant
+             */
+            type: "channel_not_found";
+            /**
+             * Message
+             * @default Unknown chat
+             */
+            message: string;
+            /** Channel Id */
+            channel_id: number;
+        };
+        /** ChannelResponse */
+        ChannelResponse: {
+            /** Id */
+            id: number;
+            kind: components["schemas"]["ChatKind"];
+            role: components["schemas"]["ChatRole"];
+            /** Title */
+            title: string;
+            /** Username */
+            username: string | null;
+            /** Link */
+            link: string | null;
+            /** About */
+            about: string | null;
+            /** Members Count */
+            members_count: number | null;
+            /** Unread Count */
+            unread_count: number;
+            /** Is Muted */
+            is_muted: boolean;
+            /** Is Archived */
+            is_archived: boolean;
+            /** Avatar Url */
+            avatar_url: string | null;
+            /** Thumb Url */
+            thumb_url: string | null;
+            /** Last Post At */
+            last_post_at: string | null;
+            /** Last Post Text */
+            last_post_text: string | null;
+            last_post_media: components["schemas"]["MediaKind"] | null;
+            /** Full Loaded */
+            full_loaded: boolean;
+            decision: components["schemas"]["Decision"] | null;
+            decision_status: components["schemas"]["DecisionStatus"] | null;
+            /** Error */
+            error: string | null;
+            pulse: components["schemas"]["Pulse"] | null;
+            reverts?: components["schemas"]["Decision"] | null;
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
         };
         /**
          * ChatKind
@@ -601,28 +700,48 @@ export interface components {
          * @enum {string}
          */
         ChatRole: "member" | "admin" | "owner";
-        /** CodeIn */
-        CodeIn: {
-            /** Code */
-            code: string;
+        /** CheckPasswordRequest */
+        CheckPasswordRequest: {
+            /** Password */
+            password: string;
         };
-        /** CountsOut */
-        CountsOut: {
-            counts: components["schemas"]["DeckCounts"];
+        /** CrossOriginRefusedError */
+        CrossOriginRefusedError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default cross_origin_refused
+             * @constant
+             */
+            type: "cross_origin_refused";
+            /**
+             * Message
+             * @default Requests from other sites are refused
+             */
+            message: string;
         };
         /**
          * Decision
          * @enum {string}
          */
         Decision: "keep" | "unsubscribe" | "mute" | "archive" | "skip";
-        /** DecisionBody */
-        DecisionBody: {
+        /** DecisionRequest */
+        DecisionRequest: {
             decision: components["schemas"]["Decision"];
         };
-        /** DecisionOut */
-        DecisionOut: {
-            /** Ok */
-            ok: boolean;
+        /** DecisionResponse */
+        DecisionResponse: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
             counts: components["schemas"]["DeckCounts"];
         };
         /**
@@ -661,6 +780,49 @@ export interface components {
             /** Trail */
             trail: string;
         };
+        /** DeckPrefsRequest */
+        DeckPrefsRequest: {
+            /** @default dead */
+            sort: components["schemas"]["SortMode"];
+            /**
+             * Reverse
+             * @default false
+             */
+            reverse: boolean;
+            /** @default all */
+            archive: components["schemas"]["ArchiveFilter"];
+        };
+        /** DeckPrefsResponse */
+        DeckPrefsResponse: {
+            /** @default dead */
+            sort: components["schemas"]["SortMode"];
+            /**
+             * Reverse
+             * @default false
+             */
+            reverse: boolean;
+            /** @default all */
+            archive: components["schemas"]["ArchiveFilter"];
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+        };
+        /** DeckResponse */
+        DeckResponse: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            /** Items */
+            items: components["schemas"]["Channel"][];
+            counts: components["schemas"]["DeckCounts"];
+            sync: components["schemas"]["SyncState"];
+        };
         /** ErrorDetail */
         ErrorDetail: {
             /** Loc */
@@ -669,10 +831,10 @@ export interface components {
             msg: string;
         };
         /**
-         * ErrorOut
+         * ErrorResponse
          * @description The body of every error (api/errors.py); which fields come along depends on the type.
          */
-        ErrorOut: {
+        ErrorResponse: {
             /**
              * Ok
              * @default false
@@ -712,8 +874,30 @@ export interface components {
             /** Unsubscribed At */
             unsubscribed_at: string | null;
         };
-        /** HealthOut */
-        HealthOut: {
+        /** FloodWaitError */
+        FloodWaitError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default flood_wait
+             * @constant
+             */
+            type: "flood_wait";
+            /**
+             * Message
+             * @default Telegram asks to wait before the next request
+             */
+            message: string;
+            /** Retry After */
+            retry_after: number;
+        };
+        /** HealthResponse */
+        HealthResponse: {
             /**
              * Ok
              * @default true
@@ -727,8 +911,158 @@ export interface components {
             /** Allow Owner Leave */
             allow_owner_leave: boolean;
         };
-        /** LogoutIn */
-        LogoutIn: {
+        /** HostNotAllowedError */
+        HostNotAllowedError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default host_not_allowed
+             * @constant
+             */
+            type: "host_not_allowed";
+            /**
+             * Message
+             * @default Open the app at http://localhost
+             */
+            message: string;
+        };
+        /** HttpInternalError */
+        HttpInternalError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default internal_error
+             * @constant
+             */
+            type: "internal_error";
+            /**
+             * Message
+             * @default Something went wrong in the app; its log has the details
+             */
+            message: string;
+        };
+        /** InvalidCodeError */
+        InvalidCodeError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default invalid_code
+             * @constant
+             */
+            type: "invalid_code";
+            /**
+             * Message
+             * @default That code is not valid
+             */
+            message: string;
+            /** Reason */
+            reason: string;
+        };
+        /** InvalidPasswordError */
+        InvalidPasswordError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default invalid_password
+             * @constant
+             */
+            type: "invalid_password";
+            /**
+             * Message
+             * @default Wrong password
+             */
+            message: string;
+            /** Reason */
+            reason: string;
+        };
+        /** InvalidPhoneError */
+        InvalidPhoneError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default invalid_phone
+             * @constant
+             */
+            type: "invalid_phone";
+            /**
+             * Message
+             * @default That phone number is not valid
+             */
+            message: string;
+            /** Reason */
+            reason: string;
+        };
+        /** InvalidRequestError */
+        InvalidRequestError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default invalid_request
+             * @constant
+             */
+            type: "invalid_request";
+            /**
+             * Message
+             * @default The request doesn't fit the API
+             */
+            message: string;
+            /** Details */
+            details: components["schemas"]["ErrorDetail"][];
+        };
+        /** LoginStepUnexpectedError */
+        LoginStepUnexpectedError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default login_step_unexpected
+             * @constant
+             */
+            type: "login_step_unexpected";
+            /**
+             * Message
+             * @default The login is not at that step
+             */
+            message: string;
+            /** Reason */
+            reason: string;
+        };
+        /** LogoutRequest */
+        LogoutRequest: {
             /**
              * Wipe Data
              * @default false
@@ -740,27 +1074,67 @@ export interface components {
          * @enum {string}
          */
         MediaKind: "photo" | "video" | "animation" | "document" | "audio" | "voice" | "poll" | "sticker" | "other";
-        /** PasswordIn */
-        PasswordIn: {
-            /** Password */
-            password: string;
-        };
-        /** PhoneIn */
-        PhoneIn: {
-            /** Phone */
-            phone: string;
-        };
-        /** Prefs */
-        Prefs: {
-            /** @default dead */
-            sort: components["schemas"]["SortMode"];
+        /** NotAuthorizedError */
+        NotAuthorizedError: {
             /**
-             * Reverse
+             * Ok
              * @default false
+             * @constant
              */
-            reverse: boolean;
-            /** @default all */
-            archive: components["schemas"]["ArchiveFilter"];
+            ok: false;
+            /**
+             * Type
+             * @default not_authorized
+             * @constant
+             */
+            type: "not_authorized";
+            /**
+             * Message
+             * @default Log in to Telegram first
+             */
+            message: string;
+        };
+        /** OwnerLeaveNotEnabledError */
+        OwnerLeaveNotEnabledError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default owner_leave_not_enabled
+             * @constant
+             */
+            type: "owner_leave_not_enabled";
+            /**
+             * Message
+             * @default Leaving a chat you own is off (start with --allow-owner-leave to allow it)
+             */
+            message: string;
+        };
+        /** PictureNotFoundError */
+        PictureNotFoundError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default picture_not_found
+             * @constant
+             */
+            type: "picture_not_found";
+            /**
+             * Message
+             * @default The chat has no such picture
+             */
+            message: string;
+            /** Channel Id */
+            channel_id: number;
         };
         /** Pulse */
         Pulse: {
@@ -773,18 +1147,34 @@ export interface components {
             /** Sample */
             sample: number;
         };
-        /** ResetIn */
-        ResetIn: {
+        /** ResetDecisionsRequest */
+        ResetDecisionsRequest: {
             only?: components["schemas"]["Decision"] | null;
             /** @default channel */
             kind: components["schemas"]["ChatKind"];
             /** @default member */
             role: components["schemas"]["RoleFilter"];
         };
-        /** ResetOut */
-        ResetOut: {
+        /** ResetDecisionsResponse */
+        ResetDecisionsResponse: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
             /** Removed */
             removed: number;
+            counts: components["schemas"]["DeckCounts"];
+        };
+        /** RetryFailedResponse */
+        RetryFailedResponse: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
             counts: components["schemas"]["DeckCounts"];
         };
         /**
@@ -793,13 +1183,29 @@ export interface components {
          * @enum {string}
          */
         RoleFilter: "member" | "managed";
+        /** SendCodeRequest */
+        SendCodeRequest: {
+            /** Phone */
+            phone: string;
+        };
+        /** SignInRequest */
+        SignInRequest: {
+            /** Code */
+            code: string;
+        };
         /**
          * SortMode
          * @enum {string}
          */
         SortMode: "dead" | "unread";
-        /** StatsOut */
-        StatsOut: {
+        /** StatsResponse */
+        StatsResponse: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
             /** Subscribed */
             subscribed: number;
             /** Unread Total */
@@ -817,8 +1223,8 @@ export interface components {
                 [key: string]: number;
             };
         };
-        /** SyncStateOut */
-        SyncStateOut: {
+        /** SyncState */
+        SyncState: {
             /** Running */
             running: boolean;
             /** Fetched */
@@ -832,8 +1238,63 @@ export interface components {
             /** Error */
             error: string | null;
         };
-        /** TgUserOut */
-        TgUserOut: {
+        /** SyncStateResponse */
+        SyncStateResponse: {
+            /** Running */
+            running: boolean;
+            /** Fetched */
+            fetched: number;
+            /** Total */
+            total: number | null;
+            /** Last Synced At */
+            last_synced_at: string | null;
+            /** Flood Wait */
+            flood_wait: number | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+        };
+        /** TelegramError */
+        TelegramError: {
+            /**
+             * Ok
+             * @default false
+             * @constant
+             */
+            ok: false;
+            /**
+             * Type
+             * @default telegram_error
+             * @constant
+             */
+            type: "telegram_error";
+            /**
+             * Message
+             * @default Telegram refused the request
+             */
+            message: string;
+            /** Reason */
+            reason: string;
+        };
+        /** UndoDecisionResponse */
+        UndoDecisionResponse: {
+            /**
+             * Ok
+             * @default true
+             * @constant
+             */
+            ok: true;
+            /** Removed */
+            removed: boolean;
+            counts: components["schemas"]["DeckCounts"];
+        };
+        /** User */
+        User: {
             /** Id */
             id: number;
             /** First Name */
@@ -852,7 +1313,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    health_api_health_get: {
+    get_health_api_health_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -867,7 +1328,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HealthOut"];
+                    "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -876,12 +1364,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    auth_state_api_auth_state_get: {
+    get_auth_state_api_auth_state_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -896,7 +1384,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthStateOut"];
+                    "application/json": components["schemas"]["AuthStateResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -905,260 +1420,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    auth_events_api_auth_events_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Server-sent events: a snapshot first, then changes */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/event-stream": unknown;
-                };
-            };
-            /** @description An error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    auth_qr_start_api_auth_qr_start_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthStateOut"];
-                };
-            };
-            /** @description An error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    auth_send_code_api_auth_phone_send_code_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PhoneIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthStateOut"];
-                };
-            };
-            /** @description An error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    auth_sign_in_api_auth_phone_sign_in_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CodeIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthStateOut"];
-                };
-            };
-            /** @description An error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    auth_password_api_auth_password_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PasswordIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthStateOut"];
-                };
-            };
-            /** @description An error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    auth_cancel_api_auth_cancel_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthStateOut"];
-                };
-            };
-            /** @description An error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    auth_logout_api_auth_logout_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LogoutIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthStateOut"];
-                };
-            };
-            /** @description An error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    channels_sync_api_channels_sync_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SyncStateOut"];
-                };
-            };
-            /** @description An error */
-            default: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorOut"];
-                };
-            };
-        };
-    };
-    channels_sync_events_api_channels_sync_events_get: {
+    get_auth_events_api_auth_events_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1176,18 +1443,644 @@ export interface operations {
                     "text/event-stream": unknown;
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
             /** @description An error */
             default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    channels_list_api_channels_get: {
+    post_qr_login_api_auth_qr_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthStateResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginStepUnexpectedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description An error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_send_code_api_auth_phone_send_code_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthStateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidPhoneError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginStepUnexpectedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloodWaitError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramError"];
+                };
+            };
+            /** @description An error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_sign_in_api_auth_phone_sign_in_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignInRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthStateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidCodeError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginStepUnexpectedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloodWaitError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramError"];
+                };
+            };
+            /** @description An error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_password_api_auth_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthStateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidPasswordError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginStepUnexpectedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloodWaitError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramError"];
+                };
+            };
+            /** @description An error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_cancel_login_api_auth_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthStateResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description An error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_logout_api_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthStateResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyJobRunningError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description An error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    post_sync_api_channels_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStateResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description An error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_sync_events_api_channels_sync_events_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-sent events: a snapshot first, then changes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": unknown;
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description An error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_channels_api_channels_get: {
         parameters: {
             query?: {
                 kind?: components["schemas"]["ChatKind"];
@@ -1209,7 +2102,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChannelsOut"];
+                    "application/json": components["schemas"]["DeckResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1218,12 +2147,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    channel_full_api_channels__channel_id__full_get: {
+    get_channel_full_api_channels__channel_id__full_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1240,7 +2169,70 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChannelOut"];
+                    "application/json": components["schemas"]["ChannelResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelNotFoundError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloodWaitError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramError"];
                 };
             };
             /** @description An error */
@@ -1249,12 +2241,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    channel_avatar_api_channels__channel_id__avatar_get: {
+    get_channel_avatar_api_channels__channel_id__avatar_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1274,12 +2266,68 @@ export interface operations {
                     "image/*": unknown;
                 };
             };
-            /** @description The chat has none */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Not Found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ChannelNotFoundError"] | components["schemas"]["PictureNotFoundError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloodWaitError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramError"];
+                };
             };
             /** @description An error */
             default: {
@@ -1287,12 +2335,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    channel_thumb_api_channels__channel_id__thumb_get: {
+    get_channel_thumb_api_channels__channel_id__thumb_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1312,12 +2360,68 @@ export interface operations {
                     "image/*": unknown;
                 };
             };
-            /** @description The chat has none */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Not Found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ChannelNotFoundError"] | components["schemas"]["PictureNotFoundError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FloodWaitError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
+            /** @description Bad Gateway */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelegramError"];
+                };
             };
             /** @description An error */
             default: {
@@ -1325,12 +2429,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    decision_set_api_decisions__channel_id__put: {
+    put_decision_api_decisions__channel_id__put: {
         parameters: {
             query?: never;
             header?: never;
@@ -1341,7 +2445,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DecisionBody"];
+                "application/json": components["schemas"]["DecisionRequest"];
             };
         };
         responses: {
@@ -1351,7 +2455,61 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DecisionOut"];
+                    "application/json": components["schemas"]["DecisionResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelNotFoundError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyJobRunningError"] | components["schemas"]["OwnerLeaveNotEnabledError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1360,12 +2518,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    decision_undo_api_decisions__channel_id__delete: {
+    delete_decision_api_decisions__channel_id__delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -1382,7 +2540,61 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DecisionOut"];
+                    "application/json": components["schemas"]["UndoDecisionResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChannelNotFoundError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyJobRunningError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1391,12 +2603,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    decisions_trail_api_decisions_trail_get: {
+    get_decisions_trail_api_decisions_trail_get: {
         parameters: {
             query?: {
                 kind?: components["schemas"]["ChatKind"];
@@ -1415,7 +2627,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChannelListOut"];
+                    "application/json": components["schemas"]["ChannelListResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1424,12 +2672,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    decisions_list_api_decisions_get: {
+    get_decisions_api_decisions_get: {
         parameters: {
             query?: {
                 status?: components["schemas"]["DecisionStatus"] | null;
@@ -1446,7 +2694,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChannelListOut"];
+                    "application/json": components["schemas"]["ChannelListResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1455,12 +2739,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    decisions_reset_api_decisions_reset_post: {
+    post_reset_decisions_api_decisions_reset_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1469,7 +2753,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ResetIn"];
+                "application/json": components["schemas"]["ResetDecisionsRequest"];
             };
         };
         responses: {
@@ -1479,7 +2763,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ResetOut"];
+                    "application/json": components["schemas"]["ResetDecisionsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyJobRunningError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1488,12 +2817,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    decisions_retry_failed_api_decisions_retry_failed_post: {
+    post_retry_failed_api_decisions_retry_failed_post: {
         parameters: {
             query?: {
                 kind?: components["schemas"]["ChatKind"];
@@ -1511,7 +2840,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CountsOut"];
+                    "application/json": components["schemas"]["RetryFailedResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1520,12 +2885,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    apply_start_api_apply_post: {
+    post_apply_api_apply_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1540,7 +2905,52 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApplyStateOut"];
+                    "application/json": components["schemas"]["ApplyStateResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplyJobRunningError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1549,12 +2959,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    apply_cancel_api_apply_cancel_post: {
+    post_cancel_apply_api_apply_cancel_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -1569,7 +2979,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApplyStateOut"];
+                    "application/json": components["schemas"]["ApplyStateResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1578,12 +3015,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    apply_state_api_apply_state_get: {
+    get_apply_state_api_apply_state_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1598,7 +3035,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ApplyStateOut"];
+                    "application/json": components["schemas"]["ApplyStateResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1607,12 +3071,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    apply_events_api_apply_events_get: {
+    get_apply_events_api_apply_events_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1630,18 +3094,45 @@ export interface operations {
                     "text/event-stream": unknown;
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
             /** @description An error */
             default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    prefs_get_api_prefs_get: {
+    get_prefs_api_prefs_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1656,7 +3147,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Prefs"];
+                    "application/json": components["schemas"]["DeckPrefsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1665,12 +3192,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    prefs_put_api_prefs_put: {
+    put_prefs_api_prefs_put: {
         parameters: {
             query?: never;
             header?: never;
@@ -1679,7 +3206,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Prefs"];
+                "application/json": components["schemas"]["DeckPrefsRequest"];
             };
         };
         responses: {
@@ -1689,7 +3216,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Prefs"];
+                    "application/json": components["schemas"]["DeckPrefsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1698,12 +3261,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    stats_get_api_stats_get: {
+    get_stats_api_stats_get: {
         parameters: {
             query?: {
                 kind?: components["schemas"]["ChatKind"];
@@ -1721,7 +3284,43 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["StatsOut"];
+                    "application/json": components["schemas"]["StatsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
                 };
             };
             /** @description An error */
@@ -1730,12 +3329,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
     };
-    export_api_export_get: {
+    get_export_api_export_get: {
         parameters: {
             query?: {
                 format?: "csv" | "json";
@@ -1758,13 +3357,49 @@ export interface operations {
                     "application/json": components["schemas"]["ExportRow"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotAuthorizedError"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HostNotAllowedError"] | components["schemas"]["CrossOriginRefusedError"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvalidRequestError"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HttpInternalError"];
+                };
+            };
             /** @description An error */
             default: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorOut"];
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

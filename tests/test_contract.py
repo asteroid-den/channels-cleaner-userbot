@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 import pytest
 
-from channels_cleaner.api import openapi, schemas
+from channels_cleaner.api import models, openapi
 from channels_cleaner.app import create_app
 from channels_cleaner.context import AppContext
 from channels_cleaner.telegram.mock_gateway import MockGateway
@@ -46,9 +46,9 @@ async def test_the_event_streams_send_what_the_routes_declare(
     await wait_for(applied)
 
     # The SSE snapshots and bus events are the services' own dicts: they must fit the same models
-    schemas.AuthStateOut.model_validate(ctx.auth.state.snapshot())
-    schemas.SyncStateOut.model_validate(ctx.sync.state.snapshot())
-    state = schemas.ApplyStateOut.model_validate(ctx.apply.state.snapshot())
+    models.AuthStateResponse.model_validate(ctx.auth.state.snapshot())
+    models.SyncStateResponse.model_validate(ctx.sync.state.snapshot())
+    state = models.ApplyStateResponse.model_validate(ctx.apply.state.snapshot())
     assert [item.channel_id for item in state.items] == [cid]
 
 
@@ -61,7 +61,7 @@ async def test_errors_fit_the_declared_error_body(client: httpx.AsyncClient, ctx
         await client.get("/api/nothing-here"),
     ]:
         assert r.status_code >= 400
-        schemas.ErrorOut.model_validate(r.json())
+        models.ErrorResponse.model_validate(r.json())
 
 
 def test_the_uis_copy_of_the_schema_is_current() -> None:

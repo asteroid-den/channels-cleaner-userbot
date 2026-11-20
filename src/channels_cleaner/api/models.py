@@ -1,17 +1,19 @@
 """Pydantic request and response models: the API's contract, as /openapi.json shows it.
 
-The responses are built from the services' own state (dataclasses, ORM rows) with from_attributes.
+Bodies the UI sends are ``…Request``; what a route answers is a ``…Response`` (``ok: true``, as errors carry
+``ok: false``); the parts they are made of are plain nouns. Responses are built from the services' own state
+(dataclasses, ORM rows) with from_attributes.
 """
 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from channels_cleaner.api.errors import ErrorDetail
-from channels_cleaner.database.models import Channel
+from channels_cleaner.database import models
 from channels_cleaner.enums import (
     ArchiveFilter,
     ChatKind,
@@ -29,83 +31,62 @@ from channels_cleaner.services.auth import AuthStatus
 _THUMB_MEDIA = {MediaKind.PHOTO, MediaKind.VIDEO, MediaKind.ANIMATION}
 
 
-class PhoneIn(BaseModel):
+# --- what the UI sends ----------------------------------------------------------------------------------------------
+
+
+class SendCodeRequest(BaseModel):
     phone: str = Field(min_length=5, max_length=32)
 
 
-class CodeIn(BaseModel):
+class SignInRequest(BaseModel):
     code: str = Field(min_length=1, max_length=16)
 
 
-class PasswordIn(BaseModel):
+class CheckPasswordRequest(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
-class LogoutIn(BaseModel):
+class LogoutRequest(BaseModel):
     wipe_data: bool = False
 
 
-class DecisionBody(BaseModel):
+class DecisionRequest(BaseModel):
     decision: Decision
 
 
-class ResetIn(BaseModel):
+class ResetDecisionsRequest(BaseModel):
     only: Decision | None = None
     kind: ChatKind = ChatKind.CHANNEL
     role: RoleFilter = RoleFilter.MEMBER
 
 
-class Prefs(BaseModel):
+class DeckPrefs(BaseModel):
+    """How the deck is sorted and filtered, saved per account."""
+
     sort: SortMode = SortMode.DEAD
     reverse: bool = False
     archive: ArchiveFilter = ArchiveFilter.ALL
 
 
-class Out(BaseModel):
+class DeckPrefsRequest(DeckPrefs):
+    pass
+
+
+# --- parts of the answers -------------------------------------------------------------------------------------------
+
+
+class _Model(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ErrorOut(Out):
-    """The body of every error (api/errors.py); which fields come along depends on the type."""
-
-    ok: Literal[False] = False
-    #: what the UI acts on: not_authorized, flood_wait, apply_running…
-    type: str
-    message: str
-    #: what Telegram said
-    reason: str | None = None
-    #: seconds to wait (flood_wait)
-    retry_after: int | None = None
-    channel_id: int | None = None
-    #: what didn't fit (invalid_request)
-    details: list[ErrorDetail] | None = None
-
-
-class HealthOut(Out):
-    ok: Literal[True] = True
-    version: str
-    mock: bool
-    allow_owner_leave: bool
-
-
-class TgUserOut(Out):
+class User(_Model):
     id: int
     first_name: str
     last_name: str | None
     username: str | None
 
 
-class AuthStateOut(Out):
-    status: AuthStatus
-    user: TgUserOut | None
-    qr_url: str | None
-    qr_expires_at: datetime | None
-    password_hint: str | None
-    phone: str | None
-    error: str | None
-
-
-class SyncStateOut(Out):
+class SyncState(_Model):
     running: bool
     fetched: int
     total: int | None
@@ -114,7 +95,7 @@ class SyncStateOut(Out):
     error: str | None
 
 
-class Pulse(Out):
+class Pulse(_Model):
     #: 26 weekly post counts, oldest first; None = a week the fetched history doesn't reach
     weeks: list[int | None]
     per_week: float
@@ -122,7 +103,7 @@ class Pulse(Out):
     sample: int
 
 
-class ChannelOut(Out):
+class Channel(_Model):
     id: int
     kind: ChatKind
     role: ChatRole
@@ -147,7 +128,7 @@ class ChannelOut(Out):
     reverts: Decision | None = None
 
     @classmethod
-    def from_channel(cls, channel: Channel) -> ChannelOut:
+    def from_channel(cls, channel: models.Channel) -> Self:
         has_thumb = channel.last_post_id is not None and channel.last_post_media in _THUMB_MEDIA
         version = channel.photo_unique_id or "x"
         decision = channel.decision
@@ -177,7 +158,7 @@ class ChannelOut(Out):
         )
 
 
-class DeckCounts(Out):
+class DeckCounts(_Model):
     total: int
     #: how many chats each choice in the deck settings menu would show
     kind_totals: dict[ChatKind, int]
@@ -194,32 +175,7 @@ class DeckCounts(Out):
     trail: str
 
 
-class ChannelsOut(Out):
-    items: list[ChannelOut]
-    counts: DeckCounts
-    sync: SyncStateOut
-
-
-class ChannelListOut(Out):
-    items: list[ChannelOut]
-
-
-class DecisionOut(Out):
-    #: for an undo: whether there was a decision to remove
-    ok: bool
-    counts: DeckCounts
-
-
-class ResetOut(Out):
-    removed: int
-    counts: DeckCounts
-
-
-class CountsOut(Out):
-    counts: DeckCounts
-
-
-class ApplyItemOut(Out):
+class ApplyItem(_Model):
     channel_id: int
     decision: Decision
     title: str
@@ -231,7 +187,7 @@ class ApplyItemOut(Out):
     role: ChatRole
 
 
-class ApplyStateOut(Out):
+class ApplyState(_Model):
     job_id: int | None
     status: ApplyStatus
     total: int
@@ -240,19 +196,10 @@ class ApplyStateOut(Out):
     current: int | None
     #: a Unix time
     flood_wait_until: float | None
-    items: list[ApplyItemOut]
+    items: list[ApplyItem]
 
 
-class StatsOut(Out):
-    subscribed: int
-    unread_total: int
-    unread_cleared: int
-    decisions: dict[Decision, dict[DecisionStatus, int]]
-    #: chats per age of the last post: week, month, quarter, half_year, year, older, never
-    last_post_age: dict[str, int]
-
-
-class ExportRow(Out):
+class ExportRow(_Model):
     """A chat left, as /api/export lists it."""
 
     channel_id: int
@@ -262,3 +209,96 @@ class ExportRow(Out):
     members_count: int | None
     last_post_at: datetime | None
     unsubscribed_at: datetime | None
+
+
+# --- what the routes answer -----------------------------------------------------------------------------------------
+
+
+class OkResponse(_Model):
+    ok: Literal[True] = True
+
+
+class ErrorResponse(_Model):
+    """The body of every error (api/errors.py); which fields come along depends on the type."""
+
+    ok: Literal[False] = False
+    #: what the UI acts on: not_authorized, flood_wait, apply_job_running…
+    type: str
+    message: str
+    #: what Telegram said
+    reason: str | None = None
+    #: seconds to wait (flood_wait)
+    retry_after: int | None = None
+    channel_id: int | None = None
+    #: what didn't fit (invalid_request)
+    details: list[ErrorDetail] | None = None
+
+
+class HealthResponse(OkResponse):
+    version: str
+    mock: bool
+    allow_owner_leave: bool
+
+
+class AuthStateResponse(OkResponse):
+    status: AuthStatus
+    user: User | None
+    qr_url: str | None
+    qr_expires_at: datetime | None
+    password_hint: str | None
+    phone: str | None
+    error: str | None
+
+
+class SyncStateResponse(OkResponse, SyncState):
+    pass
+
+
+class DeckResponse(OkResponse):
+    items: list[Channel]
+    counts: DeckCounts
+    sync: SyncState
+
+
+class ChannelResponse(OkResponse, Channel):
+    pass
+
+
+class ChannelListResponse(OkResponse):
+    items: list[Channel]
+
+
+class DecisionResponse(OkResponse):
+    counts: DeckCounts
+
+
+class UndoDecisionResponse(OkResponse):
+    #: whether there was a decision to take back
+    removed: bool
+    counts: DeckCounts
+
+
+class ResetDecisionsResponse(OkResponse):
+    removed: int
+    counts: DeckCounts
+
+
+class RetryFailedResponse(OkResponse):
+    counts: DeckCounts
+
+
+class ApplyStateResponse(OkResponse, ApplyState):
+    pass
+
+
+class DeckPrefsResponse(OkResponse, DeckPrefs):
+    pass
+
+
+class StatsResponse(OkResponse):
+    subscribed: int
+    unread_total: int
+    unread_cleared: int
+    decisions: dict[Decision, dict[DecisionStatus, int]]
+    #: chats per age of the last post: week, month, quarter, half_year, year, older, never
+    last_post_age: dict[str, int]

@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from channels_cleaner.api import schemas
+from channels_cleaner.api import models
 from channels_cleaner.database import DAO
 from channels_cleaner.enums import ArchiveFilter, ChatKind, RoleFilter
 
 PREFS_KEY = "deck_prefs"
 
 
-async def prefs(dao: DAO, account_id: int) -> schemas.Prefs:
-    return schemas.Prefs(**(await dao.get_setting(account_id, PREFS_KEY) or {}))
+async def prefs(dao: DAO, account_id: int) -> models.DeckPrefs:
+    return models.DeckPrefs(**(await dao.get_setting(account_id, PREFS_KEY) or {}))
 
 
 async def archive_filter(dao: DAO, account_id: int, archive: ArchiveFilter | None) -> ArchiveFilter:
@@ -23,11 +23,11 @@ async def archive_filter(dao: DAO, account_id: int, archive: ArchiveFilter | Non
 
 async def counts(
     dao: DAO, account_id: int, kind: ChatKind, role: RoleFilter, archive: ArchiveFilter | None = None
-) -> schemas.DeckCounts:
+) -> models.DeckCounts:
     archive = await archive_filter(dao, account_id, archive)
     pending = await dao.count_pending(account_id)
     here = await dao.count_pending(account_id, kind, role)
-    return schemas.DeckCounts(
+    return models.DeckCounts(
         total=await dao.count_channels(account_id, kind, archive, role),
         kind_totals={k: await dao.count_channels(account_id, k, archive, role) for k in ChatKind},
         role_totals={r: {k: await dao.count_channels(account_id, k, archive, r) for k in ChatKind} for r in RoleFilter},

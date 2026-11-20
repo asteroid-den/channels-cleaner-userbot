@@ -6,9 +6,10 @@ import type { components } from './schema'
 
 type Schemas = components['schemas']
 
-export type AuthStatus = Schemas['AuthStateOut']['status']
-export type TgUser = Schemas['TgUserOut']
-export type AuthState = Schemas['AuthStateOut']
+export type AuthStatus = Schemas['AuthStateResponse']['status']
+export type TgUser = Schemas['User']
+/** Also what the auth event stream sends, which has no `ok`. */
+export type AuthState = Omit<Schemas['AuthStateResponse'], 'ok'>
 
 export type Decision = Schemas['Decision']
 export type ActionDecision = Extract<Decision, 'unsubscribe' | 'mute' | 'archive'>
@@ -23,8 +24,8 @@ export type RoleFilter = Schemas['RoleFilter']
 export type ArchiveFilter = Schemas['ArchiveFilter']
 
 export type Pulse = Schemas['Pulse']
-export type Channel = Schemas['ChannelOut']
-export type SyncState = Schemas['SyncStateOut']
+export type Channel = Schemas['Channel']
+export type SyncState = Schemas['SyncState']
 
 /** OpenAPI has no enum-keyed maps: the keys are spelled out here. */
 export type DeckCounts = Omit<
@@ -37,12 +38,13 @@ export type DeckCounts = Omit<
   by_decision: Record<FinalDecision, number>
 }
 
-export type ChannelsResponse = Omit<Schemas['ChannelsOut'], 'counts'> & { counts: DeckCounts }
+export type ChannelsResponse = Omit<Schemas['DeckResponse'], 'counts'> & { counts: DeckCounts }
 
-export type ApplyItemStatus = Schemas['ApplyItemOut']['status']
-export type ApplyItem = Schemas['ApplyItemOut']
-export type ApplyState = Schemas['ApplyStateOut']
+export type ApplyItemStatus = Schemas['ApplyItem']['status']
+export type ApplyItem = Schemas['ApplyItem']
+/** Also what the apply event stream sends, which has no `ok`. */
+export type ApplyState = Omit<Schemas['ApplyStateResponse'], 'ok'>
 
-export type Stats = Schemas['StatsOut']
-export type Prefs = Schemas['Prefs']
-export type ErrorBody = Schemas['ErrorOut']
+export type Stats = Schemas['StatsResponse']
+export type Prefs = Schemas['DeckPrefsRequest']
+export type ErrorBody = Schemas['ErrorResponse']

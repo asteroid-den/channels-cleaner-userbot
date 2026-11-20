@@ -3,7 +3,7 @@ import type { ErrorBody } from './types'
 /** An answer of the API's error shape: {ok: false, type, message, ...fields}. */
 export class ApiError extends Error {
   readonly status: number
-  /** What the UI acts on: flood_wait, apply_running, invalid_code… (TYPE of the backend's error class) */
+  /** What the UI acts on: flood_wait, apply_job_running, invalid_code… (TYPE of the backend's error class) */
   readonly type: string
   readonly retryAfter: number | null
 

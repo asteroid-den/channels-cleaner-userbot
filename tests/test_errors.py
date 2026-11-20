@@ -175,14 +175,20 @@ async def test_stopping_a_sync_waits_for_it(
     assert ctx.sync._task.done()  # noqa: SLF001
 
 
-def _error_classes() -> list[type[api_errors.ApiError]]:
-    found: list[type[api_errors.ApiError]] = []
-    todo = list(api_errors.ApiError.__subclasses__())
+def _error_classes() -> list[type[api_errors.BaseError]]:
+    """The errors the API answers with: every subclass but the ones per HTTP status (BadRequest, NotFound…)."""
+    found: list[type[api_errors.BaseError]] = []
+    todo = list(api_errors.BaseError.__subclasses__())
 
     while todo:
         cls = todo.pop()
-        found.append(cls)
         todo.extend(cls.__subclasses__())
+
+        if "TYPE" in vars(cls):
+            found.append(cls)
+
+        else:
+            assert cls.__subclasses__(), f"{cls.__name__} has no TYPE and no errors under it"
 
     return found
 

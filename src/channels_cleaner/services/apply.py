@@ -10,7 +10,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-from channels_cleaner.api.errors import ApplyRunning
+from channels_cleaner.api.errors import ApplyJobRunning
 from channels_cleaner.config import Settings
 from channels_cleaner.database import DAO, DatabaseManager
 from channels_cleaner.database.models import base
@@ -78,7 +78,7 @@ class ApplyService:
 
     async def start(self, account_id: int) -> ApplyState:
         if self.running:
-            raise ApplyRunning
+            raise ApplyJobRunning
 
         async with self._starting:
             return await self._start(account_id)
