@@ -22,6 +22,32 @@ def test_installed_app_uses_user_data_dir(tmp_path: Path, monkeypatch: pytest.Mo
     assert default_data_dir() == tmp_path / "xdg" / "telegram-channels-cleaner"
 
 
+def test_data_from_before_the_rename_is_moved(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.platform", "linux")
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
+    legacy = tmp_path / "xdg" / "channels-cleaner"
+    (legacy / "sessions").mkdir(parents=True)
+    (legacy / "sessions" / "account.session").write_text("session")
+
+    data_dir = default_data_dir()
+
+    assert (data_dir / "sessions" / "account.session").read_text() == "session"
+    assert not legacy.exists()
+
+
+def test_existing_data_dir_wins_over_the_old_one(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.platform", "linux")
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "xdg"))
+    (tmp_path / "xdg" / "channels-cleaner").mkdir(parents=True)
+    (tmp_path / "xdg" / "telegram-channels-cleaner").mkdir()
+
+    default_data_dir()
+
+    assert (tmp_path / "xdg" / "channels-cleaner").is_dir()
+
+
 @pytest.mark.skipif(os.name != "posix", reason="POSIX permissions")
 def test_data_dir_is_private(tmp_path: Path) -> None:
     data = tmp_path / "data"
