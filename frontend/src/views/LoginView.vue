@@ -42,8 +42,8 @@ const qrFloodWait = computed(() => {
 
 function describe(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.code === 'flood_wait') return t('login.errors.flood_wait', { s: err.retryAfter ?? '?' })
-    const key = `login.errors.${err.code}`
+    if (err.type === 'flood_wait') return t('login.errors.flood_wait', { s: err.retryAfter ?? '?' })
+    const key = `login.errors.${err.type}`
     const msg = t(key)
     if (msg !== key) return msg
     return t('login.errors.generic', { msg: err.message })

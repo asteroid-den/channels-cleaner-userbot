@@ -26,21 +26,21 @@ async def test_qr_login_triggers_sync(client: httpx.AsyncClient, ctx: AppContext
 async def test_phone_login_with_2fa(client: httpx.AsyncClient, ctx: AppContext) -> None:
     ctx.settings.mock_2fa = True
     bad_phone = await client.post("/api/auth/phone/send-code", json={"phone": "+1 23"})
-    assert bad_phone.status_code == 422 or bad_phone.json()["error"]["code"] == "invalid_phone"
+    assert bad_phone.status_code == 422 or bad_phone.json()["type"] == "invalid_phone"
 
     sent = await client.post("/api/auth/phone/send-code", json={"phone": "+12345678901"})
     assert sent.json()["status"] == "code"
 
     wrong = await client.post("/api/auth/phone/sign-in", json={"code": "00000"})
     assert wrong.status_code == 400
-    assert wrong.json()["error"]["code"] == "invalid_code"
+    assert wrong.json()["type"] == "invalid_code"
 
     ok = await client.post("/api/auth/phone/sign-in", json={"code": MOCK_CODE})
     assert ok.json()["status"] == "password"
     assert ok.json()["password_hint"]
 
     wrong_pw = await client.post("/api/auth/password", json={"password": "nope"})
-    assert wrong_pw.json()["error"]["code"] == "invalid_password"
+    assert wrong_pw.json()["type"] == "invalid_password"
 
     good_pw = await client.post("/api/auth/password", json={"password": MOCK_PASSWORD})
     assert good_pw.json()["status"] == "authorized"

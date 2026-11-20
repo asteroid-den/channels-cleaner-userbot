@@ -1,92 +1,209 @@
-"""Every error the API answers with has one shape: ``{"error": {"code": ..., "message": ..., ...}}``.
+"""The errors the API answers with: ``{"ok": false, "type": ..., "message": ..., <fields>}``.
 
-The UI reads ``code`` to decide what to do and shows ``message``; it never has to guess at a body, a 500 included.
+One class per error: CODE is the HTTP status, TYPE what the UI acts on, MESSAGE a fallback text for it, the dataclass
+fields go into the body. Services raise these directly; the gateway's own errors (telegram/types.py) know nothing of
+HTTP and are translated here.
 """
 
-from collections.abc import Mapping
-from http import HTTPStatus
+from dataclasses import asdict, dataclass, is_dataclass
+from typing import Any, ClassVar
 
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException
 
-from channels_cleaner.services.apply import ApplyBusyError
-from channels_cleaner.services.auth import AuthError
-from channels_cleaner.services.channels import ChannelNotFoundError
 from channels_cleaner.telegram.types import FloodWaitError, GatewayError, NotAuthorizedError
 
 
-class RequestError(Exception):
-    """A request the API refuses, with the code the UI acts on."""
+class ApiError(Exception):
+    # Upper case: a class attribute named type would shadow the builtin inside the class body
+    CODE: ClassVar[int]
+    TYPE: ClassVar[str]
+    MESSAGE: ClassVar[str]
 
-    def __init__(self, status: int, code: str, message: str) -> None:
-        super().__init__(message)
-        self.status = status
-        self.code = code
+    def body(self) -> dict[str, Any]:
+        fields = asdict(self) if is_dataclass(self) else {}
+        return {"ok": False, "type": self.TYPE, "message": self.MESSAGE, **jsonable_encoder(fields)}
+
+    def response(self) -> JSONResponse:
+        return JSONResponse(self.body(), self.CODE)
 
 
-def error_response(status: int, code: str, message: str, **extra: object) -> JSONResponse:
-    return JSONResponse({"error": {"code": code, "message": message, **extra}}, status)
+class ErrorDetail(BaseModel):
+    loc: list[str | int]
+    msg: str
 
 
-async def _domain_error(_: Request, exc: Exception) -> JSONResponse:
-    message = str(exc) or type(exc).__name__
-    extra: Mapping[str, object] = {}
+# --- the API's own ------------------------------------------------------------------------------------------------
 
+
+@dataclass
+class InvalidRequest(ApiError):
+    CODE = 422
+    TYPE = "invalid_request"
+    MESSAGE = "The request doesn't fit the API"
+    details: list[ErrorDetail]
+
+
+@dataclass
+class RouteNotFound(ApiError):
+    CODE = 404
+    TYPE = "not_found"
+    MESSAGE = "Unknown endpoint"
+
+
+@dataclass
+class MethodNotAllowed(ApiError):
+    CODE = 405
+    TYPE = "method_not_allowed"
+    MESSAGE = "This endpoint doesn't take that method"
+
+
+@dataclass
+class InternalError(ApiError):
+    CODE = 500
+    TYPE = "internal_error"
+    # Nothing about the cause leaves the app: the traceback is in its log
+    MESSAGE = "Something went wrong in the app; its log has the details"
+
+
+@dataclass
+class BadHost(ApiError):
+    CODE = 403
+    TYPE = "bad_host"
+    MESSAGE = "Open the app at http://localhost"
+
+
+@dataclass
+class CrossOrigin(ApiError):
+    CODE = 403
+    TYPE = "cross_origin"
+    MESSAGE = "Requests from other sites are refused"
+
+
+# --- login --------------------------------------------------------------------------------------------------------
+
+
+@dataclass
+class NotAuthorized(ApiError):
+    CODE = 401
+    TYPE = "not_authorized"
+    MESSAGE = "Log in to Telegram first"
+
+
+@dataclass
+class InvalidPhone(ApiError):
+    CODE = 400
+    TYPE = "invalid_phone"
+    MESSAGE = "That phone number is not valid"
+    # What Telegram said
+    reason: str
+
+
+@dataclass
+class InvalidCode(ApiError):
+    CODE = 400
+    TYPE = "invalid_code"
+    MESSAGE = "That code is not valid"
+    reason: str
+
+
+@dataclass
+class InvalidPassword(ApiError):
+    CODE = 400
+    TYPE = "invalid_password"
+    MESSAGE = "Wrong password"
+    reason: str
+
+
+@dataclass
+class LoginStepMismatch(ApiError):
+    """A login step that doesn't fit where the login is: a code nobody asked for, a second login."""
+
+    CODE = 409
+    TYPE = "bad_state"
+    MESSAGE = "The login is not at that step"
+    reason: str
+
+
+# --- chats and decisions ------------------------------------------------------------------------------------------
+
+
+@dataclass
+class ChannelNotFound(ApiError):
+    CODE = 404
+    TYPE = "channel_not_found"
+    MESSAGE = "Unknown chat"
+    channel_id: int
+
+
+@dataclass
+class ApplyRunning(ApiError):
+    """Decisions are locked while the apply job runs, and only one job runs at a time."""
+
+    CODE = 409
+    TYPE = "apply_running"
+    MESSAGE = "Wait for the running apply job to finish"
+
+
+@dataclass
+class OwnerLeaveOff(ApiError):
+    CODE = 409
+    TYPE = "owner_leave_off"
+    MESSAGE = "Leaving a chat you own is off (start with --allow-owner-leave to allow it)"
+
+
+# --- Telegram -----------------------------------------------------------------------------------------------------
+
+
+@dataclass
+class FloodWait(ApiError):
+    CODE = 429
+    TYPE = "flood_wait"
+    MESSAGE = "Telegram asks to wait before the next request"
+    retry_after: int
+
+
+@dataclass
+class TelegramError(ApiError):
+    CODE = 502
+    TYPE = "telegram_error"
+    MESSAGE = "Telegram refused the request"
+    reason: str
+
+
+# --- handlers -----------------------------------------------------------------------------------------------------
+
+
+def _translate(exc: Exception) -> ApiError:  # noqa: PLR0911 - one answer per kind of error
     match exc:
-        case RequestError():
-            status, code = exc.status, exc.code
-        case AuthError():
-            status, code, extra = 400, exc.code, {"retry_after": exc.retry_after}
-        case NotAuthorizedError():
-            status, code = 401, "not_authorized"
-        case ChannelNotFoundError():
-            status, code, message = 404, "channel_not_found", f"Unknown channel {exc}"
+        case ApiError():
+            return exc
+        # FloodWaitError and NotAuthorizedError are GatewayErrors too: the narrower ones first
         case FloodWaitError():
-            status, code, extra = 429, "flood_wait", {"retry_after": exc.seconds}
-        case ApplyBusyError():
-            status, code = 409, "apply_running"
+            return FloodWait(retry_after=exc.seconds)
+        case NotAuthorizedError():
+            return NotAuthorized()
+        case GatewayError():
+            return TelegramError(reason=str(exc) or type(exc).__name__)
+        case RequestValidationError():
+            return InvalidRequest(details=[ErrorDetail(loc=list(e["loc"]), msg=e["msg"]) for e in exc.errors()])
+        case HTTPException(status_code=405):
+            return MethodNotAllowed()
+        case HTTPException(status_code=404):
+            return RouteNotFound()
         case _:
-            status, code = 502, "telegram_error"
-
-    return error_response(status, code, message, **extra)
-
-
-async def _http_error(_: Request, exc: Exception) -> JSONResponse:
-    # Starlette's own: an unknown path or a method the route doesn't take
-    status = exc.status_code if isinstance(exc, HTTPException) else 500
-    code = HTTPStatus(status).phrase.lower().replace(" ", "_")
-    return error_response(status, code, str(getattr(exc, "detail", "")) or HTTPStatus(status).phrase)
+            # Starlette logs the traceback itself once this answer is out
+            return InternalError()
 
 
-async def _validation_error(_: Request, exc: Exception) -> JSONResponse:
-    details = exc.errors() if isinstance(exc, RequestValidationError) else []
-    return error_response(422, "invalid_request", "The request doesn't fit the API", details=jsonable_encoder(details))
-
-
-async def _internal_error(_: Request, exc: Exception) -> JSONResponse:  # noqa: ARG001
-    # Starlette logs the traceback itself once this answer is out
-    return error_response(500, "internal_error", "Something went wrong in the app; its log has the details")
-
-
-# FloodWaitError and NotAuthorizedError are GatewayErrors too: Starlette picks the closest class
-_DOMAIN_ERRORS = (
-    RequestError,
-    AuthError,
-    NotAuthorizedError,
-    ChannelNotFoundError,
-    FloodWaitError,
-    ApplyBusyError,
-    GatewayError,
-)
+async def _handle(_: Request, exc: Exception) -> JSONResponse:
+    return _translate(exc).response()
 
 
 def install(app: FastAPI) -> None:
-    for error in _DOMAIN_ERRORS:
-        app.add_exception_handler(error, _domain_error)
-
-    app.add_exception_handler(HTTPException, _http_error)
-    app.add_exception_handler(RequestValidationError, _validation_error)
-    app.add_exception_handler(Exception, _internal_error)
+    for error in (ApiError, GatewayError, RequestValidationError, HTTPException, Exception):
+        app.add_exception_handler(error, _handle)

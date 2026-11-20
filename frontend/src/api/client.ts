@@ -1,12 +1,14 @@
+/** An answer of the API's error shape: {ok: false, type, message, ...fields}. */
 export class ApiError extends Error {
   readonly status: number
-  readonly code: string
+  /** What the UI acts on: flood_wait, apply_running, invalid_code… (TYPE of the backend's error class) */
+  readonly type: string
   readonly retryAfter: number | null
 
-  constructor(status: number, code: string, message: string, retryAfter: number | null = null) {
+  constructor(status: number, type: string, message: string, retryAfter: number | null = null) {
     super(message)
     this.status = status
-    this.code = code
+    this.type = type
     this.retryAfter = retryAfter
   }
 }
@@ -20,13 +22,14 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   const text = await response.text()
   const data = parseJson(text)
   if (!response.ok) {
-    // The API always answers {error: {code, message}}; anything else (a proxy, a crash before the app) still
-    // becomes an ApiError the views know how to show
-    const err = (data as ErrorBody | null)?.error
+    // The API always answers in its error shape; anything else (a proxy, a crash before the app) still becomes an
+    // ApiError the views know how to show
+    const err = data as ErrorBody | null
+    const message = err?.message ?? (text.trim() || response.statusText)
     throw new ApiError(
       response.status,
-      err?.code ?? 'http_error',
-      err?.message ?? (text.trim() || response.statusText),
+      err?.type ?? 'http_error',
+      err?.reason ? `${message}: ${err.reason}` : message,
       err?.retry_after ?? null,
     )
   }
@@ -34,7 +37,11 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 }
 
 interface ErrorBody {
-  error?: { code?: string; message?: string; retry_after?: number | null }
+  type?: string
+  message?: string
+  /** What Telegram said, for the errors that carry it */
+  reason?: string
+  retry_after?: number | null
 }
 
 function parseJson(text: string): unknown {

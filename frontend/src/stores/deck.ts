@@ -375,7 +375,7 @@ export const useDeckStore = defineStore('deck', () => {
         if (idx >= 0) list[idx] = { ...full, decision: list[idx]!.decision }
       }
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'flood_wait') {
+      if (err instanceof ApiError && err.type === 'flood_wait') {
         // Back off quietly; the card simply shows without a description for now.
         setTimeout(() => inflight.delete(channel.id), (err.retryAfter ?? 10) * 1000)
         return

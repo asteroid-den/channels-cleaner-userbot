@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from channels_cleaner.api.errors import ChannelNotFound
 from channels_cleaner.config import Settings
 from channels_cleaner.database import DAO, DatabaseManager
 from channels_cleaner.database.models import Channel, base
@@ -18,10 +19,6 @@ from channels_cleaner.telegram.types import ChannelFull
 log = logging.getLogger(__name__)
 
 _NONE_MARKER = ".none"
-
-
-class ChannelNotFoundError(LookupError):
-    pass
 
 
 class ChannelsService:
@@ -39,7 +36,7 @@ class ChannelsService:
             row = await DAO(session).get_channel(account_id, channel_id)
 
         if row is None:
-            raise ChannelNotFoundError(channel_id)
+            raise ChannelNotFound(channel_id=channel_id)
 
         return row
 

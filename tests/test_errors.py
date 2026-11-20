@@ -8,6 +8,7 @@ import pytest
 from pyrogram import errors
 
 from channels_cleaner import context as context_module
+from channels_cleaner.api import errors as api_errors
 from channels_cleaner.app import create_app
 from channels_cleaner.context import AppContext
 from channels_cleaner.enums import ChatKind
@@ -21,8 +22,8 @@ async def test_unknown_paths_and_methods_answer_in_the_api_shape(client: httpx.A
     missing = await client.get("/api/nothing-here")
     wrong_method = await client.delete("/api/health")
 
-    assert (missing.status_code, missing.json()["error"]["code"]) == (404, "not_found")
-    assert (wrong_method.status_code, wrong_method.json()["error"]["code"]) == (405, "method_not_allowed")
+    assert (missing.status_code, missing.json()["type"]) == (404, "not_found")
+    assert (wrong_method.status_code, wrong_method.json()["type"]) == (405, "method_not_allowed")
 
 
 async def test_a_request_that_does_not_fit_says_so(client: httpx.AsyncClient, ctx: AppContext) -> None:
@@ -32,8 +33,8 @@ async def test_a_request_that_does_not_fit_says_so(client: httpx.AsyncClient, ct
     r = await client.put(f"/api/decisions/{cid}", json={"decision": "burn it"})
 
     assert r.status_code == 422
-    assert r.json()["error"]["code"] == "invalid_request"
-    assert r.json()["error"]["details"][0]["loc"] == ["body", "decision"]
+    assert r.json()["type"] == "invalid_request"
+    assert r.json()["details"][0]["loc"] == ["body", "decision"]
 
 
 async def test_a_refusal_carries_its_code(client: httpx.AsyncClient, ctx: AppContext) -> None:
@@ -41,7 +42,7 @@ async def test_a_refusal_carries_its_code(client: httpx.AsyncClient, ctx: AppCon
 
     r = await client.put("/api/decisions/42", json={"decision": "keep"})
 
-    assert (r.status_code, r.json()["error"]["code"]) == (404, "channel_not_found")
+    assert (r.status_code, r.json()["type"]) == (404, "channel_not_found")
 
 
 async def test_a_telegram_error_on_a_card_is_not_a_crash(
@@ -58,7 +59,7 @@ async def test_a_telegram_error_on_a_card_is_not_a_crash(
     r = await client.get(f"/api/channels/{cid}/full")
 
     assert r.status_code == 502
-    assert r.json()["error"] == {"code": "telegram_error", "message": "CHANNEL_PRIVATE"}
+    assert (r.json()["type"], r.json()["reason"]) == ("telegram_error", "CHANNEL_PRIVATE")
 
 
 async def test_an_unexpected_error_still_answers_json(ctx: AppContext, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -79,7 +80,7 @@ async def test_an_unexpected_error_still_answers_json(ctx: AppContext, monkeypat
             r = await c.get("/api/auth/state")
 
     assert r.status_code == 500
-    assert r.json()["error"]["code"] == "internal_error"
+    assert r.json()["type"] == "internal_error"
 
 
 @pytest.mark.parametrize(
@@ -172,3 +173,35 @@ async def test_stopping_a_sync_waits_for_it(
 
     assert ctx.sync._task is not None  # noqa: SLF001
     assert ctx.sync._task.done()  # noqa: SLF001
+
+
+def _error_classes() -> list[type[api_errors.ApiError]]:
+    found: list[type[api_errors.ApiError]] = []
+    todo = list(api_errors.ApiError.__subclasses__())
+
+    while todo:
+        cls = todo.pop()
+        found.append(cls)
+        todo.extend(cls.__subclasses__())
+
+    return found
+
+
+def test_every_error_class_is_complete_and_its_type_unique() -> None:
+    classes = _error_classes()
+
+    for cls in classes:
+        assert 400 <= cls.CODE < 600, cls
+        assert cls.TYPE, cls
+        assert cls.MESSAGE, cls
+
+    types = [cls.TYPE for cls in classes]
+    assert len(types) == len(set(types))
+
+
+async def test_an_errors_fields_travel_in_its_body(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+
+    r = await client.put("/api/decisions/42", json={"decision": "keep"})
+
+    assert r.json() == {"ok": False, "type": "channel_not_found", "message": "Unknown chat", "channel_id": 42}

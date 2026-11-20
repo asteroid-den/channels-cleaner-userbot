@@ -12,7 +12,7 @@ async def test_a_foreign_host_is_refused(client: httpx.AsyncClient, host: str) -
     r = await client.get("/api/health", headers={"Host": f"{host}:8765"})
 
     assert r.status_code == 403
-    assert r.json()["error"]["code"] == "bad_host"
+    assert r.json()["type"] == "bad_host"
 
 
 @pytest.mark.parametrize("host", ["localhost:8765", "127.0.0.1:8765", "[::1]:8765"])
@@ -36,7 +36,7 @@ async def test_changes_from_other_pages_are_refused(
     r = await client.post("/api/apply", headers={"Host": "localhost:8765", **headers})
 
     assert r.status_code == 403
-    assert r.json()["error"]["code"] == "cross_origin"
+    assert r.json()["type"] == "cross_origin"
     assert not ctx.apply.running
 
 

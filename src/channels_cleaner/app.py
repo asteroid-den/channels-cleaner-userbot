@@ -28,7 +28,7 @@ and restart, or use the Vite dev server (<code>npm --prefix frontend run dev</co
 async def _spa(path: str) -> Response:
     """The built UI: files as they are, any other path gets index.html for the client-side router."""
     if path.startswith("api/"):
-        return errors.error_response(404, "not_found", "Unknown endpoint")
+        return errors.RouteNotFound().response()
 
     index = STATIC_DIR / "index.html"
 
