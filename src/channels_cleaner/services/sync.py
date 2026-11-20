@@ -7,7 +7,8 @@ import logging
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from channels_cleaner.db import Database, now_iso
+from channels_cleaner.database import DAO, DatabaseManager
+from channels_cleaner.database.models import base
 from channels_cleaner.events import EventBus
 from channels_cleaner.telegram.gateway import TelegramGateway
 from channels_cleaner.telegram.types import ChannelInfo, FloodWaitError
@@ -37,15 +38,18 @@ class SyncState:
 
 
 class SyncService:
-    def __init__(self, gateway: TelegramGateway, db: Database, bus: EventBus) -> None:
+    def __init__(self, gateway: TelegramGateway, database: DatabaseManager, bus: EventBus) -> None:
         self._gw = gateway
-        self._db = db
+        self._database = database
         self._bus = bus
         self.state = SyncState()
         self._task: asyncio.Task[None] | None = None
 
     async def load(self, account_id: int) -> None:
-        self.state = SyncState(last_synced_at=await self._db.get_setting(account_id, "synced_at"))
+        async with self._database.session() as session:
+            synced_at = await DAO(session).get_setting(account_id, "synced_at")
+
+        self.state = SyncState(last_synced_at=synced_at)
 
     def start(self, account_id: int) -> bool:
         if self._task is not None and not self._task.done():
@@ -80,9 +84,14 @@ class SyncService:
                     self.state.flood_wait = None
                     self.state.fetched = 0
 
-            synced_at = now_iso()
-            await self._db.set_setting(account_id, "synced_at", synced_at)
-            await self._db.set_setting(account_id, SCOPE_SETTING, SCOPE_VERSION)
+            synced_at = base.utc_now().isoformat()
+
+            async with self._database.session() as session:
+                dao = DAO(session)
+                await dao.set_setting(account_id, "synced_at", synced_at)
+                await dao.set_setting(account_id, SCOPE_SETTING, SCOPE_VERSION)
+                await dao.commit()
+
             self.state.running = False
             self.state.last_synced_at = synced_at
             self.state.total = self.state.fetched
@@ -111,11 +120,18 @@ class SyncService:
             self.state.fetched = len(seen)
 
             if len(batch) >= _BATCH:
-                await self._db.upsert_channels(account_id, batch)
+                await self._save(account_id, batch)
                 batch.clear()
                 self._publish("progress")
 
-        if batch:
-            await self._db.upsert_channels(account_id, batch)
+        async with self._database.session() as session:
+            dao = DAO(session)
+            await dao.upsert_channels(account_id, batch, base.utc_now())
+            await dao.mark_gone_except(account_id, seen)
+            await dao.commit()
 
-        await self._db.mark_gone_except(account_id, seen)
+    async def _save(self, account_id: int, batch: list[ChannelInfo]) -> None:
+        async with self._database.session() as session:
+            dao = DAO(session)
+            await dao.upsert_channels(account_id, batch, base.utc_now())
+            await dao.commit()

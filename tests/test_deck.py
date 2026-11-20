@@ -3,8 +3,11 @@ from __future__ import annotations
 import httpx
 
 from channels_cleaner.context import AppContext
+from channels_cleaner.database.models import base
+from channels_cleaner.enums import ChatKind, Decision, DecisionStatus, RoleFilter
+from channels_cleaner.services import decisions
 from channels_cleaner.services.sync import SCOPE_VERSION
-from tests.conftest import get_json, login, wait_for
+from tests.conftest import get_json, login, open_dao, wait_for
 
 
 async def test_sort_dead_puts_never_posted_first(client: httpx.AsyncClient, ctx: AppContext) -> None:
@@ -129,29 +132,29 @@ async def test_changed_decision_keeps_its_place(client: httpx.AsyncClient, ctx: 
 async def test_changing_an_applied_mute_queues_the_way_back(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     account = ctx.auth.account_id
-    db = ctx.db
     cid = (await get_json(client, "/api/channels"))["items"][0]["id"]
-    await db.set_decision(account, cid, "mute")
-    await db.mark_decision(account, cid, "applied")
 
-    await db.set_decision(account, cid, "keep")
-    pending = await db.list_decided(account, status="pending")
-    assert [(r.channel_id, r.decision, r.reverts) for r in pending] == [(cid, "keep", "mute")]
+    async with open_dao(ctx) as dao:
+        now = base.utc_now()
+        await decisions.decide(dao, account, cid, Decision.MUTE, now)
+        await dao.mark_decision(account, cid, DecisionStatus.APPLIED, now=now)
 
-    # Changing it back to what Telegram already has needs no work at all.
-    await db.set_decision(account, cid, "mute")
-    assert await db.list_decided(account, status="pending") == []
+        await decisions.decide(dao, account, cid, Decision.KEEP, now)
+        pending = await dao.list_decided(account, status=DecisionStatus.PENDING)
+        assert [
+            (c.channel_id, c.decision and c.decision.decision, c.decision and c.decision.reverts) for c in pending
+        ] == [(cid, Decision.KEEP, Decision.MUTE)]
 
-    # Undo of a pending change restores the applied mute.
-    await db.set_decision(account, cid, "archive")
-    assert await db.delete_decision(account, cid)
-    row = await db.get_channel(account, cid)
-    assert row is not None
-    assert (row.decision, row.decision_status, row.reverts) == (
-        "mute",
-        "applied",
-        None,
-    )
+        # Changing it back to what Telegram already has needs no work at all
+        await decisions.decide(dao, account, cid, Decision.MUTE, now)
+        assert await dao.list_decided(account, status=DecisionStatus.PENDING) == []
+
+        # Undo of a pending change restores the applied mute
+        await decisions.decide(dao, account, cid, Decision.ARCHIVE, now)
+        assert await decisions.undo(dao, account, cid)
+        decision = await dao.get_decision(account, cid)
+        assert decision is not None
+        assert (decision.decision, decision.status, decision.reverts) == (Decision.MUTE, DecisionStatus.APPLIED, None)
 
 
 async def test_channels_and_supergroups_are_separate_decks(client: httpx.AsyncClient, ctx: AppContext) -> None:
@@ -187,13 +190,17 @@ async def test_channels_and_supergroups_are_separate_decks(client: httpx.AsyncCl
 async def test_sync_keeps_both_kinds_and_resyncs_old_lists(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     account = ctx.auth.account_id
-    assert await ctx.db.channel_count(account) == 65
-    assert await ctx.db.get_setting(account, "synced_scope") == SCOPE_VERSION
+
+    async with open_dao(ctx) as dao:
+        assert await dao.count_channels(account) == 65
+        assert await dao.get_setting(account, "synced_scope") == SCOPE_VERSION
 
     ctx.sync.start(account)
     await wait_for(lambda: _idle(ctx))
-    assert await ctx.db.channel_count(account, "supergroup") == 25
-    assert await ctx.db.channel_count(account, "channel") == 40
+
+    async with open_dao(ctx) as dao:
+        assert await dao.count_channels(account, ChatKind.SUPERGROUP) == 25
+        assert await dao.count_channels(account, ChatKind.CHANNEL) == 40
 
 
 async def _idle(ctx: AppContext) -> bool:
@@ -241,10 +248,13 @@ async def test_counts_tell_how_big_each_menu_choice_is(client: httpx.AsyncClient
     await login(client, ctx)
     account = ctx.auth.account_id
     counts = (await get_json(client, "/api/channels", params={"kind": "supergroup"}))["counts"]
-    assert counts["kind_totals"] == {
-        "channel": await ctx.db.channel_count(account, "channel", role="member"),
-        "supergroup": await ctx.db.channel_count(account, "supergroup", role="member"),
-    }
+
+    async with open_dao(ctx) as dao:
+        assert counts["kind_totals"] == {
+            "channel": await dao.count_channels(account, ChatKind.CHANNEL, role=RoleFilter.MEMBER),
+            "supergroup": await dao.count_channels(account, ChatKind.SUPERGROUP, role=RoleFilter.MEMBER),
+        }
+
     totals = counts["archive_totals"]
     assert totals["all"] == counts["total"]
     assert totals["active"] + totals["archived"] == totals["all"]

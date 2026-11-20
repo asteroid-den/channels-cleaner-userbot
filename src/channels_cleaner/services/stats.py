@@ -7,8 +7,8 @@ import io
 from datetime import UTC, datetime
 from typing import Any
 
-from channels_cleaner.db import Database, RoleFilter
-from channels_cleaner.telegram.types import ChatKind
+from channels_cleaner.database import DAO
+from channels_cleaner.enums import ChatKind, Decision, DecisionStatus, RoleFilter
 
 AGE_BUCKETS: list[tuple[str, float]] = [
     ("week", 7),
@@ -21,45 +21,14 @@ AGE_BUCKETS: list[tuple[str, float]] = [
 
 
 async def collect(
-    db: Database, account_id: int, kind: ChatKind = "channel", role: RoleFilter = "member"
+    dao: DAO, account_id: int, kind: ChatKind = ChatKind.CHANNEL, role: RoleFilter = RoleFilter.MEMBER
 ) -> dict[str, Any]:
-    conn = db.conn
+    by_decision: dict[str, dict[str, int]] = {}
 
-    async with conn.execute(
-        """
-        SELECT d.decision, d.status, COUNT(*) FROM decisions d
-        JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
-        WHERE d.account_id = ? AND c.kind = ? AND ((? = 'managed') = (c.role != 'member'))
-        GROUP BY d.decision, d.status
-        """,
-        (account_id, kind, role),
-    ) as cur:
-        by_decision: dict[str, dict[str, int]] = {}
+    for decision, status, count in await dao.decision_status_counts(account_id, kind, role):
+        by_decision.setdefault(decision, {})[status] = count
 
-        async for decision, status, count in cur:
-            by_decision.setdefault(decision, {})[status] = count
-
-    async with conn.execute(
-        """
-        SELECT COALESCE(SUM(c.unread_count), 0) FROM decisions d
-        JOIN channels c ON c.account_id = d.account_id AND c.channel_id = d.channel_id
-        WHERE d.account_id = ? AND c.kind = ? AND ((? = 'managed') = (c.role != 'member'))
-          AND d.decision = 'unsubscribe' AND d.status = 'applied'
-        """,
-        (account_id, kind, role),
-    ) as cur:
-        row = await cur.fetchone()
-        unread_cleared = int(row[0]) if row else 0
-
-    async with conn.execute(
-        """
-        SELECT c.last_post_at, c.unread_count FROM channels c
-        WHERE c.account_id = ? AND c.kind = ? AND c.gone = 0 AND ((? = 'managed') = (c.role != 'member'))
-        """,
-        (account_id, kind, role),
-    ) as cur:
-        rows = list(await cur.fetchall())
-
+    rows = await dao.list_subscribed(account_id, kind, role)
     now = datetime.now(UTC)
     age = {name: 0 for name, _ in AGE_BUCKETS} | {"never": 0}
     unread_total = 0
@@ -71,7 +40,7 @@ async def collect(
             age["never"] += 1
             continue
 
-        days = (now - datetime.fromisoformat(last_post_at)).total_seconds() / 86400
+        days = (now - last_post_at).total_seconds() / 86400
 
         for name, limit in AGE_BUCKETS:
             if days <= limit:
@@ -81,28 +50,34 @@ async def collect(
     return {
         "subscribed": len(rows),
         "unread_total": unread_total,
-        "unread_cleared": unread_cleared,
+        "unread_cleared": await dao.unread_cleared(account_id, kind, role),
         "decisions": by_decision,
         "last_post_age": age,
     }
 
 
 async def export_rows(
-    db: Database, account_id: int, kind: ChatKind = "channel", role: RoleFilter = "member"
+    dao: DAO, account_id: int, kind: ChatKind = ChatKind.CHANNEL, role: RoleFilter = RoleFilter.MEMBER
 ) -> list[dict[str, Any]]:
-    rows = await db.list_decided(account_id, status="applied", decisions=("unsubscribe",), kind=kind, role=role)
+    channels = await dao.list_decided(
+        account_id, status=DecisionStatus.APPLIED, decisions=(Decision.UNSUBSCRIBE,), kind=kind, role=role
+    )
     return [
         {
-            "channel_id": row.channel_id,
-            "title": row.title,
-            "username": row.username,
-            "link": f"https://t.me/{row.username}" if row.username else None,
-            "members_count": row.members_count,
-            "last_post_at": row.last_post_at,
-            "unsubscribed_at": row.applied_at,
+            "channel_id": channel.channel_id,
+            "title": channel.title,
+            "username": channel.username,
+            "link": f"https://t.me/{channel.username}" if channel.username else None,
+            "members_count": channel.members_count,
+            "last_post_at": _iso(channel.last_post_at),
+            "unsubscribed_at": _iso(channel.decision.applied_at if channel.decision else None),
         }
-        for row in rows
+        for channel in channels
     ]
+
+
+def _iso(value: datetime | None) -> str | None:
+    return value.isoformat() if value else None
 
 
 def to_csv(rows: list[dict[str, Any]]) -> str:
