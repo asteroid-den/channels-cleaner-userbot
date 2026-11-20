@@ -200,6 +200,13 @@ uv run telegram-channels-cleaner --mock --dev   # API only, on :8765
 npm --prefix frontend run dev          # UI with hot reload on :5173, proxies /api
 ```
 
+The app migrates its database on start. A schema change is a model change plus a revision, generated against a
+database at the latest revision (the app's own, `./data/cleaner.sqlite3`, once it has started):
+
+```bash
+uv run alembic revision --autogenerate -m "add something to channels"
+```
+
 Checks, the same as CI:
 
 ```bash
@@ -212,7 +219,9 @@ src/channels_cleaner/
   telegram/    gateway protocol; Kurigram and mock implementations; device profiles
   services/    auth state machine, sync, lazy channel info + activity, apply job, stats
   api/         FastAPI routes: REST + Server-Sent Events
-  db.py        SQLite schema, migrations and queries
+  database/    SQLAlchemy models, DAO (one class per model, combined in DAO), session manager
+  migrations/  Alembic revisions, applied by the app itself on every start
+  enums.py     kinds, roles, decisions, statuses (StrEnum, lowercase values)
 frontend/src/  Vue 3 + Vite + TypeScript, Pinia, vue-i18n, Tailwind
   stores/      auth, deck (queue, history, rewind), apply, ui
   views/       Login, Deck, Review, Apply, Results
