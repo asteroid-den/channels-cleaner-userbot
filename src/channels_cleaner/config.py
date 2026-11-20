@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import tomllib
 from functools import cached_property
 from pathlib import Path
 
@@ -22,16 +23,28 @@ APP_DIR = "telegram-channels-cleaner"
 LEGACY_APP_DIR = "channels-cleaner"
 
 
+def in_own_checkout() -> bool:
+    """Whether the current directory is a source checkout of this app."""
+    pyproject = Path("pyproject.toml")
+
+    if not (pyproject.is_file() and Path("src/channels_cleaner").is_dir()):
+        return False
+
+    try:
+        return tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["name"] == APP_DIR
+
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def default_data_dir() -> Path:
-    """``./data`` in a source checkout (or wherever it already exists), else the user data dir.
+    """``./data`` in a source checkout of this app, else the user data dir.
 
-    Installed with ``uvx``/``pipx`` the app can be started from any folder, so the session and
-    database go to the platform's per-user data location instead of the current directory.
+    Installed with ``uvx``/``pipx`` the app can be started from any folder, so the session and database go to the
+    platform's per-user data location. A ``data`` folder of some other project is never ours to write a session into.
     """
-    local = Path("data")
-
-    if local.is_dir() or (Path("pyproject.toml").is_file() and Path("src/channels_cleaner").is_dir()):
-        return local
+    if in_own_checkout():
+        return Path("data")
 
     if sys.platform == "win32":
         base = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
