@@ -125,11 +125,15 @@ class Settings(BaseSettings):
         return self.data_dir / "media"
 
     @cached_property
+    def log_dir(self) -> Path:
+        return self.data_dir / "logs"
+
+    @cached_property
     def db_path(self) -> Path:
         return self.data_dir / ("mock.sqlite3" if self.mock else "cleaner.sqlite3")
 
     def ensure_dirs(self) -> None:
-        for path in (self.data_dir, self.sessions_dir, self.media_dir):
+        for path in (self.data_dir, self.sessions_dir, self.media_dir, self.log_dir):
             path.mkdir(parents=True, exist_ok=True)
 
         # The session file is the whole Telegram account: keep the data dir private to the

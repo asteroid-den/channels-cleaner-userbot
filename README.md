@@ -82,6 +82,9 @@ Then open <http://127.0.0.1:8765>. Or from a checkout: `docker compose up -d`. K
 `127.0.0.1:` part of the port mapping: the UI has no password, and whoever can open it can act
 on your Telegram account.
 
+The image has a health check (`docker ps` shows `healthy` once the app answers). It looks at
+`CC_PORT`, so change the port with that variable rather than a `--port` flag.
+
 ### From source
 
 ```bash
@@ -144,6 +147,8 @@ The startup message prints the exact path. Inside:
 - `cleaner.sqlite3`: the channel cache, your decisions and stats. Before an update changes
   its structure, the app copies it next to it (`cleaner.sqlite3.before-<version>`).
 - `media/`: cached avatars and post thumbnails.
+- `logs/app.log`: what the app logged, kept to four files of 1 MB. Worth attaching when you
+  report a problem; it has chat ids and titles in it, but never the session.
 
 ### About the API id and the device profile
 
@@ -189,7 +194,7 @@ Everything is optional. Use environment variables or a `.env` file in the workin
 | | `CC_MOCK_CHANNELS` | `120` | Number of generated channels |
 | | `CC_MOCK_SUPERGROUPS` | `60` | Number of generated supergroups |
 | | `CC_MOCK_2FA=1` | off | Ask for a 2FA password in mock mode |
-| | `CC_DATA_DIR` | see above | Sessions, database, media cache |
+| | `CC_DATA_DIR` | see above | Sessions, database, media cache, log |
 | | `CC_API_ID`, `CC_API_HASH` | Telegram Desktop | Your own Telegram API credentials |
 | | `CC_APPLY_DELAY_MIN`, `CC_APPLY_DELAY_MAX` | `1.5`, `3.0` | Pause between actions, seconds |
 | | `CC_FULL_INFO_TTL_HOURS` | `72` | How long channel details stay cached |
