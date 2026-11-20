@@ -18,18 +18,32 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const text = await response.text()
-  const data = text ? JSON.parse(text) : null
+  const data = parseJson(text)
   if (!response.ok) {
-    const err = data?.error
-    const detail = typeof data?.detail === 'string' ? data.detail : null
+    // The API always answers {error: {code, message}}; anything else (a proxy, a crash before the app) still
+    // becomes an ApiError the views know how to show
+    const err = (data as ErrorBody | null)?.error
     throw new ApiError(
       response.status,
       err?.code ?? 'http_error',
-      err?.message ?? detail ?? response.statusText,
+      err?.message ?? (text.trim() || response.statusText),
       err?.retry_after ?? null,
     )
   }
   return data as T
+}
+
+interface ErrorBody {
+  error?: { code?: string; message?: string; retry_after?: number | null }
+}
+
+function parseJson(text: string): unknown {
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
 }
 
 export const api = {
