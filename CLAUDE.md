@@ -7,19 +7,20 @@ review screen. Runs on the user's own machine only (127.0.0.1, no auth, not a se
 
 Talk to the user in **Russian**. Code, comments, commits and README are in English.
 
-## Repo state (as of 2026-11-17)
+## Repo state (as of 2026-11-20)
 
-- **Released and public** (2026-11-17). Repo `asteroid-den/telegram-channels-cleaner` is public;
-  `telegram-channels-cleaner` 1.0.0 and 1.0.1 are on PyPI, image `ghcr.io/asteroid-den/telegram-channels-cleaner`
-  (1.0.1, amd64+arm64, public). 1.0.1 = same app, fixed Docker build (UI stage on
-  `$BUILDPLATFORM`; 1.0.0's image never got pushed). Tag `v0.9.0` = the old generic UI (local only).
+- **Released and public** (since 2026-11-17). Repo `asteroid-den/telegram-channels-cleaner` (was
+  `channels-cleaner-userbot`); PyPI `telegram-channels-cleaner` 1.0.2–1.4.1, image
+  `ghcr.io/asteroid-den/telegram-channels-cleaner` (amd64+arm64, public). 1.0.0/1.0.1 shipped as
+  `channels-cleaner`; that PyPI project is gone. Their user data dir was `channels-cleaner`: `config.py` moves it to
+  `telegram-channels-cleaner` on first start. Tag `v0.9.0` = the old generic UI (local only).
+- Each PR bumps `__version__` (`chore: bump version to X.Y.Z`); the user tags and pushes the tag.
 - Work goes through branches + PRs into `main` (merge commits). Push only when the user says so
   for that push; **never push tags** — the user tags releases (`release.yml` checks the tag
   against `__version__`, publishes to PyPI via trusted publishing, then GHCR).
 - History was rewritten once to drop co-author trailers (PR #1 closed by the force-push).
-- Plan agreed with the user: README (English, screenshots from mock mode, honest note about the
-  TDesktop api_id + device profiles, session = full account access) → make the repo public →
-  phone access (pairing QR + cookie, mobile layout with mockups first).
+- Next on the plan: phone access (pairing QR + cookie, mobile layout with mockups first). Done before it:
+  README with mock-mode screenshots, public repo, supergroups, archive filter, settings menu, managed chats.
 - Commit author email = personal gmail from global git config (already public); keep it.
 - `mockups/` — static HTML mockups. Ignored via `.git/info/exclude`, not committed.
 - `data/` — local sessions/DB/media (gitignored). Contains the user's mock DB from earlier runs.
@@ -96,7 +97,7 @@ Key behaviours / decisions (agreed with the user):
 - Kurigram: `connect()` manually (start() would prompt interactively), QR via built-in
   `pyrogram.qrlogin.QRLogin` (handles DC migration); after login → disconnect + `start()`.
 
-## Design (branch design/tool, mockup "B")
+## Design (mockup "B")
 
 Flat panels + hairlines, data first. Fonts bundled via @fontsource: Jost (headings + verdict figure),
 Onest (text), JetBrains Mono (numbers/keys). v1 token names kept (`surface`, `border`, `muted`,
@@ -124,12 +125,15 @@ The user rejected the retro "press" look; wants modern digital but not generic S
   so the user's `data/` isn't touched. Stop with `kill $(lsof -t -i :PORT -sTCP:LISTEN)` —
   `pkill -f "telegram-channels-cleaner ..."` matches its own shell and kills the command (exit 144).
 - User's browser is Firefox (snap); its GTK/sandbox warnings in the terminal are harmless.
+- After the project folder is renamed, `.venv` scripts point to the old path ("Failed to spawn: pytest"):
+  `uv sync --reinstall`.
 
 ## Open items
 
 - Card drag fix (fe87e4c) verified in Chrome only — user to confirm in Firefox.
-- Nothing tested on a real Telegram account yet (only connect + QR export smoke test).
-  Watch flood waits from the extra GetHistory call per card; lower prefetch depth if needed.
+- Watch flood waits from the extra GetHistory call per card on big accounts; lower prefetch depth if needed.
+- What Telegram does when a creator leaves their own chat (`--allow-owner-leave`) is untested.
+- `_deck_counts` runs ~14 queries and loads every undecided row just to count it, on each decision: fine at a
+  few hundred chats, a `COUNT` would do if it ever shows.
 - Optional: bundle only latin+cyrillic font subsets; 5 moderate `npm audit` issues are dev-only.
-- Decide what to do with `design/press` (delete?) and when to merge `design/tool` into `main`.
 - Spec extras agreed for later: multi-account support (DB already keyed by account_id).
