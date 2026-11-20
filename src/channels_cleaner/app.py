@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 
 from channels_cleaner import __version__
+from channels_cleaner.api.guard import LocalOnlyMiddleware
 from channels_cleaner.api.routes import router
 from channels_cleaner.config import Settings
 from channels_cleaner.context import AppContext
@@ -86,6 +87,9 @@ def create_app(settings: Settings | None = None, ctx: AppContext | None = None) 
             await context.shutdown()
 
     app = FastAPI(title="Channels Cleaner", version=__version__, lifespan=lifespan)
+    # A host the server was told to listen on by name (not 0.0.0.0) is the user's choice too
+    named = frozenset({settings.host}) - {"0.0.0.0", "::"}  # noqa: S104 - not a bind
+    app.add_middleware(LocalOnlyMiddleware, extra_hosts=named)
     app.include_router(router)
 
     for error in _DOMAIN_ERRORS:

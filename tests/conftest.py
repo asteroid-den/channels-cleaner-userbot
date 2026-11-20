@@ -50,7 +50,7 @@ async def client(ctx: AppContext) -> AsyncIterator[httpx.AsyncClient]:
         await ctx.wait_ready()
         transport = httpx.ASGITransport(app=app)
 
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        async with httpx.AsyncClient(transport=transport, base_url="http://localhost") as c:
             yield c
 
 
