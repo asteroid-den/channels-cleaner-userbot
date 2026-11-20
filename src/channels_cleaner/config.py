@@ -17,6 +17,10 @@ log = logging.getLogger(__name__)
 TDESKTOP_API_ID = 2040
 TDESKTOP_API_HASH = "b18441a1ff607e10a989891a5462e627"
 
+APP_DIR = "telegram-channels-cleaner"
+#: the user data dir's name before 1.0.2, when the package was called channels-cleaner
+LEGACY_APP_DIR = "channels-cleaner"
+
 
 def default_data_dir() -> Path:
     """``./data`` in a source checkout (or wherever it already exists), else the user data dir.
@@ -38,7 +42,28 @@ def default_data_dir() -> Path:
     else:
         base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
 
-    return base / "telegram-channels-cleaner"
+    data_dir = base / APP_DIR
+    _adopt_legacy_dir(base / LEGACY_APP_DIR, data_dir)
+    return data_dir
+
+
+def _adopt_legacy_dir(legacy: Path, data_dir: Path) -> None:
+    """Move the data of a version from before the rename to the new place.
+
+    Otherwise the user has to log in again and the old session, full access to their account, stays behind.
+    Nothing is moved when the new dir already exists: neither copy is ours to merge or delete.
+    """
+    if data_dir.exists() or not legacy.is_dir():
+        return
+
+    try:
+        legacy.rename(data_dir)
+
+    except OSError as e:
+        log.warning("Could not move %s to %s, starting with a fresh data dir: %s", legacy, data_dir, e)
+
+    else:
+        log.info("Moved the data dir from %s to %s", legacy, data_dir)
 
 
 class Settings(BaseSettings):
