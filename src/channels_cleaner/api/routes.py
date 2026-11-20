@@ -6,11 +6,12 @@ import json
 from collections.abc import AsyncIterator
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, Query, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 
 from channels_cleaner import __version__
 from channels_cleaner.api import schemas
+from channels_cleaner.api.errors import RequestError
 from channels_cleaner.api.sse import sse_response
 from channels_cleaner.context import AppContext
 from channels_cleaner.database import DAO
@@ -104,7 +105,7 @@ async def auth_cancel(ctx: Ctx) -> dict[str, Any]:
 @router.post("/auth/logout")
 async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
     if ctx.apply.running:
-        raise HTTPException(409, "Wait for the running apply job to finish")
+        raise RequestError(409, "apply_running", "Wait for the running apply job to finish")
 
     await ctx.sync.stop()
     await ctx.auth.log_out(wipe_data=body.wipe_data)
@@ -151,7 +152,7 @@ async def _chat(dao: DAO, account: int, channel_id: int) -> Channel:
     channel = await dao.get_channel(account, channel_id)
 
     if channel is None:
-        raise HTTPException(404, "Unknown channel")
+        raise RequestError(404, "channel_not_found", "Unknown channel")
 
     return channel
 
@@ -226,13 +227,15 @@ async def decision_set(
 ) -> dict[str, Any]:
     # The apply job works from the queue as it started: a change now would be applied as the old decision
     if ctx.apply.running:
-        raise HTTPException(409, "Decisions are locked while applying")
+        raise RequestError(409, "apply_running", "Decisions are locked while applying")
 
     chat = await _chat(dao, account, channel_id)
     leaving = body.decision is Decision.UNSUBSCRIBE
 
     if leaving and chat.role is ChatRole.OWNER and not ctx.settings.allow_owner_leave:
-        raise HTTPException(409, "Leaving a chat you own is off (start with --allow-owner-leave to allow it)")
+        raise RequestError(
+            409, "owner_leave_off", "Leaving a chat you own is off (start with --allow-owner-leave to allow it)"
+        )
 
     await decisions.decide(dao, account, channel_id, body.decision, base.utc_now())
     await dao.commit()
@@ -242,7 +245,7 @@ async def decision_set(
 @router.delete("/decisions/{channel_id}")
 async def decision_undo(channel_id: int, ctx: Ctx, dao: Dao, account: AccountId) -> dict[str, Any]:
     if ctx.apply.running:
-        raise HTTPException(409, "Decisions are locked while applying")
+        raise RequestError(409, "apply_running", "Decisions are locked while applying")
 
     chat = await _chat(dao, account, channel_id)
     removed = await decisions.undo(dao, account, channel_id)
@@ -272,7 +275,7 @@ async def decisions_list(dao: Dao, account: AccountId, status: DecisionStatus | 
 @router.post("/decisions/reset")
 async def decisions_reset(body: schemas.ResetIn, ctx: Ctx, dao: Dao, account: AccountId) -> dict[str, Any]:
     if ctx.apply.running:
-        raise HTTPException(409, "Decisions are locked while applying")
+        raise RequestError(409, "apply_running", "Decisions are locked while applying")
 
     removed = await dao.reset_decisions(account, body.only, body.kind, body.role)
     await dao.commit()

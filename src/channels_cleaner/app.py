@@ -6,18 +6,15 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi import FastAPI
+from fastapi.responses import FileResponse, HTMLResponse, Response
 
 from channels_cleaner import __version__
+from channels_cleaner.api import errors
 from channels_cleaner.api.guard import LocalOnlyMiddleware
 from channels_cleaner.api.routes import router
 from channels_cleaner.config import Settings
 from channels_cleaner.context import AppContext
-from channels_cleaner.services.apply import ApplyBusyError
-from channels_cleaner.services.auth import AuthError
-from channels_cleaner.services.channels import ChannelNotFoundError
-from channels_cleaner.telegram.types import FloodWaitError, GatewayError, NotAuthorizedError
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -28,35 +25,10 @@ _NOT_BUILT = """<!doctype html><meta charset="utf-8"><title>Channels Cleaner</ti
 and restart, or use the Vite dev server (<code>npm --prefix frontend run dev</code>).</p>"""
 
 
-def _error(status: int, code: str, message: str, **extra: object) -> JSONResponse:
-    return JSONResponse({"error": {"code": code, "message": message, **extra}}, status)
-
-
-async def _domain_error(_: Request, exc: Exception) -> JSONResponse:
-    """Our exceptions as JSON errors the UI understands."""
-    match exc:
-        case AuthError():
-            return _error(400, exc.code, str(exc), retry_after=exc.retry_after)
-        case NotAuthorizedError():
-            return _error(401, "not_authorized", str(exc))
-        case ChannelNotFoundError():
-            return _error(404, "channel_not_found", f"Unknown channel {exc}")
-        case FloodWaitError():
-            return _error(429, "flood_wait", str(exc), retry_after=exc.seconds)
-        case ApplyBusyError():
-            return _error(409, "apply_running", str(exc))
-        case _:
-            return _error(502, "telegram_error", str(exc) or type(exc).__name__)
-
-
-# FloodWaitError and NotAuthorizedError are GatewayErrors too: Starlette picks the closest class
-_DOMAIN_ERRORS = (AuthError, NotAuthorizedError, ChannelNotFoundError, FloodWaitError, ApplyBusyError, GatewayError)
-
-
 async def _spa(path: str) -> Response:
     """The built UI: files as they are, any other path gets index.html for the client-side router."""
     if path.startswith("api/"):
-        return _error(404, "not_found", "Unknown endpoint")
+        return errors.error_response(404, "not_found", "Unknown endpoint")
 
     index = STATIC_DIR / "index.html"
 
@@ -92,8 +64,7 @@ def create_app(settings: Settings | None = None, ctx: AppContext | None = None) 
     app.add_middleware(LocalOnlyMiddleware, extra_hosts=named)
     app.include_router(router)
 
-    for error in _DOMAIN_ERRORS:
-        app.add_exception_handler(error, _domain_error)
+    errors.install(app)
 
     app.add_api_route("/{path:path}", _spa, methods=["GET"], include_in_schema=False)
     return app
