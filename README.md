@@ -119,6 +119,10 @@ Letter keys work on any keyboard layout. On macOS, <kbd>Cmd</kbd> works in place
   Telegram directly and nowhere else. There is no telemetry.
 - **The UI has no password**, because it's meant for one person on their own computer. Don't
   expose it to a network (`--host 0.0.0.0`) you don't fully control.
+- **Other websites can't use it.** Listening on `127.0.0.1` doesn't stop a page open in your
+  browser from sending requests to it. The app answers only requests addressed to `localhost`
+  (against DNS rebinding) and takes changes only from its own page (against cross-site
+  requests), so no site can queue or apply anything.
 - **Log out and delete local data** in the account menu ends the session on Telegram's side
   and wipes everything stored for that account. Ending the session from Telegram
   (**Settings → Devices**) also works; delete the data directory afterwards.
@@ -137,7 +141,8 @@ The startup message prints the exact path. Inside:
 
 - `sessions/account.session`: the Telegram session.
 - `sessions/account.device.json`: the device profile this session presents to Telegram.
-- `cleaner.sqlite3`: the channel cache, your decisions and stats.
+- `cleaner.sqlite3`: the channel cache, your decisions and stats. Before an update changes
+  its structure, the app copies it next to it (`cleaner.sqlite3.before-<version>`).
 - `media/`: cached avatars and post thumbnails.
 
 ### About the API id and the device profile
