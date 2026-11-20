@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Any, cast
 
-from sqlalchemy import CursorResult, and_, delete, func, select, update
+from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -74,12 +73,14 @@ class DecisionDAO:
         await self.session.execute(statement)
 
     async def delete_decision(self, account_id: int, channel_id: int) -> bool:
-        statement = delete(ChannelDecision).where(
-            ChannelDecision.account_id == account_id, ChannelDecision.channel_id == channel_id, ~_APPLIED_ACTION
+        statement = (
+            delete(ChannelDecision)
+            .where(ChannelDecision.account_id == account_id, ChannelDecision.channel_id == channel_id, ~_APPLIED_ACTION)
+            .returning(ChannelDecision.channel_id)
         )
 
         result = await self.session.execute(statement)
-        return cast("CursorResult[Any]", result).rowcount > 0
+        return result.scalar_one_or_none() is not None
 
     async def reset_decisions(
         self,
@@ -100,8 +101,10 @@ class DecisionDAO:
             )
             statement = statement.where(ChannelDecision.channel_id.in_(chats))
 
+        statement = statement.returning(ChannelDecision.channel_id)
+
         result = await self.session.execute(statement)
-        return cast("CursorResult[Any]", result).rowcount
+        return len(result.scalars().all())
 
     async def clear_skips(self) -> None:
         statement = delete(ChannelDecision).where(ChannelDecision.decision == Decision.SKIP)

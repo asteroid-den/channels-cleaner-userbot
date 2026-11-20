@@ -341,3 +341,14 @@ async def test_queued_owner_leave_fails_when_the_flag_is_off(client: httpx.Async
     state = await get_json(client, "/api/apply/state")
     assert state["failed"] == 1
     assert "off" in state["items"][0]["error"]
+
+
+async def test_reset_and_undo_tell_what_they_removed(client: httpx.AsyncClient, ctx: AppContext) -> None:
+    await login(client, ctx)
+    first, second = [item["id"] for item in (await get_json(client, "/api/channels"))["items"][:2]]
+    await client.put(f"/api/decisions/{first}", json={"decision": "keep"})
+    await client.put(f"/api/decisions/{second}", json={"decision": "unsubscribe"})
+
+    assert (await client.delete(f"/api/decisions/{second}")).json()["ok"] is True
+    assert (await client.delete(f"/api/decisions/{second}")).json()["ok"] is False
+    assert (await client.post("/api/decisions/reset", json={})).json()["removed"] == 1

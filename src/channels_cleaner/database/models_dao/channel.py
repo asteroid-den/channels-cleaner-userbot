@@ -1,8 +1,8 @@
 from collections.abc import Iterable, Sequence
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 
-from sqlalchemy import ColumnElement, CursorResult, func, or_, select, update
+from sqlalchemy import ColumnElement, func, or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager
@@ -83,7 +83,7 @@ class ChannelDAO:
 
         await self.session.execute(statement)
 
-    async def mark_gone_except(self, account_id: int, keep_ids: set[int]) -> int:
+    async def mark_gone_except(self, account_id: int, keep_ids: set[int]) -> None:
         """Flag chats missing from the latest sync (the user left them elsewhere)."""
         statement = (
             update(Channel)
@@ -91,8 +91,7 @@ class ChannelDAO:
             .values(gone=True)
         )
 
-        result = await self.session.execute(statement)
-        return cast("CursorResult[Any]", result).rowcount
+        await self.session.execute(statement)
 
     async def set_channel_gone(self, account_id: int, channel_id: int) -> None:
         statement = (
