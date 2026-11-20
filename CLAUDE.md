@@ -113,9 +113,13 @@ Safety (2026-11-20, after an audit run from the mercury session):
 - Migrations: `migrate.backup()` copies the DB to `<name>.before-<version>` before any change; legacy steps run
   with their version row in one explicit transaction (executescript would commit on its own).
 
-Errors (1.5.2): every API error is `{"error": {"code", "message", …}}` — domain errors, `api.errors.RequestError`
-(raise it in routes instead of HTTPException), Starlette 404/405 (code from the status phrase), 422 `invalid_request`
-with `details`, and a 500 `internal_error` (Starlette still logs the traceback). `kurigram_gateway._telegram_errors()`
+Errors (1.5.2), like mercury's HttpError: `api/errors.py` has one dataclass per error with `CODE` (HTTP status),
+`TYPE` (what the UI acts on, `ApiError.type` in client.ts) and `MESSAGE`; fields go into the body
+`{"ok": false, "type", "message", …fields}` (`reason` = what Telegram said, `retry_after`, `channel_id`, `details`).
+Services and routes raise these classes directly; the gateway's own errors (telegram/types.py) stay HTTP-free and
+are translated in `_translate`, as are Starlette's 404/405, validation (422) and any other exception (500). The
+guard builds its 403s from the same classes. A test checks every class is complete and TYPEs are unique.
+`kurigram_gateway._telegram_errors()`
 maps FloodWait/RPCError/OSError/TimeoutError to the gateway's errors; downloads raise on network errors instead of
 caching "no picture". Started offline, `context._boot` retries (2, 5, 10, 30, 60 s…) and publishes `connect_failed`;
 the login screen shows it and clears it once connected.
