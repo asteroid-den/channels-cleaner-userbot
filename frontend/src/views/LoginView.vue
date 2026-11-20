@@ -92,8 +92,14 @@ onMounted(() => {
 
 watch(
   () => auth.state.error,
-  (err) => {
-    if (err && !err.startsWith('flood_wait:')) error.value = t('login.errors.generic', { msg: err })
+  (err, before) => {
+    // The backend keeps reconnecting on its own; the message goes once it is through
+    if (!err) {
+      if (before?.startsWith('connect_failed:')) error.value = null
+      return
+    }
+    if (err.startsWith('connect_failed:')) error.value = t('login.errors.connect_failed')
+    else if (!err.startsWith('flood_wait:')) error.value = t('login.errors.generic', { msg: err })
   },
 )
 </script>

@@ -97,6 +97,10 @@ class AuthService:
         else:
             self._set("unauthorized")
 
+    def connect_failed(self, exc: BaseException) -> None:
+        """No connection to Telegram on start: the UI says so while the app keeps trying."""
+        self._set("unauthorized", error=f"connect_failed: {exc or type(exc).__name__}")
+
     async def stop(self) -> None:
         await self._cancel_qr()
 

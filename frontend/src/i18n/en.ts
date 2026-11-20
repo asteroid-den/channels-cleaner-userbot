@@ -109,6 +109,7 @@ export default {
       invalid_phone: 'That phone number is not valid.',
       flood_wait: 'Telegram asks to wait {s}s before trying again.',
       generic: 'Something went wrong: {msg}',
+      connect_failed: 'No connection to Telegram. Trying again in the background…',
     },
   },
   sync: {

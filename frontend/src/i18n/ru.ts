@@ -110,6 +110,7 @@ const ru: typeof en = {
       invalid_phone: 'Некорректный номер телефона.',
       flood_wait: 'Telegram просит подождать {s} с перед следующей попыткой.',
       generic: 'Что-то пошло не так: {msg}',
+      connect_failed: 'Нет связи с Telegram. Пробуем подключиться снова…',
     },
   },
   sync: {
