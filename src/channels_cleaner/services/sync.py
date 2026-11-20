@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -63,6 +64,10 @@ class SyncService:
     async def stop(self) -> None:
         if self._task is not None and not self._task.done():
             self._task.cancel()
+
+            # Done before the caller goes on: logout must not wipe the data under a sync still writing it
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._task
 
     def _publish(self, type_: str) -> None:
         self._bus.publish(TOPIC, type_, **self.state.snapshot())

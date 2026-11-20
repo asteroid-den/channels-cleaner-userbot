@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import itertools
 import logging
 from dataclasses import dataclass, field
 
@@ -18,6 +19,9 @@ from channels_cleaner.telegram.gateway import TelegramGateway
 from channels_cleaner.telegram.types import TgUser
 
 log = logging.getLogger(__name__)
+
+#: seconds between attempts to connect on start, the last one repeated
+_RECONNECT_DELAYS = (2, 5, 10, 30, 60)
 
 
 def make_gateway(settings: Settings) -> TelegramGateway:
@@ -75,13 +79,20 @@ class AppContext:
         self._boot_task = asyncio.create_task(self._boot(), name="boot")
 
     async def _boot(self) -> None:
-        try:
-            await self.auth.start()
+        # Started without a network (a laptop waking up, a VPN not up yet): keep trying instead of asking for a restart
+        for attempt in itertools.count():
+            try:
+                await self.auth.start()
 
-        except Exception as exc:
-            log.exception("Could not connect to Telegram")
-            self.auth.state.status = "unauthorized"
-            self.auth.state.error = f"connect_failed: {exc}"
+            except Exception as exc:
+                if attempt == 0:
+                    log.exception("Could not connect to Telegram, retrying")
+
+                self.auth.connect_failed(exc)
+                await asyncio.sleep(_RECONNECT_DELAYS[min(attempt, len(_RECONNECT_DELAYS) - 1)])
+
+            else:
+                return
 
     async def _after_login(self, user: TgUser) -> None:
         await self.sync.load(user.id)

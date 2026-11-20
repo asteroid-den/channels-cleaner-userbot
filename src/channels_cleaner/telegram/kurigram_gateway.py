@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -59,6 +59,30 @@ _CHAT_KINDS: dict[Any, ChatKind] = {
     enums.ChatType.SUPERGROUP: ChatKind.SUPERGROUP,
     enums.ChatType.FORUM: ChatKind.SUPERGROUP,
 }
+
+
+@contextlib.contextmanager
+def _telegram_errors() -> Iterator[None]:
+    """Kurigram's errors as the gateway's own: the services and the API know only those.
+
+    A dropped connection is an error of the request, not a crash of the apply job or a 500 for the card.
+    """
+    try:
+        yield
+
+    except errors.FloodWait as exc:
+        raise FloodWaitError(int(exc.value or 0)) from exc
+
+    except errors.RPCError as exc:
+        raise GatewayError(str(exc.MESSAGE or exc)) from exc
+
+    except (OSError, TimeoutError) as exc:
+        raise _offline(exc) from exc
+
+
+def _offline(exc: BaseException) -> GatewayError:
+    return GatewayError(f"No connection to Telegram: {exc or type(exc).__name__}")
+
 
 # Telegram uses this as "muted forever".
 _MUTE_FOREVER = timedelta(days=365 * 10)
@@ -309,7 +333,7 @@ class KurigramGateway:
         client = self.client
         now = datetime.now(UTC)
 
-        try:
+        with _telegram_errors():
             async for dialog in client.get_dialogs():
                 chat = dialog.chat
 
@@ -319,9 +343,6 @@ class KurigramGateway:
                     continue
 
                 yield self._channel_info(dialog, now, kind)
-
-        except errors.FloodWait as exc:
-            raise FloodWaitError(int(exc.value or 0)) from exc
 
     @staticmethod
     def _channel_info(dialog: Any, now: datetime, kind: ChatKind) -> ChannelInfo:  # noqa: ANN401 - a pyrogram Dialog, untyped
@@ -363,11 +384,9 @@ class KurigramGateway:
         )
 
     async def get_full(self, channel_id: int) -> ChannelFull:
-        try:
+        # A private or deleted chat (CHANNEL_PRIVATE…) used to escape as a 500
+        with _telegram_errors():
             chat = await self.client.get_chat(channel_id, force_full=True)
-
-        except errors.FloodWait as exc:
-            raise FloodWaitError(int(exc.value or 0)) from exc
 
         if chat is None:
             return ChannelFull(about=None, members_count=None)
@@ -421,6 +440,10 @@ class KurigramGateway:
             log.info("Avatar download failed for %s: %s", channel_id, exc)
             return None
 
+        # Not "no picture": that would be remembered, while the connection comes back
+        except (OSError, TimeoutError) as exc:
+            raise _offline(exc) from exc
+
         return Path(result) if isinstance(result, str) else None
 
     async def download_post_thumb(self, channel_id: int, message_id: int, dest: Path) -> Path | None:
@@ -452,58 +475,34 @@ class KurigramGateway:
             log.info("Thumbnail download failed for %s/%s: %s", channel_id, message_id, exc)
             return None
 
+        # Not "no picture": that would be remembered, while the connection comes back
+        except (OSError, TimeoutError) as exc:
+            raise _offline(exc) from exc
+
         return Path(result) if isinstance(result, str) else None
 
     # --- actions ---------------------------------------------------------------------
     async def leave(self, channel_id: int) -> None:
-        try:
-            await self.client.leave_chat(channel_id)
+        with _telegram_errors():
+            try:
+                await self.client.leave_chat(channel_id)
 
-        except (errors.UserNotParticipant, errors.ChannelPrivate):
-            return  # already gone — that's the desired end state
-
-        except errors.FloodWait as exc:
-            raise FloodWaitError(int(exc.value or 0)) from exc
-
-        except errors.RPCError as exc:
-            raise GatewayError(str(exc.MESSAGE or exc)) from exc
+            # Already gone: that's the end state asked for
+            except (errors.UserNotParticipant, errors.ChannelPrivate):
+                return
 
     async def mute(self, channel_id: int) -> None:
-        try:
+        with _telegram_errors():
             await self.client.update_chat_notifications(channel_id, mute=True, mute_until=_MUTE_FOREVER)
 
-        except errors.FloodWait as exc:
-            raise FloodWaitError(int(exc.value or 0)) from exc
-
-        except errors.RPCError as exc:
-            raise GatewayError(str(exc.MESSAGE or exc)) from exc
-
     async def archive(self, channel_id: int) -> None:
-        try:
+        with _telegram_errors():
             await self.client.archive_chats(channel_id)
 
-        except errors.FloodWait as exc:
-            raise FloodWaitError(int(exc.value or 0)) from exc
-
-        except errors.RPCError as exc:
-            raise GatewayError(str(exc.MESSAGE or exc)) from exc
-
     async def unmute(self, channel_id: int) -> None:
-        try:
+        with _telegram_errors():
             await self.client.update_chat_notifications(channel_id, mute=False)
 
-        except errors.FloodWait as exc:
-            raise FloodWaitError(int(exc.value or 0)) from exc
-
-        except errors.RPCError as exc:
-            raise GatewayError(str(exc.MESSAGE or exc)) from exc
-
     async def unarchive(self, channel_id: int) -> None:
-        try:
+        with _telegram_errors():
             await self.client.unarchive_chats(channel_id)
-
-        except errors.FloodWait as exc:
-            raise FloodWaitError(int(exc.value or 0)) from exc
-
-        except errors.RPCError as exc:
-            raise GatewayError(str(exc.MESSAGE or exc)) from exc

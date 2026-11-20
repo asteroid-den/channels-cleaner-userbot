@@ -10,6 +10,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
+from channels_cleaner.api.errors import ApplyRunning
 from channels_cleaner.config import Settings
 from channels_cleaner.database import DAO, DatabaseManager
 from channels_cleaner.database.models import base
@@ -57,10 +58,6 @@ class ApplyState:
         return asdict(self)
 
 
-class ApplyBusyError(RuntimeError):
-    pass
-
-
 class ApplyService:
     def __init__(self, gateway: TelegramGateway, database: DatabaseManager, bus: EventBus, settings: Settings) -> None:
         self._gw = gateway
@@ -80,8 +77,7 @@ class ApplyService:
 
     async def start(self, account_id: int) -> ApplyState:
         if self.running:
-            msg = "An apply job is already running"
-            raise ApplyBusyError(msg)
+            raise ApplyRunning
 
         async with self._starting:
             return await self._start(account_id)

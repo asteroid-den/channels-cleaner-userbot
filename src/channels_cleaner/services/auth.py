@@ -10,6 +10,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any, Literal
 
+from channels_cleaner.api.errors import FloodWait, InvalidCode, InvalidPassword, InvalidPhone, LoginStepMismatch
 from channels_cleaner.database import DAO, DatabaseManager
 from channels_cleaner.database.models import base
 from channels_cleaner.events import EventBus
@@ -44,15 +45,6 @@ class AuthState:
         data = asdict(self)
         data["qr_expires_at"] = self.qr_expires_at.isoformat() if self.qr_expires_at else None
         return data
-
-
-class AuthError(Exception):
-    """A user-facing auth failure (wrong code, wrong password, …)."""
-
-    def __init__(self, code: str, message: str, retry_after: int | None = None) -> None:
-        super().__init__(message)
-        self.code = code
-        self.retry_after = retry_after
 
 
 class AuthService:
@@ -96,6 +88,10 @@ class AuthService:
 
         else:
             self._set("unauthorized")
+
+    def connect_failed(self, exc: BaseException) -> None:
+        """No connection to Telegram on start: the UI says so while the app keeps trying."""
+        self._set("unauthorized", error=f"connect_failed: {exc or type(exc).__name__}")
 
     async def stop(self) -> None:
         await self._cancel_qr()
@@ -179,17 +175,17 @@ class AuthService:
                 await self._gw.send_code(phone)
 
             except FloodWaitError as exc:
-                raise AuthError(code="flood_wait", message=str(exc), retry_after=exc.seconds) from exc
+                raise FloodWait(retry_after=exc.seconds) from exc
 
             except GatewayError as exc:
-                raise AuthError(code="invalid_phone", message=str(exc)) from exc
+                raise InvalidPhone(reason=str(exc)) from exc
 
             self._set("code", phone=phone)
 
     async def sign_in(self, code: str) -> None:
         async with self._lock:
             if self.state.status != "code":
-                raise AuthError(code="bad_state", message="No code was requested")
+                raise LoginStepMismatch(reason="No code was requested")
 
             try:
                 user = await self._gw.sign_in_code(code)
@@ -199,10 +195,10 @@ class AuthService:
                 return
 
             except FloodWaitError as exc:
-                raise AuthError(code="flood_wait", message=str(exc), retry_after=exc.seconds) from exc
+                raise FloodWait(retry_after=exc.seconds) from exc
 
             except GatewayError as exc:
-                raise AuthError(code="invalid_code", message=str(exc)) from exc
+                raise InvalidCode(reason=str(exc)) from exc
 
             await self._logged_in(user)
 
@@ -218,17 +214,17 @@ class AuthService:
     async def check_password(self, password: str) -> None:
         async with self._lock:
             if self.state.status != "password":
-                raise AuthError(code="bad_state", message="Password is not expected now")
+                raise LoginStepMismatch(reason="Password is not expected now")
 
             try:
                 user = await self._gw.check_password(password)
 
             except FloodWaitError as exc:
-                raise AuthError(code="flood_wait", message=str(exc), retry_after=exc.seconds) from exc
+                raise FloodWait(retry_after=exc.seconds) from exc
 
             except GatewayError as exc:
                 self._set("password", password_hint=self.state.password_hint)
-                raise AuthError(code="invalid_password", message=str(exc)) from exc
+                raise InvalidPassword(reason=str(exc)) from exc
 
             await self._logged_in(user)
 
@@ -265,4 +261,4 @@ class AuthService:
 
     def _require_unauthorized(self) -> None:
         if self.state.status == "authorized":
-            raise AuthError(code="bad_state", message="Already authorized")
+            raise LoginStepMismatch(reason="Already authorized")
