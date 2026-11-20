@@ -355,10 +355,10 @@ class ChannelDAO:
         kind: ChatKind = ChatKind.CHANNEL,
         archive: ArchiveFilter = ArchiveFilter.ALL,
         role: RoleFilter = RoleFilter.MEMBER,
-    ) -> dict[str, int]:
+    ) -> dict[Decision, int]:
         """Final decisions per kind for chats still in the list ("skip" is not one)."""
         statement = (
-            select(ChannelDecision.decision, func.count())
+            select(ChannelDecision.decision, func.count().label("chats"))
             .select_from(Channel)
             .join(Channel.decision)
             .where(*_trail_conditions(account_id, kind, archive, role))
@@ -366,9 +366,7 @@ class ChannelDAO:
         )
 
         result = await self.session.execute(statement)
-        return {str(decision): 0 for decision in utils.TRAIL_CODES} | {
-            str(decision): count for decision, count in result
-        }
+        return dict.fromkeys(utils.TRAIL_CODES, 0) | {row.decision: row.chats for row in result}
 
 
 def _trail_conditions(

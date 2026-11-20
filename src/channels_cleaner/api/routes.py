@@ -18,12 +18,38 @@ from channels_cleaner.database import DAO
 from channels_cleaner.database import utils as db_utils
 from channels_cleaner.database.models import Channel, base
 from channels_cleaner.enums import ArchiveFilter, ChatKind, DecisionStatus, RoleFilter, SortMode
-from channels_cleaner.services import decisions, stats
+from channels_cleaner.services import decisions, deck, stats
 from channels_cleaner.services.apply import TOPIC as APPLY_TOPIC
 from channels_cleaner.services.auth import TOPIC as AUTH_TOPIC
 from channels_cleaner.services.sync import TOPIC as SYNC_TOPIC
 
-router = APIRouter(prefix="/api")
+# Every error has the same shape (api/errors.py); "default" also stands in for FastAPI's own 422 schema
+router = APIRouter(prefix="/api", responses={"default": {"model": schemas.ErrorOut, "description": "An error"}})
+
+# What the routes that answer something other than a model say about it in the OpenAPI schema
+_EVENTS: dict[str, Any] = {
+    "response_class": StreamingResponse,
+    "responses": {
+        200: {"description": "Server-sent events: a snapshot first, then changes", "content": {"text/event-stream": {}}}
+    },
+}
+_IMAGE: dict[str, Any] = {
+    "response_class": FileResponse,
+    "responses": {
+        200: {"description": "The picture, cached by Telegram's file id", "content": {"image/*": {}}},
+        404: {"description": "The chat has none"},
+    },
+}
+_EXPORT: dict[str, Any] = {
+    "response_class": Response,
+    "responses": {
+        200: {
+            "description": "The chats left, as a file to save",
+            "model": list[schemas.ExportRow],
+            "content": {"text/csv": {}},
+        }
+    },
+}
 
 
 def get_ctx(request: Request) -> AppContext:
@@ -52,101 +78,64 @@ Dao = Annotated[DAO, Depends(get_dao)]
 
 # --- meta ------------------------------------------------------------------------------
 @router.get("/health")
-async def health(ctx: Ctx) -> dict[str, Any]:
-    return {
-        "ok": True,
-        "version": __version__,
-        "mock": ctx.settings.mock,
-        "allow_owner_leave": ctx.settings.allow_owner_leave,
-    }
+async def health(ctx: Ctx) -> schemas.HealthOut:
+    return schemas.HealthOut(
+        version=__version__, mock=ctx.settings.mock, allow_owner_leave=ctx.settings.allow_owner_leave
+    )
 
 
 # --- auth ------------------------------------------------------------------------------
 @router.get("/auth/state")
-async def auth_state(ctx: Ctx) -> dict[str, Any]:
-    return ctx.auth.state.snapshot()
+async def auth_state(ctx: Ctx) -> schemas.AuthStateOut:
+    return schemas.AuthStateOut.model_validate(ctx.auth.state)
 
 
-@router.get("/auth/events")
+@router.get("/auth/events", **_EVENTS)
 async def auth_events(request: Request, ctx: Ctx) -> StreamingResponse:
     return sse_response(request, ctx.bus, AUTH_TOPIC, ctx.auth.state.snapshot)
 
 
 @router.post("/auth/qr/start")
-async def auth_qr_start(ctx: Ctx) -> dict[str, Any]:
+async def auth_qr_start(ctx: Ctx) -> schemas.AuthStateOut:
     await ctx.auth.start_qr()
-    return ctx.auth.state.snapshot()
+    return schemas.AuthStateOut.model_validate(ctx.auth.state)
 
 
 @router.post("/auth/phone/send-code")
-async def auth_send_code(body: schemas.PhoneIn, ctx: Ctx) -> dict[str, Any]:
+async def auth_send_code(body: schemas.PhoneIn, ctx: Ctx) -> schemas.AuthStateOut:
     await ctx.auth.send_code(body.phone.strip())
-    return ctx.auth.state.snapshot()
+    return schemas.AuthStateOut.model_validate(ctx.auth.state)
 
 
 @router.post("/auth/phone/sign-in")
-async def auth_sign_in(body: schemas.CodeIn, ctx: Ctx) -> dict[str, Any]:
+async def auth_sign_in(body: schemas.CodeIn, ctx: Ctx) -> schemas.AuthStateOut:
     await ctx.auth.sign_in(body.code.strip())
-    return ctx.auth.state.snapshot()
+    return schemas.AuthStateOut.model_validate(ctx.auth.state)
 
 
 @router.post("/auth/password")
-async def auth_password(body: schemas.PasswordIn, ctx: Ctx) -> dict[str, Any]:
+async def auth_password(body: schemas.PasswordIn, ctx: Ctx) -> schemas.AuthStateOut:
     await ctx.auth.check_password(body.password)
-    return ctx.auth.state.snapshot()
+    return schemas.AuthStateOut.model_validate(ctx.auth.state)
 
 
 @router.post("/auth/cancel")
-async def auth_cancel(ctx: Ctx) -> dict[str, Any]:
+async def auth_cancel(ctx: Ctx) -> schemas.AuthStateOut:
     await ctx.auth.cancel()
-    return ctx.auth.state.snapshot()
+    return schemas.AuthStateOut.model_validate(ctx.auth.state)
 
 
 @router.post("/auth/logout")
-async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> dict[str, Any]:
+async def auth_logout(body: schemas.LogoutIn, ctx: Ctx) -> schemas.AuthStateOut:
     if ctx.apply.running:
         raise ApplyRunning
 
     await ctx.sync.stop()
     await ctx.auth.log_out(wipe_data=body.wipe_data)
-    return ctx.auth.state.snapshot()
+    return schemas.AuthStateOut.model_validate(ctx.auth.state)
 
 
 # --- channels --------------------------------------------------------------------------
-async def _archive_filter(dao: DAO, account: int, archive: ArchiveFilter | None) -> ArchiveFilter:
-    """The archive filter asked for, else the one saved in the deck prefs."""
-    if archive is not None:
-        return archive
-
-    stored = await dao.get_setting(account, "deck_prefs") or {}
-    return schemas.PrefsIn(**stored).archive
-
-
-async def _deck_counts(
-    dao: DAO,
-    account: int,
-    kind: ChatKind,
-    role: RoleFilter,
-    archive: ArchiveFilter | None = None,
-) -> dict[str, Any]:
-    archive = await _archive_filter(dao, account, archive)
-    # Pending work covers every kind and role: one review screen, one apply job
-    pending = await dao.count_pending(account)
-    here = await dao.count_pending(account, kind, role)
-    return {
-        "total": await dao.count_channels(account, kind, archive, role),
-        # how many chats each choice in the deck settings menu would show
-        "kind_totals": {k: await dao.count_channels(account, k, archive, role) for k in ChatKind},
-        "role_totals": {r: {k: await dao.count_channels(account, k, archive, r) for k in ChatKind} for r in RoleFilter},
-        "archive_totals": {a: await dao.count_channels(account, kind, a, role) for a in ArchiveFilter},
-        "undecided": await dao.count_undecided(account, kind, role, archive),
-        "pending": pending,
-        "pending_other": pending - here,
-        "by_decision": await dao.decision_counts(account, kind, archive, role),
-        "trail": await dao.decision_trail(account, kind, archive, role),
-    }
-
-
 async def _chat(dao: DAO, account: int, channel_id: int) -> Channel:
     channel = await dao.get_channel(account, channel_id)
 
@@ -157,12 +146,12 @@ async def _chat(dao: DAO, account: int, channel_id: int) -> Channel:
 
 
 @router.post("/channels/sync")
-async def channels_sync(ctx: Ctx, account: AccountId) -> dict[str, Any]:
+async def channels_sync(ctx: Ctx, account: AccountId) -> schemas.SyncStateOut:
     ctx.sync.start(account)
-    return ctx.sync.state.snapshot()
+    return schemas.SyncStateOut.model_validate(ctx.sync.state)
 
 
-@router.get("/channels/sync/events")
+@router.get("/channels/sync/events", **_EVENTS)
 async def channels_sync_events(request: Request, ctx: Ctx) -> StreamingResponse:
     return sse_response(request, ctx.bus, SYNC_TOPIC, ctx.sync.state.snapshot)
 
@@ -179,16 +168,16 @@ async def channels_list(  # noqa: PLR0913
     sort: SortMode = SortMode.DEAD,
     reverse: bool = False,
     state: Literal["undecided", "all"] = "undecided",
-) -> dict[str, Any]:
-    archive = await _archive_filter(dao, account, archive)
+) -> schemas.ChannelsOut:
+    archive = await deck.archive_filter(dao, account, archive)
     channels = await dao.list_channels(
         account, kind=kind, role=role, archive=archive, sort=sort, reverse=reverse, undecided_only=state == "undecided"
     )
-    return {
-        "items": [schemas.ChannelOut.from_channel(channel) for channel in channels],
-        "counts": await _deck_counts(dao, account, kind, role, archive),
-        "sync": ctx.sync.state.snapshot(),
-    }
+    return schemas.ChannelsOut(
+        items=[schemas.ChannelOut.from_channel(channel) for channel in channels],
+        counts=await deck.counts(dao, account, kind, role, archive),
+        sync=schemas.SyncStateOut.model_validate(ctx.sync.state),
+    )
 
 
 @router.get("/channels/{channel_id}/full")
@@ -199,7 +188,7 @@ async def channel_full(channel_id: int, ctx: Ctx, account: AccountId) -> schemas
 _IMMUTABLE = {"Cache-Control": "private, max-age=604800, immutable"}
 
 
-@router.get("/channels/{channel_id}/avatar")
+@router.get("/channels/{channel_id}/avatar", **_IMAGE)
 async def channel_avatar(channel_id: int, ctx: Ctx, account: AccountId) -> Response:
     path = await ctx.channels.avatar(account, channel_id)
 
@@ -209,7 +198,7 @@ async def channel_avatar(channel_id: int, ctx: Ctx, account: AccountId) -> Respo
     return FileResponse(path, headers=_IMMUTABLE)
 
 
-@router.get("/channels/{channel_id}/thumb")
+@router.get("/channels/{channel_id}/thumb", **_IMAGE)
 async def channel_thumb(channel_id: int, ctx: Ctx, account: AccountId) -> Response:
     path = await ctx.channels.post_thumb(account, channel_id)
 
@@ -223,7 +212,7 @@ async def channel_thumb(channel_id: int, ctx: Ctx, account: AccountId) -> Respon
 @router.put("/decisions/{channel_id}")
 async def decision_set(
     channel_id: int, body: schemas.DecisionBody, ctx: Ctx, dao: Dao, account: AccountId
-) -> dict[str, Any]:
+) -> schemas.DecisionOut:
     # The apply job works from the queue as it started: a change now would be applied as the old decision
     if ctx.apply.running:
         raise ApplyRunning
@@ -235,18 +224,22 @@ async def decision_set(
 
     await decisions.decide(dao, account, channel_id, body.decision, base.utc_now())
     await dao.commit()
-    return {"ok": True, "counts": await _deck_counts(dao, account, chat.kind, db_utils.role_filter(chat.role))}
+    return schemas.DecisionOut(
+        ok=True, counts=await deck.counts(dao, account, chat.kind, db_utils.role_filter(chat.role))
+    )
 
 
 @router.delete("/decisions/{channel_id}")
-async def decision_undo(channel_id: int, ctx: Ctx, dao: Dao, account: AccountId) -> dict[str, Any]:
+async def decision_undo(channel_id: int, ctx: Ctx, dao: Dao, account: AccountId) -> schemas.DecisionOut:
     if ctx.apply.running:
         raise ApplyRunning
 
     chat = await _chat(dao, account, channel_id)
     removed = await decisions.undo(dao, account, channel_id)
     await dao.commit()
-    return {"ok": removed, "counts": await _deck_counts(dao, account, chat.kind, db_utils.role_filter(chat.role))}
+    return schemas.DecisionOut(
+        ok=removed, counts=await deck.counts(dao, account, chat.kind, db_utils.role_filter(chat.role))
+    )
 
 
 @router.get("/decisions/trail")
@@ -256,70 +249,68 @@ async def decisions_trail(
     kind: ChatKind = ChatKind.CHANNEL,
     role: RoleFilter = RoleFilter.MEMBER,
     archive: ArchiveFilter | None = None,
-) -> dict[str, Any]:
+) -> schemas.ChannelListOut:
     """Decided chats in the order decided: what the progress bar shows, for rewinding."""
-    channels = await dao.list_trail(account, kind, await _archive_filter(dao, account, archive), role)
-    return {"items": [schemas.ChannelOut.from_channel(channel) for channel in channels]}
+    channels = await dao.list_trail(account, kind, await deck.archive_filter(dao, account, archive), role)
+    return schemas.ChannelListOut(items=[schemas.ChannelOut.from_channel(channel) for channel in channels])
 
 
 @router.get("/decisions")
-async def decisions_list(dao: Dao, account: AccountId, status: DecisionStatus | None = None) -> dict[str, Any]:
+async def decisions_list(dao: Dao, account: AccountId, status: DecisionStatus | None = None) -> schemas.ChannelListOut:
     channels = await dao.list_decided(account, status=status)
-    return {"items": [schemas.ChannelOut.from_channel(channel) for channel in channels]}
+    return schemas.ChannelListOut(items=[schemas.ChannelOut.from_channel(channel) for channel in channels])
 
 
 @router.post("/decisions/reset")
-async def decisions_reset(body: schemas.ResetIn, ctx: Ctx, dao: Dao, account: AccountId) -> dict[str, Any]:
+async def decisions_reset(body: schemas.ResetIn, ctx: Ctx, dao: Dao, account: AccountId) -> schemas.ResetOut:
     if ctx.apply.running:
         raise ApplyRunning
 
     removed = await dao.reset_decisions(account, body.only, body.kind, body.role)
     await dao.commit()
-    return {"removed": removed, "counts": await _deck_counts(dao, account, body.kind, body.role)}
+    return schemas.ResetOut(removed=removed, counts=await deck.counts(dao, account, body.kind, body.role))
 
 
 @router.post("/decisions/retry-failed")
 async def decisions_retry_failed(
     dao: Dao, account: AccountId, kind: ChatKind = ChatKind.CHANNEL, role: RoleFilter = RoleFilter.MEMBER
-) -> dict[str, Any]:
+) -> schemas.CountsOut:
     await dao.reset_failed(account)
     await dao.commit()
-    return {"counts": await _deck_counts(dao, account, kind, role)}
+    return schemas.CountsOut(counts=await deck.counts(dao, account, kind, role))
 
 
 # --- apply -----------------------------------------------------------------------------
 @router.post("/apply")
-async def apply_start(ctx: Ctx, account: AccountId) -> dict[str, Any]:
-    state = await ctx.apply.start(account)
-    return state.snapshot()
+async def apply_start(ctx: Ctx, account: AccountId) -> schemas.ApplyStateOut:
+    return schemas.ApplyStateOut.model_validate(await ctx.apply.start(account))
 
 
 @router.post("/apply/cancel")
-async def apply_cancel(ctx: Ctx) -> dict[str, Any]:
+async def apply_cancel(ctx: Ctx) -> schemas.ApplyStateOut:
     ctx.apply.cancel()
-    return ctx.apply.state.snapshot()
+    return schemas.ApplyStateOut.model_validate(ctx.apply.state)
 
 
 @router.get("/apply/state")
-async def apply_state(ctx: Ctx) -> dict[str, Any]:
-    return ctx.apply.state.snapshot()
+async def apply_state(ctx: Ctx) -> schemas.ApplyStateOut:
+    return schemas.ApplyStateOut.model_validate(ctx.apply.state)
 
 
-@router.get("/apply/events")
+@router.get("/apply/events", **_EVENTS)
 async def apply_events(request: Request, ctx: Ctx) -> StreamingResponse:
     return sse_response(request, ctx.bus, APPLY_TOPIC, ctx.apply.state.snapshot)
 
 
 # --- prefs, stats, export --------------------------------------------------------------
 @router.get("/prefs")
-async def prefs_get(dao: Dao, account: AccountId) -> schemas.PrefsIn:
-    stored = await dao.get_setting(account, "deck_prefs") or {}
-    return schemas.PrefsIn(**stored)
+async def prefs_get(dao: Dao, account: AccountId) -> schemas.Prefs:
+    return await deck.prefs(dao, account)
 
 
 @router.put("/prefs")
-async def prefs_put(body: schemas.PrefsIn, dao: Dao, account: AccountId) -> schemas.PrefsIn:
-    await dao.set_setting(account, "deck_prefs", body.model_dump(mode="json"))
+async def prefs_put(body: schemas.Prefs, dao: Dao, account: AccountId) -> schemas.Prefs:
+    await dao.set_setting(account, deck.PREFS_KEY, body.model_dump(mode="json"))
     await dao.commit()
     return body
 
@@ -327,11 +318,11 @@ async def prefs_put(body: schemas.PrefsIn, dao: Dao, account: AccountId) -> sche
 @router.get("/stats")
 async def stats_get(
     dao: Dao, account: AccountId, kind: ChatKind = ChatKind.CHANNEL, role: RoleFilter = RoleFilter.MEMBER
-) -> dict[str, Any]:
-    return await stats.collect(dao, account, kind, role)
+) -> schemas.StatsOut:
+    return schemas.StatsOut.model_validate(await stats.collect(dao, account, kind, role))
 
 
-@router.get("/export")
+@router.get("/export", **_EXPORT)
 async def export(
     dao: Dao,
     account: AccountId,
