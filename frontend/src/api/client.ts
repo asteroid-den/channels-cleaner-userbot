@@ -1,3 +1,5 @@
+import type { ErrorBody } from './types'
+
 /** An answer of the API's error shape: {ok: false, type, message, ...fields}. */
 export class ApiError extends Error {
   readonly status: number
@@ -24,7 +26,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   if (!response.ok) {
     // The API always answers in its error shape; anything else (a proxy, a crash before the app) still becomes an
     // ApiError the views know how to show
-    const err = data as ErrorBody | null
+    const err = data as Partial<ErrorBody> | null
     const message = err?.message ?? (text.trim() || response.statusText)
     throw new ApiError(
       response.status,
@@ -34,14 +36,6 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
     )
   }
   return data as T
-}
-
-interface ErrorBody {
-  type?: string
-  message?: string
-  /** What Telegram said, for the errors that carry it */
-  reason?: string
-  retry_after?: number | null
 }
 
 function parseJson(text: string): unknown {

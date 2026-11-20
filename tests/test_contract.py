@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 import pytest
 
-from channels_cleaner.api import schemas
+from channels_cleaner.api import openapi, schemas
 from channels_cleaner.app import create_app
 from channels_cleaner.context import AppContext
 from channels_cleaner.telegram.mock_gateway import MockGateway
@@ -62,3 +62,10 @@ async def test_errors_fit_the_declared_error_body(client: httpx.AsyncClient, ctx
     ]:
         assert r.status_code >= 400
         schemas.ErrorOut.model_validate(r.json())
+
+
+def test_the_uis_copy_of_the_schema_is_current() -> None:
+    # The UI's types are generated from it; CI checks those against it (npm run api:check)
+    assert openapi.SCHEMA_PATH.read_text(encoding="utf-8") == openapi.render(), (
+        "Run: uv run python -m channels_cleaner.api.openapi && npm --prefix frontend run api:types"
+    )
