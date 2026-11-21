@@ -1,8 +1,4 @@
-"""Telegram Desktop-like device metadata mixed into ``InitConnection``.
-
-A profile is picked at random once per session and then persisted next to the session file:
-changing the "device" on every launch would look far more suspicious than any single choice.
-"""
+"""TDesktop-like device data, picked once per session and kept: a device changing every launch looks suspicious."""
 
 from __future__ import annotations
 
@@ -16,8 +12,6 @@ from typing import Any, TypedDict
 
 
 class ClientKwargs(TypedDict):
-    """The ``Client`` arguments a profile sets."""
-
     device_model: str
     system_version: str
     app_version: str
@@ -65,13 +59,12 @@ def random_profile(rng: random.Random | None = None) -> DeviceProfile:
 
 
 def load_or_create(path: Path) -> DeviceProfile:
-    """Return the profile stored at ``path``; pick and store a new one if there is none."""
     if path.exists():
         try:
             return DeviceProfile.from_dict(json.loads(path.read_text("utf-8")))
 
         except (ValueError, KeyError, TypeError):
-            pass  # corrupted file: fall through and re-roll
+            pass  # a corrupted file: pick a new one
 
     profile = random_profile()
     path.parent.mkdir(parents=True, exist_ok=True)

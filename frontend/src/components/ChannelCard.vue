@@ -72,7 +72,6 @@ const rate = computed(() =>
           }}<template v-if="earlier.applied"> · {{ t('deck.appliedMark') }}</template>
         </span>
       </div>
-      <!-- head -->
       <div class="flex items-start gap-4">
         <ChannelAvatar
           :id="channel.id"
@@ -175,7 +174,6 @@ const rate = computed(() =>
         </div>
       </div>
 
-      <!-- about -->
       <div class="text-[14px] leading-relaxed text-muted">
         <p v-if="channel.about" class="line-clamp-2 whitespace-pre-line">{{ channel.about }}</p>
         <div v-else-if="!channel.full_loaded" class="space-y-2 pt-1">
@@ -185,7 +183,6 @@ const rate = computed(() =>
         <p v-else class="text-faint italic">{{ t('deck.noAbout') }}</p>
       </div>
 
-      <!-- last post -->
       <div v-if="channel.last_post_at" class="post mt-auto flex gap-3 rounded-xl p-3">
         <img
           v-if="channel.thumb_url"

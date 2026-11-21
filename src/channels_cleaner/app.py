@@ -1,5 +1,3 @@
-"""FastAPI application factory."""
-
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -26,7 +24,6 @@ and restart, or use the Vite dev server (<code>npm --prefix frontend run dev</co
 
 
 async def serve_spa(path: str) -> Response:
-    """The built UI: files as they are, any other path gets index.html for the client-side router."""
     if path.startswith("api/"):
         return errors.RouteNotFound().response()
 

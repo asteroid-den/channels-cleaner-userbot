@@ -1,5 +1,3 @@
-"""Schema migrations with Alembic, run on every start: the app is installed and upgraded by users, not deployed."""
-
 import logging
 import sqlite3
 from contextlib import closing
@@ -39,11 +37,7 @@ def upgrade(path: Path) -> None:
 
 
 def backup(path: Path, config: Config) -> Path | None:
-    """Copy a database the migrations are about to change: it holds the user's decisions and history.
-
-    One copy per app version, next to the database (``cleaner.sqlite3.before-1.5.1``); a copy already there is from the
-    first try of this version and is kept.
-    """
+    """Copies the database before migrating it, once per app version: it holds the user's decisions and history."""
     if not path.exists():
         return None
 

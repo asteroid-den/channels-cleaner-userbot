@@ -1,5 +1,3 @@
-"""Changing and taking back a decision: what is queued, what is final, and what has to be undone in Telegram."""
-
 from datetime import datetime
 
 from channels_cleaner.database import DAO
@@ -7,10 +5,7 @@ from channels_cleaner.enums import ACTION_DECISIONS, REVERSIBLE_ACTIONS, ChatRol
 
 
 def leaves_owned_chat(decision: Decision, role: ChatRole, *, allowed: bool) -> bool:
-    """Whether the decision leaves a chat the user created while that is off (--allow-owner-leave).
-
-    Checked when the decision is made, and again when it is applied: one queued while the flag was on.
-    """
+    """Whether the decision leaves a chat the user created while --allow-owner-leave is off (checked again on apply)."""
     return decision is Decision.UNSUBSCRIBE and role is ChatRole.OWNER and not allowed
 
 
@@ -62,7 +57,6 @@ async def decide(dao: DAO, account_id: int, channel_id: int, decision: Decision,
 
 
 async def undo(dao: DAO, account_id: int, channel_id: int) -> bool:
-    """Take a decision back. Returns whether there was one the app could take back."""
     current = await dao.get_decision(account_id, channel_id)
 
     # Undoing a change of an applied action restores that action as it is in Telegram

@@ -176,7 +176,6 @@ def test_a_database_is_backed_up_before_it_is_migrated(tmp_path: Path) -> None:
     assert len(backups) == 1
     assert "schema_version" in table_names(backups[0])
 
-    # Up to date: nothing to change, nothing to copy
     backups[0].unlink()
     migrate.upgrade(path)
     assert not list(tmp_path.glob("cleaner.sqlite3.before-*"))

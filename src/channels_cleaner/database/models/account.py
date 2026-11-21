@@ -10,7 +10,6 @@ class Account(Base):
 
     __tablename__ = "accounts"
 
-    # The Telegram user id
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
     first_name: Mapped[str]
     last_name: Mapped[str | None]

@@ -1,5 +1,3 @@
-"""Lazy per-channel extras: full info (GetFullChannel), avatars and post thumbnails."""
-
 from __future__ import annotations
 
 import asyncio
@@ -30,7 +28,7 @@ class ChannelsService:
         self.gateway = gateway
         self.database = database
         self.settings = settings
-        # Telegram is touchy about GetFullChannel bursts: one at a time is plenty for a deck.
+        # Telegram is touchy about GetFullChannel bursts: one at a time is plenty for a deck
         self.full_semaphore = asyncio.Semaphore(1)
         self.media_semaphore = asyncio.Semaphore(2)
         self.inflight: dict[tuple[str, int], asyncio.Future[object]] = {}
@@ -125,7 +123,6 @@ class ChannelsService:
             await dao.save_full(account_id, channel_id, full, pulse, base.utc_now())
             await dao.commit()
 
-    # --- media ---------------------------------------------------------------------------
     def media_dir(self, account_id: int) -> Path:
         path = self.settings.media_dir / str(account_id)
         path.mkdir(parents=True, exist_ok=True)
@@ -133,7 +130,6 @@ class ChannelsService:
 
     @staticmethod
     def cached_file(directory: Path, stem: str) -> Path | bool | None:
-        """Return the cached file, ``False`` for a remembered miss, ``None`` if unknown."""
         for candidate in directory.glob(f"{stem}.*"):
             if candidate.suffix == NONE_MARKER:
                 return False
@@ -196,7 +192,6 @@ class ChannelsService:
             self.check_cooldown("media")
 
             async with self.media_semaphore:
-                # One that waited for the semaphore behind a flood wait gets it too, without asking
                 self.check_cooldown("media")
 
                 try:

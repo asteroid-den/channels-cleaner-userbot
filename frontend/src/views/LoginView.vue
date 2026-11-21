@@ -110,7 +110,6 @@ watch(
       class="w-full max-w-[880px] overflow-hidden rounded-[18px] border border-border-2 bg-surface shadow-card"
     >
       <div class="grid md:grid-cols-[1fr_1.05fr]">
-        <!-- left: copy -->
         <div class="flex flex-col justify-between gap-8 border-border p-8 md:border-r">
           <div>
             <h1 class="text-2xl font-semibold tracking-tight">{{ t('login.title') }}</h1>
@@ -143,7 +142,6 @@ watch(
           </p>
         </div>
 
-        <!-- right: interaction -->
         <div class="flex flex-col gap-6 p-8">
           <div
             v-if="step === 'method'"
@@ -164,7 +162,6 @@ watch(
             </button>
           </div>
 
-          <!-- QR -->
           <div v-if="step === 'method' && method === 'qr'" class="flex flex-col items-center gap-4">
             <QrCode :value="auth.state.qr_url" :size="232" />
             <p class="h-5 text-xs text-muted">
@@ -176,7 +173,6 @@ watch(
             </p>
           </div>
 
-          <!-- phone -->
           <form
             v-else-if="step === 'method' && method === 'phone'"
             class="flex flex-col gap-4"
@@ -202,7 +198,6 @@ watch(
             </button>
           </form>
 
-          <!-- code -->
           <form v-else-if="step === 'code'" class="flex flex-col gap-4" @submit.prevent="signIn">
             <label class="flex flex-col gap-2 text-sm">
               <span class="text-muted">{{ t('login.codeLabel') }}</span>
@@ -227,7 +222,6 @@ watch(
             </button>
           </form>
 
-          <!-- 2FA -->
           <form
             v-else-if="step === 'password'"
             class="flex flex-col gap-4"

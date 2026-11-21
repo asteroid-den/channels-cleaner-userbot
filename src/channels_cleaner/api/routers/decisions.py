@@ -72,7 +72,6 @@ async def get_decisions_trail(
     role: RoleFilter = RoleFilter.MEMBER,
     archive: ArchiveFilter | None = None,
 ) -> models.ChannelListResponse:
-    """Decided chats in the order decided: what the progress bar shows, for rewinding."""
     channels = await dao.list_trail(account_id, kind, await deck.archive_filter(dao, account_id, archive), role)
     return models.ChannelListResponse(items=[models.Channel.from_channel(channel) for channel in channels])
 

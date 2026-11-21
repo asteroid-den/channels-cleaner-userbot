@@ -1,5 +1,3 @@
-"""``telegram-channels-cleaner`` entry point: start the local server and open the browser."""
-
 from __future__ import annotations
 
 import argparse
@@ -40,7 +38,6 @@ def port_in_use(host: str, port: int) -> bool:
 
 
 def running_instance(url: str) -> dict[str, object] | None:
-    """If our own app already answers at ``url``, return its /api/health payload."""
     try:
         # Always our own http:// URL, never user input
         with urllib.request.urlopen(f"{url}/api/health", timeout=1) as response:  # noqa: S310
@@ -68,7 +65,6 @@ def port_busy_message(host: str, port: int, url: str) -> str:
 
 
 def open_when_ready(server: uvicorn.Server, url: str, timeout: float = 30.0) -> None:
-    """Open the browser once uvicorn is actually listening; give up if it never starts."""
     deadline = time.monotonic() + timeout
 
     while time.monotonic() < deadline:
@@ -83,7 +79,6 @@ def open_when_ready(server: uvicorn.Server, url: str, timeout: float = 30.0) -> 
 
 
 def settings_error_message(error: ValidationError) -> str:
-    """The settings that don't fit, as CC_ variables: a flag's value is checked before the server starts too."""
     lines = ["Invalid settings:"]
 
     for item in error.errors():
@@ -94,8 +89,7 @@ def settings_error_message(error: ValidationError) -> str:
 
 
 def settings_from_args(args: argparse.Namespace) -> Settings:
-    """Settings from the environment and .env, with the flags given on top; exits with a message if they don't fit."""
-    overrides: dict[str, Any] = {}  # flags given on the command line, checked by Settings
+    overrides: dict[str, Any] = {}
 
     if args.host:
         overrides["host"] = args.host
@@ -136,7 +130,6 @@ def main(argv: list[str] | None = None) -> None:
 
     settings = settings_from_args(args)
 
-    # Before the log file goes in: the data dir is made private first
     settings.ensure_dirs()
     log_file = logs.setup(settings.log_dir, verbose=args.verbose)
 
@@ -174,7 +167,7 @@ def main(argv: list[str] | None = None) -> None:
 
     server.run()
 
-    if not server.started:  # e.g. lost a race for the port after our check
+    if not server.started:  # lost a race for the port after our check
         sys.exit(1)
 
 

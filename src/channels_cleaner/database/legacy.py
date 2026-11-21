@@ -1,9 +1,7 @@
-"""The schema migrations from before Alembic, for databases created by versions up to 1.4.
+"""The migrations from before Alembic (``schema_version``, up to 1.4).
 
-They counted up in a ``schema_version`` table. A database that has one is brought to the last of these steps and its
-tables are set aside; Alembic creates them anew from the first revision, the rows move over, and from there Alembic
-takes over. Copied rather than stamped: the old tables declare TEXT and INTEGER where the models have VARCHAR, BOOLEAN
-and JSON. SQLite stores the same values either way, but Alembic would see a different schema in every old database.
+An old database is brought to their last step, its tables set aside, created anew by Alembic's first revision and
+its rows copied over: copied, not stamped, as the old tables declare other types and ``alembic check`` would differ.
 """
 
 import sqlite3
@@ -118,10 +116,9 @@ def split_statements(script: str) -> list[str]:
 
 
 def set_aside(path: Path) -> bool:
-    """Bring a database from before Alembic to the last legacy step and rename its tables out of the way.
+    """Brings an old database to the last legacy step and renames its tables out of the way; restartable at every step.
 
-    Returns whether set-aside tables are waiting for their rows to move, now or since an earlier start that stopped.
-    Every step commits together with its version row, so a start cut short at any point is finished by the next one.
+    Returns whether set-aside tables are waiting for their rows, now or since a start that stopped halfway.
     """
     if not path.exists():
         return False
@@ -136,7 +133,6 @@ def set_aside(path: Path) -> bool:
 
             for version, script in enumerate(LEGACY_MIGRATIONS, start=1):
                 if version > current:
-                    # The version is enumerate()'s int
                     row = f"INSERT INTO schema_version (version) VALUES ({version})"  # noqa: S608
                     run_in_transaction(connection, [*split_statements(script), row])
 

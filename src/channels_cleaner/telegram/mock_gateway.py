@@ -1,5 +1,3 @@
-"""Fake Telegram backend with generated channels — lets the whole UI run without an account."""
-
 from __future__ import annotations
 
 import asyncio
@@ -240,12 +238,7 @@ def thumb_svg(seed: int) -> str:
 
 
 class MockGateway:
-    """In-memory stand-in for :class:`KurigramGateway`.
-
-    QR login is auto-"scanned" a few seconds after the code is shown; phone login accepts
-    ``12345``; with ``CC_MOCK_2FA=1`` the password is ``mock``. Actions occasionally raise
-    flood waits and errors so the UI paths for them can be exercised.
-    """
+    """Actions occasionally raise flood waits and errors, so the UI paths for them can be tried."""
 
     qr_scan_after: float = 4.0
 
@@ -306,7 +299,6 @@ class MockGateway:
             msg = "Not authorized"
             raise NotAuthorizedError(msg)
 
-    # --- auth ----------------------------------------------------------------------
     async def qr_export(self) -> QrToken:
         if self.authorized:
             msg = "Already authorized"
@@ -364,7 +356,6 @@ class MockGateway:
         self.state_path.unlink(missing_ok=True)
         self.channels = self.generate_all(42)
 
-    # --- channels --------------------------------------------------------------------
     async def iter_channels(self) -> AsyncIterator[ChannelInfo]:
         self.require_auth()
 
@@ -432,7 +423,6 @@ class MockGateway:
         path.write_text(thumb_svg(channel_id + message_id), "utf-8")
         return path
 
-    # --- actions -----------------------------------------------------------------------
     async def maybe_fail(self) -> None:
         await asyncio.sleep(self.action_delay)
         roll = self.rng.random()

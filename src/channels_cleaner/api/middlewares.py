@@ -1,12 +1,7 @@
-"""Keeps other websites out of the API.
+"""Keeps other websites out of the API: any page in the user's browser can reach localhost.
 
-The server listens on localhost, but the user's browser reaches localhost from any page it has open:
-- a page can send a "simple" POST (no body, no preflight), e.g. ``POST /api/apply``, which would leave every queued
-  chat (cross-site request forgery);
-- a domain that resolves to 127.0.0.1 after the page loaded (DNS rebinding) is same-origin with the API and can read
-  and do everything.
-
-So every request must name a local host, and a request that changes something must come from the app's own page.
+A cross-site "simple" POST could start the apply job (CSRF); a domain rebound to 127.0.0.1 could read everything. So
+every request must name a local host, and one that changes something must come from the app's own page.
 """
 
 import json
@@ -57,7 +52,6 @@ def from_own_page(headers: dict[str, str], host: str) -> bool:
 
 
 async def refuse(send: Send, error: errors.BaseError) -> None:
-    # Before FastAPI: the error class makes the body, the response goes out by hand
     body = json.dumps(error.body()).encode()
     await send(
         {

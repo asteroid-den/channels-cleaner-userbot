@@ -1,4 +1,4 @@
-"""What the routes that answer something other than a JSON model say about their 200 in the OpenAPI schema."""
+"""OpenAPI descriptions of the answers that aren't JSON models."""
 
 from typing import Any
 

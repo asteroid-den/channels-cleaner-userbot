@@ -1,5 +1,3 @@
-"""Application settings, read from environment variables (prefix ``CC_``) and ``.env``."""
-
 from __future__ import annotations
 
 import logging
@@ -25,7 +23,6 @@ LEGACY_APP_DIR = "channels-cleaner"
 
 
 def in_own_checkout() -> bool:
-    """Whether the current directory is a source checkout of this app."""
     pyproject = Path("pyproject.toml")
 
     if not (pyproject.is_file() and Path("src/channels_cleaner").is_dir()):
@@ -39,11 +36,7 @@ def in_own_checkout() -> bool:
 
 
 def default_data_dir() -> Path:
-    """``./data`` in a source checkout of this app, else the user data dir.
-
-    Installed with ``uvx``/``pipx`` the app can be started from any folder, so the session and database go to the
-    platform's per-user data location. A ``data`` folder of some other project is never ours to write a session into.
-    """
+    """``./data`` in a checkout of this app, else the per-user data dir: an installed app runs from any folder."""
     if in_own_checkout():
         return Path("data")
 
@@ -62,11 +55,7 @@ def default_data_dir() -> Path:
 
 
 def adopt_legacy_dir(legacy: Path, data_dir: Path) -> None:
-    """Move the data of a version from before the rename to the new place.
-
-    Otherwise the user has to log in again and the old session, full access to their account, stays behind.
-    Nothing is moved when the new dir already exists: neither copy is ours to merge or delete.
-    """
+    """Moves the data dir from before the rename, so the user stays logged in; never merges into an existing one."""
     if data_dir.exists() or not legacy.is_dir():
         return
 
@@ -93,7 +82,6 @@ class Settings(BaseSettings):
     port: int = Field(default=8765, ge=1, le=65535)
 
     mock: bool = False
-    # Mock-only knobs, handy for exercising UI edge cases.
     mock_channels: int = Field(default=120, ge=0)
     mock_supergroups: int = Field(default=60, ge=0)
     mock_2fa: bool = False
@@ -101,11 +89,10 @@ class Settings(BaseSettings):
     # Leaving a chat the user created is off unless asked for: it may orphan the chat.
     allow_owner_leave: bool = False
 
-    # Pause between consecutive apply actions (seconds, randomised within the range).
+    # Seconds, randomised within the range
     apply_delay_min: float = Field(default=1.5, ge=0)
     apply_delay_max: float = Field(default=3.0, ge=0)
 
-    # How long GetFullChannel results stay fresh.
     full_info_ttl_hours: int = Field(default=72, ge=0)
 
     @model_validator(mode="after")

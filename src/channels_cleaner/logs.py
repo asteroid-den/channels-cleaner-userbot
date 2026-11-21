@@ -1,5 +1,3 @@
-"""Logging to the console and to a file in the data dir, so a problem can be looked into after the window is gone."""
-
 from __future__ import annotations
 
 import logging
@@ -14,7 +12,6 @@ BACKUPS = 3
 
 
 def setup(log_dir: Path, *, verbose: bool = False) -> Path:
-    """Send the app's and uvicorn's records to the console and to ``log_dir/app.log``; returns the file's path."""
     log_dir.mkdir(parents=True, exist_ok=True)
     path = log_dir / LOG_FILE
     formatter = logging.Formatter(FORMAT)

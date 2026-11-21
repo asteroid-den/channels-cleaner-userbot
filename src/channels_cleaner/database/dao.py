@@ -4,11 +4,7 @@ from channels_cleaner.database.models_dao import AccountDAO, ApplyJobDAO, Channe
 
 
 class DAO(AccountDAO, ApplyJobDAO, ChannelDAO, DecisionDAO, SettingDAO):
-    """All queries of the app over one session.
-
-    Writes are Core statements (upserts, bulk updates): they don't touch objects the session has already loaded, so
-    the selects that return objects read them anew (populate_existing) instead of handing back a stale copy.
-    """
+    """Writes are Core statements that don't refresh loaded objects, so selects of objects use populate_existing."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session

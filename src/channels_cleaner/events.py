@@ -1,5 +1,3 @@
-"""Tiny in-process pub/sub used to feed Server-Sent Events streams."""
-
 from __future__ import annotations
 
 import asyncio

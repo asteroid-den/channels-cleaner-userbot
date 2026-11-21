@@ -52,11 +52,8 @@ export interface HistoryEntry {
 export const useDeckStore = defineStore('deck', () => {
   const ui = useUiStore()
 
-  /** Which deck is on screen: channels or supergroups. */
   const kind = ref<ChatKind>(readKind())
-  /** Whether the deck holds the chats the user is just in, or the ones they run. */
   const role = ref<RoleFilter>(readRole())
-  /** Undecided channels, in deck order. */
   const queue = ref<Channel[]>([])
   /** Decided channels in the order decided — the progress bar, card by card. */
   const trail = ref<Channel[]>([])
@@ -332,7 +329,6 @@ export const useDeckStore = defineStore('deck', () => {
     returning.value = entry
   }
 
-  // --- rewinding through decisions made earlier ---------------------------------------------
   /** One card back (Ctrl+←): the previous decision comes back on top. */
   function stepBack() {
     const target = (cursor.value ?? trail.value.length) - 1
@@ -358,7 +354,6 @@ export const useDeckStore = defineStore('deck', () => {
     cursor.value = null
   }
 
-  /** Called from the review screen: a channel was put back into the deck. */
   function forget(channelId: number) {
     history.value = history.value.filter((h) => h.channel.id !== channelId)
   }

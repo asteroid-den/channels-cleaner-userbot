@@ -1,5 +1,3 @@
-"""Real Telegram backend built on Kurigram (a maintained Pyrogram fork)."""
-
 from __future__ import annotations
 
 import asyncio
@@ -67,10 +65,7 @@ CHAT_KINDS: dict[Any, ChatKind] = {
 
 @contextlib.contextmanager
 def telegram_errors() -> Iterator[None]:
-    """Kurigram's errors as the gateway's own: the services and the API know only those.
-
-    A dropped connection is an error of the request, not a crash of the apply job or a 500 for the card.
-    """
+    """Kurigram's errors as the gateway's own: the services and the API know only those."""
     try:
         yield
 
@@ -125,7 +120,6 @@ class KurigramGateway:
         self.phone_code_hash: str | None = None
         self.started = False
 
-    # --- lifecycle -------------------------------------------------------------
     @property
     def device_profile(self) -> DeviceProfile | None:
         return self._profile
@@ -171,7 +165,6 @@ class KurigramGateway:
         return await self.finish_login()
 
     async def finish_login(self) -> TgUser:
-        """Restart the connected-but-not-started client the regular way (now non-interactive)."""
         client = self.pending_client()
         await client.disconnect()
 
@@ -221,7 +214,6 @@ class KurigramGateway:
 
         return self._client
 
-    # --- auth: QR ----------------------------------------------------------------
     async def qr_export(self) -> QrToken:
         client = self.pending_client()
 
@@ -239,7 +231,7 @@ class KurigramGateway:
 
         token = self.qr_login.r
 
-        if not isinstance(token, LoginToken):  # migrate/success come from qr_wait, not from a fresh export
+        if not isinstance(token, LoginToken):
             msg = f"Unexpected QR login answer: {type(token).__name__}"
             raise GatewayError(msg)
 
@@ -268,7 +260,6 @@ class KurigramGateway:
 
         return await self.finish_login()
 
-    # --- auth: phone -------------------------------------------------------------
     async def send_code(self, phone: str) -> None:
         client = self.pending_client()
         self.qr_login = None
@@ -339,7 +330,6 @@ class KurigramGateway:
         self.profile_path.unlink(missing_ok=True)
         self._profile = None
 
-    # --- channels ------------------------------------------------------------------
     async def iter_channels(self) -> AsyncIterator[ChannelInfo]:
         client = self.client
         now = datetime.now(UTC)
@@ -500,13 +490,12 @@ class KurigramGateway:
 
         return Path(result) if isinstance(result, str) else None
 
-    # --- actions ---------------------------------------------------------------------
     async def leave(self, channel_id: int) -> None:
         with telegram_errors():
             try:
                 await self.client.leave_chat(channel_id)
 
-            # Already gone: that's the end state asked for
+            # Already gone: the end state asked for
             except (errors.UserNotParticipant, errors.ChannelPrivate):
                 return
 

@@ -1,5 +1,3 @@
-"""Aggregates for the results screen and the export of applied unsubscriptions."""
-
 from __future__ import annotations
 
 import csv

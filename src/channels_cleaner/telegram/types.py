@@ -1,5 +1,3 @@
-"""Plain data types and errors exchanged between the gateway and the services."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,8 +22,6 @@ class QrToken:
 
 @dataclass(slots=True)
 class ChannelInfo:
-    """What we know about a channel from the dialogs list alone (no extra requests)."""
-
     id: int
     title: str
     username: str | None
@@ -50,7 +46,7 @@ class ChannelFull:
 
 
 class GatewayError(Exception):
-    """Base error for anything the gateway wants to surface to the user."""
+    pass
 
 
 class PasswordNeededError(GatewayError):
@@ -70,7 +66,7 @@ class InvalidPhoneError(GatewayError):
 
 
 class QrExpiredError(GatewayError):
-    """The QR token expired before it was scanned; export a new one."""
+    pass
 
 
 class NotAuthorizedError(GatewayError):
@@ -78,8 +74,7 @@ class NotAuthorizedError(GatewayError):
 
 
 class RequestRefusedError(GatewayError):
-    """Telegram refused the request for good (a 4xx: CHANNEL_PRIVATE, CHAT_FORBIDDEN…): asking again soon gets the
-    same answer, unlike a dropped connection or a server error."""
+    """A 4xx (CHANNEL_PRIVATE…): the same answer if asked again soon, unlike a dropped connection."""
 
 
 class FloodWaitError(GatewayError):

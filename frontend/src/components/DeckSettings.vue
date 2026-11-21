@@ -22,7 +22,6 @@ const ROLES: RoleFilter[] = ['member', 'managed']
 const ARCHIVES: ArchiveFilter[] = ['all', 'active', 'archived']
 const SORTS: SortMode[] = ['dead', 'unread']
 
-/** Chats in a role, both kinds together. */
 const roleTotal = (r: RoleFilter) =>
   deck.counts.role_totals[r].channel + deck.counts.role_totals[r].supergroup
 

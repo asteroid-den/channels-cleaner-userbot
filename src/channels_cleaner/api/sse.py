@@ -1,5 +1,3 @@
-"""Server-Sent Events helpers: a snapshot first, then live events from the bus."""
-
 from __future__ import annotations
 
 import asyncio

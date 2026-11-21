@@ -1,5 +1,3 @@
-"""Login state machine: QR (with optional 2FA), phone + code, logout."""
-
 from __future__ import annotations
 
 import asyncio
@@ -75,13 +73,12 @@ class AuthService:
         self.state = AuthState(status=status, user=self.state.user, **changes)
         self.publish()
 
-    # --- lifecycle ---------------------------------------------------------------------
     async def start(self) -> None:
         try:
             user = await self.gateway.start()
 
         except NotAuthorizedError:
-            user = await self.gateway.start()  # stored session was revoked; retry fresh
+            user = await self.gateway.start()  # the stored session was revoked: start fresh
 
         if user is not None:
             await self.logged_in(user)
@@ -114,7 +111,6 @@ class AuthService:
             except Exception:
                 log.exception("on_login callback failed")
 
-    # --- QR ------------------------------------------------------------------------------
     async def start_qr(self) -> None:
         async with self.lock:
             self.require_unauthorized()
@@ -150,7 +146,7 @@ class AuthService:
                 except QrExpiredError:
                     continue
 
-                self.qr_task = None  # we're about to finish; don't let anyone cancel us
+                self.qr_task = None  # finishing now: a cancel must not cut the login in half
                 await self.logged_in(user)
                 return
 
@@ -165,7 +161,6 @@ class AuthService:
             log.exception("QR login failed")
             self.set_status("unauthorized", error=str(exc) or type(exc).__name__)
 
-    # --- phone + code --------------------------------------------------------------------
     async def send_code(self, phone: str) -> None:
         async with self.lock:
             self.require_unauthorized()
@@ -202,7 +197,6 @@ class AuthService:
 
             await self.logged_in(user)
 
-    # --- 2FA -----------------------------------------------------------------------------
     async def to_password(self) -> None:
         hint = None
 
@@ -228,7 +222,6 @@ class AuthService:
 
             await self.logged_in(user)
 
-    # --- logout --------------------------------------------------------------------------
     async def log_out(self, *, wipe_data: bool) -> None:
         async with self.lock:
             await self.cancel_qr()
@@ -244,14 +237,13 @@ class AuthService:
             self.state = AuthState(status="starting")
             user_after = await self.gateway.start()
 
-            if user_after is not None:  # should not happen, but keep state honest
+            if user_after is not None:
                 await self.logged_in(user_after)
 
             else:
                 self.set_status("unauthorized")
 
     async def cancel(self) -> None:
-        """Abort an in-progress login and go back to the method picker."""
         async with self.lock:
             if self.state.status == "authorized":
                 return

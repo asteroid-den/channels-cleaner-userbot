@@ -1,9 +1,4 @@
-"""Pydantic request and response models: the API's contract, as /openapi.json shows it.
-
-Bodies the UI sends are ``…Request``; what a route answers is a ``…Response`` (``ok: true``, as errors carry
-``ok: false``); the parts they are made of are plain nouns. Responses are built from the services' own state:
-the ones made of their dataclasses read them with from_attributes.
-"""
+"""The API's contract: bodies are ``…Request``, answers ``…Response`` (``ok: true``), their parts plain nouns."""
 
 from __future__ import annotations
 
@@ -27,11 +22,7 @@ from channels_cleaner.enums import (
 from channels_cleaner.services.apply import ApplyStatus, ItemStatus
 from channels_cleaner.services.auth import AuthStatus
 
-#: media the card shows a thumbnail of
 THUMB_MEDIA = {MediaKind.PHOTO, MediaKind.VIDEO, MediaKind.ANIMATION}
-
-
-# --- what the UI sends ----------------------------------------------------------------------------------------------
 
 
 class SendCodeRequest(BaseModel):
@@ -61,8 +52,6 @@ class ResetDecisionsRequest(BaseModel):
 
 
 class DeckPrefs(BaseModel):
-    """How the deck is sorted and filtered, saved per account."""
-
     sort: SortMode = SortMode.DEAD
     reverse: bool = False
     archive: ArchiveFilter = ArchiveFilter.ALL
@@ -70,9 +59,6 @@ class DeckPrefs(BaseModel):
 
 class DeckPrefsRequest(DeckPrefs):
     pass
-
-
-# --- parts of the answers -------------------------------------------------------------------------------------------
 
 
 class User(BaseModel):
@@ -121,7 +107,7 @@ class Channel(BaseModel):
     last_post_text: str | None
     last_post_media: MediaKind | None
     full_loaded: bool
-    #: what Telegram said when it refused the full info (private, banned…); asked again once the cache goes stale
+    #: Telegram's refusal (CHANNEL_PRIVATE…), kept until the cache goes stale
     full_error: str | None = None
     decision: Decision | None
     decision_status: DecisionStatus | None
@@ -163,7 +149,6 @@ class Channel(BaseModel):
 
 class DeckCounts(BaseModel):
     total: int
-    #: how many chats each choice in the deck settings menu would show
     kind_totals: dict[ChatKind, int]
     role_totals: dict[RoleFilter, dict[ChatKind, int]]
     archive_totals: dict[ArchiveFilter, int]
@@ -172,7 +157,6 @@ class DeckCounts(BaseModel):
     pending: int
     #: of those, the ones outside this deck (the dot on the header switcher)
     pending_other: int
-    #: final decisions for chats still in the list ("skip" is not one)
     by_decision: dict[Decision, int]
     #: final decisions in the order made, one letter each: k(eep) u(nsubscribe) m(ute) a(rchive)
     trail: str
@@ -187,7 +171,6 @@ class ApplyItem(BaseModel):
     has_photo: bool
     status: ItemStatus
     error: str | None
-    #: an applied mute/archive taken back first
     reverts: Decision | None
     role: ChatRole
 
@@ -207,8 +190,6 @@ class ApplyState(BaseModel):
 
 
 class ExportRow(BaseModel):
-    """A chat left, as /api/export lists it."""
-
     channel_id: int
     title: str
     username: str | None
@@ -218,9 +199,6 @@ class ExportRow(BaseModel):
     unsubscribed_at: datetime | None
 
 
-# --- what the routes answer -----------------------------------------------------------------------------------------
-
-
 class OkResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -228,18 +206,12 @@ class OkResponse(BaseModel):
 
 
 class ErrorResponse(BaseModel):
-    """The body of every error (api/errors.py); which fields come along depends on the type."""
-
     ok: Literal[False] = False
-    #: what the UI acts on: not_authorized, flood_wait, apply_job_running…
     type: str
     message: str
-    #: what Telegram said
     reason: str | None = None
-    #: seconds to wait (flood_wait)
     retry_after: int | None = None
     channel_id: int | None = None
-    #: what didn't fit (invalid_request)
     details: list[ErrorDetail] | None = None
 
 
@@ -282,7 +254,6 @@ class DecisionResponse(OkResponse):
 
 
 class UndoDecisionResponse(OkResponse):
-    #: whether there was a decision to take back
     removed: bool
     counts: DeckCounts
 
@@ -309,5 +280,4 @@ class StatsResponse(OkResponse):
     unread_total: int
     unread_cleared: int
     decisions: dict[Decision, dict[DecisionStatus, int]]
-    #: chats per age of the last post: week, month, quarter, half_year, year, older, never
     last_post_age: dict[str, int]

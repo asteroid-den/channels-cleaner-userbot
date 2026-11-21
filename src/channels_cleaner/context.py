@@ -1,5 +1,3 @@
-"""Wires settings, storage, gateway and services together for the app's lifetime."""
-
 from __future__ import annotations
 
 import asyncio
@@ -20,7 +18,6 @@ from channels_cleaner.telegram.types import TgUser
 
 log = logging.getLogger(__name__)
 
-#: seconds between attempts to connect on start, the last one repeated
 RECONNECT_DELAYS = (2, 5, 10, 30, 60)
 
 

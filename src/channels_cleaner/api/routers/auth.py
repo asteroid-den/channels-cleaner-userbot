@@ -8,7 +8,6 @@ from channels_cleaner.services.auth import TOPIC
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# What Telegram can answer a login step with
 LOGIN_STEP = (errors.LoginStepUnexpected, errors.FloodWait, errors.TelegramError)
 
 

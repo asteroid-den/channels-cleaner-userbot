@@ -5,11 +5,9 @@ from sqlalchemy.types import TypeDecorator
 
 
 class UtcDateTime(TypeDecorator[datetime]):
-    """Aware datetimes in UTC, stored as ISO 8601 text with the offset: ``2026-11-17T20:00:00.123456+00:00``.
+    """Aware UTC datetimes as ISO text with the offset.
 
-    SQLite has no date type. SQLAlchemy's DateTime would write ``2026-11-17 20:00:00.123456`` without the offset and
-    read it back naive: next to the rows stored before (with ``T`` and ``+00:00``) the text would sort wrong, naive and
-    aware values would not compare, and the UI would read the times as local ones.
+    SQLAlchemy's DateTime on SQLite drops the offset and reads back naive values, which sort wrong next to old rows.
     """
 
     impl = Text

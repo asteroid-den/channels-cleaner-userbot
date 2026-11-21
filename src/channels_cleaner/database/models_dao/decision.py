@@ -167,7 +167,6 @@ class DecisionDAO:
         return [(decision, status, count) for decision, status, count in result]
 
     async def unread_cleared(self, account_id: int, kind: ChatKind, role: RoleFilter) -> int:
-        """Unread posts in the chats the app has left."""
         statement = (
             select(func.coalesce(func.sum(Channel.unread_count), 0))
             .select_from(Channel)

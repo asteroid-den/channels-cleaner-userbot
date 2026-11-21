@@ -1,10 +1,4 @@
-"""The errors the API answers with: ``{"ok": false, "type": ..., "message": ..., <fields>}``.
-
-One class per error, under a class per HTTP status: CODE comes from that one, TYPE is what the UI acts on, MESSAGE a
-fallback text for it, the dataclass fields go into the body. Services raise these directly; the gateway's own errors
-(telegram/types.py) know nothing of HTTP and are translated here. A route lists the ones it can answer with in
-``error_responses``, which puts them into the OpenAPI schema.
-"""
+"""The API's errors: a class per HTTP status, under it one dataclass per error; its fields go into the body."""
 
 from collections import defaultdict
 from dataclasses import asdict, dataclass, fields, is_dataclass
@@ -40,9 +34,6 @@ class ErrorDetail(BaseModel):
     msg: str
 
 
-# --- one class per HTTP status --------------------------------------------------------------------------------------
-
-
 class BadRequest(BaseError):
     CODE = 400
 
@@ -73,9 +64,6 @@ class TooManyRequests(BaseError):
 
 class BadGateway(BaseError):
     CODE = 502
-
-
-# --- the API's own --------------------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -118,9 +106,6 @@ class CrossOriginRefused(Forbidden):
     MESSAGE = "Requests from other sites are refused"
 
 
-# --- login ----------------------------------------------------------------------------------------------------------
-
-
 @dataclass
 class NotAuthorized(Unauthorized):
     TYPE = "not_authorized"
@@ -131,7 +116,6 @@ class NotAuthorized(Unauthorized):
 class InvalidPhone(BadRequest):
     TYPE = "invalid_phone"
     MESSAGE = "That phone number is not valid"
-    # What Telegram said
     reason: str
 
 
@@ -151,14 +135,9 @@ class InvalidPassword(BadRequest):
 
 @dataclass
 class LoginStepUnexpected(Conflict):
-    """A login step that doesn't fit where the login is: a code nobody asked for, a second login."""
-
     TYPE = "login_step_unexpected"
     MESSAGE = "The login is not at that step"
     reason: str
-
-
-# --- chats and decisions --------------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -177,8 +156,6 @@ class PictureNotFound(NotFound):
 
 @dataclass
 class ApplyJobRunning(Conflict):
-    """Decisions are locked while the apply job runs, and only one job runs at a time."""
-
     TYPE = "apply_job_running"
     MESSAGE = "Wait for the running apply job to finish"
 
@@ -187,9 +164,6 @@ class ApplyJobRunning(Conflict):
 class OwnerLeaveNotEnabled(Conflict):
     TYPE = "owner_leave_not_enabled"
     MESSAGE = "Leaving a chat you own is off (start with --allow-owner-leave to allow it)"
-
-
-# --- Telegram -------------------------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -206,15 +180,11 @@ class TelegramError(BadGateway):
     reason: str
 
 
-# --- in the OpenAPI schema ------------------------------------------------------------------------------------------
-
-#: what any route can answer with: the guard's refusals, a request that doesn't fit, a crash
 COMMON_ERRORS: tuple[type[BaseError], ...] = (HostNotAllowed, CrossOriginRefused, InvalidRequest, HttpInternalError)
 
 
 @cache
 def error_model(error: type[BaseError]) -> type[BaseModel]:
-    """The body of that error for the OpenAPI schema: ``ok``, its TYPE as a constant, ``message`` and its fields."""
     field_defs: dict[str, Any] = {
         "ok": (Literal[False], False),
         "type": (Literal[error.TYPE], error.TYPE),
@@ -231,16 +201,12 @@ def error_model(error: type[BaseError]) -> type[BaseModel]:
 
 
 def error_responses(*errors: type[BaseError]) -> dict[int | str, dict[str, Any]]:
-    """A route's ``responses``: the common errors and its own, one model (or a union of models) per status."""
     grouped: dict[int, list[Any]] = defaultdict(list)
 
     for error in (*COMMON_ERRORS, *errors):
         grouped[error.CODE].append(error_model(error))
 
     return {code: {"model": reduce(lambda a, b: a | b, models)} for code, models in grouped.items()}
-
-
-# --- handlers -------------------------------------------------------------------------------------------------------
 
 
 def translate(exc: Exception) -> BaseError:  # noqa: PLR0911 - one answer per kind of error

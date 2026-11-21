@@ -7,8 +7,6 @@ from channels_cleaner.enums import Decision, DecisionStatus
 
 
 class ChannelDecision(Base):
-    """What the user decided about a chat and how far the app got with it."""
-
     __tablename__ = "decisions"
 
     account_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)

@@ -1,5 +1,3 @@
-"""Pulls the channel and supergroup list from Telegram into SQLite, reporting progress over the bus."""
-
 from __future__ import annotations
 
 import asyncio

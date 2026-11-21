@@ -7,8 +7,6 @@ from channels_cleaner.enums import JobStatus
 
 
 class ApplyJob(Base):
-    """One run of the apply job, for the results screen."""
-
     __tablename__ = "apply_jobs"
     # AUTOINCREMENT, as the table was created: ids of deleted jobs are not handed out again
     __table_args__ = {"sqlite_autoincrement": True}  # noqa: RUF012

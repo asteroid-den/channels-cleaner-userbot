@@ -16,11 +16,8 @@ export type ActionDecision = Extract<Decision, 'unsubscribe' | 'mute' | 'archive
 export type FinalDecision = Exclude<Decision, 'skip'>
 export type SortMode = Schemas['SortMode']
 export type ChatKind = Schemas['ChatKind']
-/** What the user is in that chat. */
 export type ChatRole = Schemas['ChatRole']
-/** Two decks: chats the user is just in, and the ones they run (admin or owner). */
 export type RoleFilter = Schemas['RoleFilter']
-/** Which part of the list the deck shows: everything, the main list only, or the archive only. */
 export type ArchiveFilter = Schemas['ArchiveFilter']
 
 export type Pulse = Schemas['Pulse']

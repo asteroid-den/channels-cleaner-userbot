@@ -84,7 +84,6 @@ class ChannelDAO:
         await self.session.execute(statement)
 
     async def mark_gone_except(self, account_id: int, keep_ids: set[int]) -> None:
-        """Flag chats missing from the latest sync (the user left them elsewhere)."""
         statement = (
             update(Channel)
             .where(Channel.account_id == account_id, Channel.gone.is_(False), Channel.channel_id.not_in(keep_ids))
@@ -148,7 +147,6 @@ class ChannelDAO:
         await self.session.execute(statement)
 
     async def save_full_refused(self, account_id: int, channel_id: int, error: str, fetched_at: datetime) -> None:
-        """Telegram won't give this chat's full info: remember why, so the card isn't asked for it again and again."""
         statement = (
             update(Channel)
             .where(Channel.account_id == account_id, Channel.channel_id == channel_id)
@@ -182,7 +180,6 @@ class ChannelDAO:
     async def list_subscribed(
         self, account_id: int, kind: ChatKind, role: RoleFilter
     ) -> list[tuple[datetime | None, int]]:
-        """Last post time and unread count of every chat still in the list, for the results screen."""
         statement = select(Channel.last_post_at, Channel.unread_count).where(
             Channel.account_id == account_id, Channel.kind == kind, Channel.gone.is_(False), utils.role_is(role)
         )
@@ -210,7 +207,6 @@ class ChannelDAO:
         return result.scalar_one()
 
     async def count_pending(self, account_id: int, kind: ChatKind | None = None, role: RoleFilter | None = None) -> int:
-        """Decisions the apply job still has to carry out (the same rows list_decided gives it)."""
         statement = (
             select(func.count())
             .select_from(Channel)
@@ -328,7 +324,6 @@ class ChannelDAO:
         archive: ArchiveFilter = ArchiveFilter.ALL,
         role: RoleFilter = RoleFilter.MEMBER,
     ) -> list[Channel]:
-        """Chats with a final decision, in the order decided: what the progress bar shows."""
         statement = (
             select(Channel)
             .execution_options(populate_existing=True)
@@ -348,7 +343,6 @@ class ChannelDAO:
         archive: ArchiveFilter = ArchiveFilter.ALL,
         role: RoleFilter = RoleFilter.MEMBER,
     ) -> str:
-        """The trail as one letter per decision (k/u/m/a)."""
         statement = (
             select(ChannelDecision.decision)
             .select_from(Channel)
@@ -367,7 +361,6 @@ class ChannelDAO:
         archive: ArchiveFilter = ArchiveFilter.ALL,
         role: RoleFilter = RoleFilter.MEMBER,
     ) -> dict[Decision, int]:
-        """Final decisions per kind for chats still in the list ("skip" is not one)."""
         statement = (
             select(ChannelDecision.decision, func.count().label("chats"))
             .select_from(Channel)

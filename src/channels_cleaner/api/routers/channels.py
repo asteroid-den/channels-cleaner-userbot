@@ -12,7 +12,6 @@ from channels_cleaner.services.sync import TOPIC
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
-# A card's extras come from Telegram on demand
 FROM_TELEGRAM = (errors.NotAuthorized, errors.ChannelNotFound, errors.FloodWait, errors.TelegramError)
 IMMUTABLE = {"Cache-Control": "private, max-age=604800, immutable"}
 

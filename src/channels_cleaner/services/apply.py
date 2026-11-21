@@ -1,5 +1,3 @@
-"""Executes pending decisions (unsubscribe / mute / archive) one by one, politely."""
-
 from __future__ import annotations
 
 import asyncio
@@ -39,7 +37,6 @@ class ApplyItem:
     has_photo: bool
     status: ItemStatus = "queued"
     error: str | None = None
-    #: an applied mute/archive to take back first (the decision was changed since)
     reverts: Decision | None = None
     role: ChatRole = ChatRole.MEMBER
 
@@ -133,7 +130,6 @@ class ApplyService:
                 await self.task
 
     async def sleep(self, seconds: float) -> bool:
-        """Sleep unless cancelled. Returns ``True`` if cancellation was requested."""
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(self.cancel_requested.wait(), timeout=seconds)
 
@@ -219,7 +215,6 @@ class ApplyService:
             await dao.commit()
 
     async def record(self, account_id: int, item: ApplyItem) -> None:
-        """Write down how the item went, and what the chat looks like in Telegram now."""
         async with self.database.session() as session:
             dao = DAO(session)
             now = base.utc_now()
@@ -264,7 +259,6 @@ class ApplyService:
             await dao.commit()
 
     def report(self, item: ApplyItem, result: ItemStatus) -> None:
-        """Count the item's outcome and tell the UI."""
         state = self.state
 
         if result == "done":

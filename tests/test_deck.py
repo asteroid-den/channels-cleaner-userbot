@@ -108,7 +108,6 @@ async def test_apply_review_stats_export(client: httpx.AsyncClient, ctx: AppCont
     csv = await client.get("/api/export", params={"format": "csv"})
     assert csv.text.startswith("channel_id,title")
 
-    # Failed ones can be retried.
     if final["failed"]:
         await client.post("/api/decisions/retry-failed")
         pending = await get_json(client, "/api/decisions", params={"status": "pending"})
