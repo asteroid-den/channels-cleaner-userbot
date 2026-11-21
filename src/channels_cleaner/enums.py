@@ -1,6 +1,7 @@
 """Values are the lowercase member names: the same strings are in the database, the API and the UI."""
 
 from enum import StrEnum, auto
+from typing import Literal
 
 
 class ChatKind(StrEnum):
@@ -71,3 +72,9 @@ class RoleFilter(StrEnum):
 ACTION_DECISIONS = (Decision.UNSUBSCRIBE, Decision.MUTE, Decision.ARCHIVE)
 #: applied actions the app can take back (a left chat is gone for good)
 REVERSIBLE_ACTIONS = (Decision.MUTE, Decision.ARCHIVE)
+
+# The states the UI sees, never stored as such
+AuthStatus = Literal["starting", "unauthorized", "qr", "code", "password", "authorized"]
+#: "idle" before any job; the rest is written down as a JobStatus
+ApplyStatus = Literal["idle", "running", "finished", "cancelled", "error"]
+ItemStatus = Literal["queued", "running", "done", "failed"]

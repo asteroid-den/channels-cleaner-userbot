@@ -7,8 +7,7 @@ from channels_cleaner.api import errors, models, utils
 from channels_cleaner.api.dependencies import AccountIdDep, ContextDep, DAODep
 from channels_cleaner.api.sse import sse_response
 from channels_cleaner.enums import ArchiveFilter, ChatKind, RoleFilter, SortMode
-from channels_cleaner.services import deck
-from channels_cleaner.services.sync import TOPIC
+from channels_cleaner.services import SYNC_TOPIC, deck
 
 router = APIRouter(prefix="/channels", tags=["channels"])
 
@@ -26,7 +25,7 @@ async def post_sync(ctx: ContextDep, account_id: AccountIdDep) -> models.SyncSta
     "/sync/events", response_class=StreamingResponse, responses={**errors.error_responses(), **utils.EVENT_STREAM}
 )
 async def get_sync_events(request: Request, ctx: ContextDep) -> StreamingResponse:
-    return sse_response(request, ctx.bus, TOPIC, ctx.sync.state.snapshot)
+    return sse_response(request, ctx.bus, SYNC_TOPIC, ctx.sync.state.snapshot)
 
 
 @router.get("", responses=errors.error_responses(errors.NotAuthorized))

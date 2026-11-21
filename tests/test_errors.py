@@ -12,9 +12,8 @@ from channels_cleaner.api import errors as api_errors
 from channels_cleaner.app import create_app
 from channels_cleaner.context import AppContext
 from channels_cleaner.enums import ChatKind
+from channels_cleaner.telegram import ChannelInfo, FloodWaitError, GatewayError, MockGateway, TgUser
 from channels_cleaner.telegram.kurigram_gateway import telegram_errors
-from channels_cleaner.telegram.mock_gateway import MockGateway
-from channels_cleaner.telegram.types import ChannelInfo, FloodWaitError, GatewayError, TgUser
 from tests.conftest import get_json, login, wait_for
 
 

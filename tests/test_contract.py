@@ -8,7 +8,7 @@ import pytest
 from channels_cleaner.api import models, openapi
 from channels_cleaner.app import create_app
 from channels_cleaner.context import AppContext
-from channels_cleaner.telegram.mock_gateway import MockGateway
+from channels_cleaner.telegram import MockGateway
 from tests.conftest import get_json, login, wait_for
 
 

@@ -15,7 +15,7 @@ from channels_cleaner.app import create_app
 from channels_cleaner.config import Settings
 from channels_cleaner.context import AppContext
 from channels_cleaner.database import DAO
-from channels_cleaner.telegram.mock_gateway import MockGateway
+from channels_cleaner.telegram import MockGateway
 
 
 @pytest.fixture

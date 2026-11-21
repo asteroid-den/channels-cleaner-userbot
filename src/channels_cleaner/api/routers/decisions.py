@@ -2,10 +2,9 @@ from fastapi import APIRouter
 
 from channels_cleaner.api import errors, models
 from channels_cleaner.api.dependencies import AccountIdDep, ContextDep, DAODep
-from channels_cleaner.database import DAO
+from channels_cleaner.database import DAO, utc_now
 from channels_cleaner.database import models as db_models
 from channels_cleaner.database import utils as db_utils
-from channels_cleaner.database.models import base
 from channels_cleaner.enums import ArchiveFilter, ChatKind, DecisionStatus, RoleFilter
 from channels_cleaner.services import decisions, deck
 
@@ -39,7 +38,7 @@ async def put_decision(
     if decisions.leaves_owned_chat(body.decision, chat.role, allowed=ctx.settings.allow_owner_leave):
         raise errors.OwnerLeaveNotEnabled
 
-    await decisions.decide(dao, account_id, channel_id, body.decision, base.utc_now())
+    await decisions.decide(dao, account_id, channel_id, body.decision, utc_now())
     await dao.commit()
     return models.DecisionResponse(
         counts=await deck.counts(dao, account_id, chat.kind, db_utils.role_filter(chat.role))

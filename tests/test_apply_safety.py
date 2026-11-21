@@ -6,10 +6,10 @@ import httpx
 import pytest
 
 from channels_cleaner.context import AppContext
-from channels_cleaner.database.models import base
+from channels_cleaner.database import utc_now
 from channels_cleaner.enums import Decision
 from channels_cleaner.services import decisions
-from channels_cleaner.telegram.mock_gateway import MockGateway
+from channels_cleaner.telegram import MockGateway
 from tests.conftest import get_json, login, open_dao, wait_for
 
 
@@ -72,7 +72,7 @@ async def test_a_decision_changed_under_the_job_is_not_acted_on(
 
     # Past the API's lock, straight in the database: the last guard is the job's own re-check
     async with open_dao(ctx) as dao:
-        await decisions.decide(dao, account, last, Decision.KEEP, base.utc_now())
+        await decisions.decide(dao, account, last, Decision.KEEP, utc_now())
         await dao.commit()
 
     await wait_for(lambda: apply_finished(ctx))

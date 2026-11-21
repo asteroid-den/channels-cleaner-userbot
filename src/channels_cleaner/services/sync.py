@@ -6,15 +6,13 @@ import logging
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from channels_cleaner.database import DAO, DatabaseManager
-from channels_cleaner.database.models import base
+from channels_cleaner.database import DAO, DatabaseManager, utc_now
 from channels_cleaner.events import EventBus
-from channels_cleaner.telegram.gateway import TelegramGateway
-from channels_cleaner.telegram.types import ChannelInfo, FloodWaitError
+from channels_cleaner.telegram import ChannelInfo, FloodWaitError, TelegramGateway
 
 log = logging.getLogger(__name__)
 
-TOPIC = "sync"
+SYNC_TOPIC = "sync"
 #: What a sync covers, stored once one has finished. A list synced under an older scope is synced once
 #: more: 2 = supergroups and the chats the user runs, 3 = forums too.
 SCOPE_SETTING = "synced_scope"
@@ -74,7 +72,7 @@ class SyncService:
         self.publish("progress")
 
     def publish(self, type_: str) -> None:
-        self.bus.publish(TOPIC, type_, **self.state.snapshot())
+        self.bus.publish(SYNC_TOPIC, type_, **self.state.snapshot())
 
     async def run(self, account_id: int) -> None:
         try:
@@ -93,7 +91,7 @@ class SyncService:
                     self.state.flood_wait = None
                     self.state.fetched = 0
 
-            synced_at = base.utc_now().isoformat()
+            synced_at = utc_now().isoformat()
 
             async with self.database.session() as session:
                 dao = DAO(session)
@@ -135,12 +133,12 @@ class SyncService:
 
         async with self.database.session() as session:
             dao = DAO(session)
-            await dao.upsert_channels(account_id, batch, base.utc_now())
+            await dao.upsert_channels(account_id, batch, utc_now())
             await dao.mark_gone_except(account_id, seen)
             await dao.commit()
 
     async def save(self, account_id: int, batch: list[ChannelInfo]) -> None:
         async with self.database.session() as session:
             dao = DAO(session)
-            await dao.upsert_channels(account_id, batch, base.utc_now())
+            await dao.upsert_channels(account_id, batch, utc_now())
             await dao.commit()

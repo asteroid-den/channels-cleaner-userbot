@@ -18,7 +18,7 @@ from channels_cleaner.enums import (
     RoleFilter,
     SortMode,
 )
-from channels_cleaner.telegram.types import ChannelFull, ChannelInfo
+from channels_cleaner.telegram import ChannelFull, ChannelInfo
 
 # Refreshed by every sync; the rest (about, pulse, full_fetched_at, gone…) is the app's own
 SYNCED_COLUMNS = (

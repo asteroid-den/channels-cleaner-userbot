@@ -11,12 +11,11 @@ from typing import Any
 
 from channels_cleaner.api.errors import ChannelNotFound
 from channels_cleaner.config import Settings
-from channels_cleaner.database import DAO, DatabaseManager
-from channels_cleaner.database.models import Channel, base
+from channels_cleaner.database import DAO, DatabaseManager, utc_now
+from channels_cleaner.database.models import Channel
 from channels_cleaner.enums import MediaKind
 from channels_cleaner.pulse import HISTORY_LIMIT, compute_pulse
-from channels_cleaner.telegram.gateway import TelegramGateway
-from channels_cleaner.telegram.types import ChannelFull, FloodWaitError, RequestRefusedError
+from channels_cleaner.telegram import ChannelFull, FloodWaitError, RequestRefusedError, TelegramGateway
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +63,7 @@ class ChannelsService:
         if fetched_at is None:
             return False
 
-        return base.utc_now() - fetched_at < timedelta(hours=self.settings.full_info_ttl_hours)
+        return utc_now() - fetched_at < timedelta(hours=self.settings.full_info_ttl_hours)
 
     async def get_full(self, account_id: int, channel_id: int) -> Channel:
         row = await self.get_row(account_id, channel_id)
@@ -108,7 +107,7 @@ class ChannelsService:
             except RequestRefusedError as exc:
                 async with self.database.session() as session:
                     dao = DAO(session)
-                    await dao.save_full_refused(account_id, channel_id, str(exc), base.utc_now())
+                    await dao.save_full_refused(account_id, channel_id, str(exc), utc_now())
                     await dao.commit()
 
                 return
@@ -124,7 +123,7 @@ class ChannelsService:
         async with self.database.session() as session:
             dao = DAO(session)
             pulse = compute_pulse(dates, limit=HISTORY_LIMIT) if dates is not None else None
-            await dao.save_full(account_id, channel_id, full, pulse, base.utc_now())
+            await dao.save_full(account_id, channel_id, full, pulse, utc_now())
             await dao.commit()
 
     def media_dir(self, account_id: int) -> Path:
