@@ -79,7 +79,7 @@ src/channels_cleaner/
   telegram/
     gateway.py    Protocol; kurigram_gateway.py (real) and mock_gateway.py (generated channels)
     device_profiles.json  36 TDesktop-like profiles (user's 24 + 12 added); picked once per
-                  session and persisted as data/sessions/account.device.json — never re-rolled
+                  session and persisted as data/sessions/<session>.device.json — never re-rolled
   services/       auth (state machine), sync, channels (lazy full info + pulse + media cache),
                   apply (sequential job, 1.5–3 s jitter, FloodWait sleep+retry, cancel), stats,
                   deck (prefs + the deck's counters, COUNT queries), decisions (decide/undo, owner-leave rule)
@@ -150,6 +150,14 @@ caching "no picture". Started offline, `context.boot` retries (2, 5, 10, 30, 60 
 the login screen shows it and clears it once connected.
 
 Key behaviours / decisions (agreed with the user):
+- Several accounts, one active at a time (2026-11-21, account menu = mockup A in `mockups/account-menu.html`).
+  Each has its own session file: `account` (the one from before) or `session-<hex>`, kept in `accounts.session_name`;
+  the latest `selected_at` is connected on start. `ctx.switch_session()` refuses while applying (409), stops and
+  clears the sync, clears the flood cooldowns and has the gateway connect the other session; a login given up
+  halfway is deleted (`forget_session`). Logout clears `session_name` (wipe deletes the account) and hands over to
+  the next account, or opens a new session to log in. `/api/accounts` (list with chats/pending, `/{id}/activate`,
+  `/add`). Mock mode: one state file and user per session (`MOCK_USERS`), each with chats of its own. The UI drops
+  the deck when the user id changes (App.vue).
 - Broadcast channels and supergroups (`channels.kind`, migration 4); plain basic groups are not covered.
   Chats the user owns/admins are included with `channels.role` (member/admin/owner, migration 5) and have
   their own deck: `role=member|managed` next to `kind`/`archive` on every deck query; the settings menu's
@@ -221,4 +229,3 @@ The user rejected the retro "press" look; wants modern digital but not generic S
 - Base images in the Dockerfile are pinned by tag + digest and CI's Python to 3.12.16: no Dependabot, bump by
   hand (`docker buildx imagetools inspect <image>:<tag>`).
 - Optional: bundle only latin+cyrillic font subsets; 5 moderate `npm audit` issues are dev-only.
-- Spec extras agreed for later: multi-account support (DB already keyed by account_id).
