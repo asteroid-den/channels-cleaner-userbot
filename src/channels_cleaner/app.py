@@ -1,5 +1,3 @@
-"""FastAPI application factory."""
-
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -18,22 +16,21 @@ from channels_cleaner.context import AppContext
 
 STATIC_DIR = Path(__file__).parent / "static"
 
-_NOT_BUILT = """<!doctype html><meta charset="utf-8"><title>Channels Cleaner</title>
+NOT_BUILT = """<!doctype html><meta charset="utf-8"><title>Channels Cleaner</title>
 <body style="font-family:system-ui;padding:2rem;background:#111;color:#eee">
 <h1>Frontend is not built</h1>
 <p>Run <code>npm --prefix frontend ci && npm --prefix frontend run build</code>
 and restart, or use the Vite dev server (<code>npm --prefix frontend run dev</code>).</p>"""
 
 
-async def _spa(path: str) -> Response:
-    """The built UI: files as they are, any other path gets index.html for the client-side router."""
+async def serve_spa(path: str) -> Response:
     if path.startswith("api/"):
         return errors.RouteNotFound().response()
 
     index = STATIC_DIR / "index.html"
 
     if not index.exists():
-        return HTMLResponse(_NOT_BUILT, status_code=503)
+        return HTMLResponse(NOT_BUILT, status_code=503)
 
     candidate = (STATIC_DIR / path).resolve()
 
@@ -66,5 +63,5 @@ def create_app(settings: Settings | None = None, ctx: AppContext | None = None) 
 
     errors.install(app)
 
-    app.add_api_route("/{path:path}", _spa, methods=["GET"], include_in_schema=False)
+    app.add_api_route("/{path:path}", serve_spa, methods=["GET"], include_in_schema=False)
     return app

@@ -129,8 +129,8 @@ async def login(client: httpx.AsyncClient, ctx: AppContext) -> None:
         return state["status"] == "authorized" and not ctx.sync.state.running
 
     await wait_for(ready)
-    await wait_for(lambda: _synced(ctx))
+    await wait_for(lambda: synced(ctx))
 
 
-async def _synced(ctx: AppContext) -> bool:
+async def synced(ctx: AppContext) -> bool:
     return ctx.sync.state.last_synced_at is not None

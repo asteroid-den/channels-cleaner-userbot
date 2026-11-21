@@ -38,7 +38,6 @@ export const useAuthStore = defineStore('auth', () => {
     set(await api.get<AuthState>('/api/auth/state'))
   }
 
-  /** Poll until the backend has finished connecting to Telegram. */
   async function waitReady() {
     for (;;) {
       try {

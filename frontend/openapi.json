@@ -1703,7 +1703,6 @@
           "decisions"
         ],
         "summary": "Get Decisions Trail",
-        "description": "Decided chats in the order decided: what the progress bar shows, for rewinding.",
         "operationId": "get_decisions_trail_api_decisions_trail_get",
         "parameters": [
           {
@@ -2966,8 +2965,7 @@
           "active",
           "archived"
         ],
-        "title": "ArchiveFilter",
-        "description": "Which part of the chat list the deck shows."
+        "title": "ArchiveFilter"
       },
       "AuthStateResponse": {
         "properties": {
@@ -3198,6 +3196,17 @@
           "full_loaded": {
             "type": "boolean",
             "title": "Full Loaded"
+          },
+          "full_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Error"
           },
           "decision": {
             "anyOf": [
@@ -3460,6 +3469,17 @@
             "type": "boolean",
             "title": "Full Loaded"
           },
+          "full_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Error"
+          },
           "decision": {
             "anyOf": [
               {
@@ -3559,8 +3579,7 @@
           "admin",
           "owner"
         ],
-        "title": "ChatRole",
-        "description": "What the user is in a chat."
+        "title": "ChatRole"
       },
       "CheckPasswordRequest": {
         "properties": {
@@ -3904,8 +3923,7 @@
           "type",
           "message"
         ],
-        "title": "ErrorResponse",
-        "description": "The body of every error (api/errors.py); which fields come along depends on the type."
+        "title": "ErrorResponse"
       },
       "ExportRow": {
         "properties": {
@@ -3985,8 +4003,7 @@
           "last_post_at",
           "unsubscribed_at"
         ],
-        "title": "ExportRow",
-        "description": "A chat left, as /api/export lists it."
+        "title": "ExportRow"
       },
       "FloodWaitError": {
         "properties": {
@@ -4457,8 +4474,7 @@
           "member",
           "managed"
         ],
-        "title": "RoleFilter",
-        "description": "The two decks: chats the user is just in, and the ones they run (admin or owner)."
+        "title": "RoleFilter"
       },
       "SendCodeRequest": {
         "properties": {

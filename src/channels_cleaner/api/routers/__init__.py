@@ -1,5 +1,3 @@
-"""All HTTP endpoints, one module per area. Everything lives under ``/api``."""
-
 from fastapi import APIRouter
 
 from channels_cleaner.api.models import ErrorResponse

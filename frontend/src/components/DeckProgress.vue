@@ -44,7 +44,7 @@ const RUN_CLASS: Record<string, string> = {
   a: 'bg-accent',
 }
 
-// --- the loupe: hover the bar to see the decisions around the pointer, click to rewind -----
+// The loupe: hover the bar to see the decisions around the pointer, click to rewind
 const hit = useTemplateRef<HTMLElement>('hit')
 const open = ref(false)
 const inLoupe = ref(false)

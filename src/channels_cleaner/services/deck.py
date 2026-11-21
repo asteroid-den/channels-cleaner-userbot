@@ -1,5 +1,3 @@
-"""The counters the deck, its settings menu and the header show."""
-
 from __future__ import annotations
 
 from channels_cleaner.api import models
@@ -14,7 +12,6 @@ async def prefs(dao: DAO, account_id: int) -> models.DeckPrefs:
 
 
 async def archive_filter(dao: DAO, account_id: int, archive: ArchiveFilter | None) -> ArchiveFilter:
-    """The archive filter asked for, else the one saved in the deck prefs."""
     if archive is not None:
         return archive
 

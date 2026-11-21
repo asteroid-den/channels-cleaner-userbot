@@ -1,9 +1,4 @@
-"""Channel "pulse": weekly post counts built from the dates of a channel's recent posts.
-
-We only ever fetch one page of history (up to ``HISTORY_LIMIT`` posts). For busy channels
-that page covers just the last few weeks; older weeks are then *unknown* (``None``) rather
-than zero, so the chart never pretends a channel went quiet when we simply didn't look.
-"""
+"""Weekly post counts from one page of history; weeks it doesn't reach are ``None``, not a silence."""
 
 from __future__ import annotations
 
@@ -23,12 +18,7 @@ def compute_pulse(
     weeks: int = WEEKS,
     limit: int = HISTORY_LIMIT,
 ) -> dict[str, Any]:
-    """Bucket post dates into ``weeks`` weekly bins, oldest first.
-
-    Returns ``{"weeks": [int | None, ...], "per_week": float, "truncated": bool,
-    "sample": int}``. ``per_week`` is the recent posting rate (last ``RECENT_WEEKS`` weeks,
-    or the span we actually saw if that is shorter).
-    """
+    """``per_week`` is the rate over the last ``RECENT_WEEKS`` weeks, or over the span seen if shorter."""
     now = (now or datetime.now(UTC)).astimezone(UTC)
     utc = sorted((d.astimezone(UTC) for d in dates), reverse=True)
     truncated = len(utc) >= limit
@@ -54,10 +44,10 @@ def compute_pulse(
 
     if truncated and oldest_seen is not None:
         span_weeks = max((now - oldest_seen) / timedelta(weeks=1), 1 / 7)
-        per_week = len(utc) / span_weeks if span_weeks < RECENT_WEEKS else _recent(counts)
+        per_week = len(utc) / span_weeks if span_weeks < RECENT_WEEKS else recent_rate(counts)
 
     else:
-        per_week = _recent(counts)
+        per_week = recent_rate(counts)
 
     return {
         "weeks": counts,
@@ -67,6 +57,6 @@ def compute_pulse(
     }
 
 
-def _recent(counts: list[int | None]) -> float:
+def recent_rate(counts: list[int | None]) -> float:
     tail = [c for c in counts[-RECENT_WEEKS:] if c is not None]
     return sum(tail) / len(tail) if tail else 0.0

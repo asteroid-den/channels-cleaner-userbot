@@ -21,7 +21,7 @@ from channels_cleaner.enums import (
 from channels_cleaner.telegram.types import ChannelFull, ChannelInfo
 
 # Refreshed by every sync; the rest (about, pulse, full_fetched_at, gone…) is the app's own
-_SYNCED = (
+SYNCED_COLUMNS = (
     "title",
     "username",
     "unread_count",
@@ -74,7 +74,7 @@ class ChannelDAO:
         statement = statement.on_conflict_do_update(
             index_elements=[Channel.account_id, Channel.channel_id],
             set_={
-                **{column: statement.excluded[column] for column in _SYNCED},
+                **{column: statement.excluded[column] for column in SYNCED_COLUMNS},
                 # The dialogs list rarely has it; a count from the full info stays until a better one comes
                 "members_count": func.coalesce(statement.excluded.members_count, Channel.members_count),
                 "gone": False,
@@ -84,7 +84,6 @@ class ChannelDAO:
         await self.session.execute(statement)
 
     async def mark_gone_except(self, account_id: int, keep_ids: set[int]) -> None:
-        """Flag chats missing from the latest sync (the user left them elsewhere)."""
         statement = (
             update(Channel)
             .where(Channel.account_id == account_id, Channel.gone.is_(False), Channel.channel_id.not_in(keep_ids))
@@ -134,6 +133,7 @@ class ChannelDAO:
             "about": full.about,
             "members_count": func.coalesce(full.members_count, Channel.members_count),
             "full_fetched_at": fetched_at,
+            "full_error": None,
         }
 
         # A failed history fetch keeps the pulse from before
@@ -142,6 +142,15 @@ class ChannelDAO:
 
         statement = (
             update(Channel).where(Channel.account_id == account_id, Channel.channel_id == channel_id).values(values)
+        )
+
+        await self.session.execute(statement)
+
+    async def save_full_refused(self, account_id: int, channel_id: int, error: str, fetched_at: datetime) -> None:
+        statement = (
+            update(Channel)
+            .where(Channel.account_id == account_id, Channel.channel_id == channel_id)
+            .values(full_error=error, full_fetched_at=fetched_at)
         )
 
         await self.session.execute(statement)
@@ -171,7 +180,6 @@ class ChannelDAO:
     async def list_subscribed(
         self, account_id: int, kind: ChatKind, role: RoleFilter
     ) -> list[tuple[datetime | None, int]]:
-        """Last post time and unread count of every chat still in the list, for the results screen."""
         statement = select(Channel.last_post_at, Channel.unread_count).where(
             Channel.account_id == account_id, Channel.kind == kind, Channel.gone.is_(False), utils.role_is(role)
         )
@@ -199,7 +207,6 @@ class ChannelDAO:
         return result.scalar_one()
 
     async def count_pending(self, account_id: int, kind: ChatKind | None = None, role: RoleFilter | None = None) -> int:
-        """Decisions the apply job still has to carry out (the same rows list_decided gives it)."""
         statement = (
             select(func.count())
             .select_from(Channel)
@@ -317,13 +324,12 @@ class ChannelDAO:
         archive: ArchiveFilter = ArchiveFilter.ALL,
         role: RoleFilter = RoleFilter.MEMBER,
     ) -> list[Channel]:
-        """Chats with a final decision, in the order decided: what the progress bar shows."""
         statement = (
             select(Channel)
             .execution_options(populate_existing=True)
             .join(Channel.decision)
             .options(contains_eager(Channel.decision))
-            .where(*_trail_conditions(account_id, kind, archive, role))
+            .where(*trail_conditions(account_id, kind, archive, role))
             .order_by(ChannelDecision.decided_at, utils.DECISION_ROWID)
         )
 
@@ -337,12 +343,11 @@ class ChannelDAO:
         archive: ArchiveFilter = ArchiveFilter.ALL,
         role: RoleFilter = RoleFilter.MEMBER,
     ) -> str:
-        """The trail as one letter per decision (k/u/m/a)."""
         statement = (
             select(ChannelDecision.decision)
             .select_from(Channel)
             .join(Channel.decision)
-            .where(*_trail_conditions(account_id, kind, archive, role))
+            .where(*trail_conditions(account_id, kind, archive, role))
             .order_by(ChannelDecision.decided_at, utils.DECISION_ROWID)
         )
 
@@ -356,12 +361,11 @@ class ChannelDAO:
         archive: ArchiveFilter = ArchiveFilter.ALL,
         role: RoleFilter = RoleFilter.MEMBER,
     ) -> dict[Decision, int]:
-        """Final decisions per kind for chats still in the list ("skip" is not one)."""
         statement = (
             select(ChannelDecision.decision, func.count().label("chats"))
             .select_from(Channel)
             .join(Channel.decision)
-            .where(*_trail_conditions(account_id, kind, archive, role))
+            .where(*trail_conditions(account_id, kind, archive, role))
             .group_by(ChannelDecision.decision)
         )
 
@@ -369,7 +373,7 @@ class ChannelDAO:
         return dict.fromkeys(utils.TRAIL_CODES, 0) | {row.decision: row.chats for row in result}
 
 
-def _trail_conditions(
+def trail_conditions(
     account_id: int, kind: ChatKind, archive: ArchiveFilter, role: RoleFilter
 ) -> tuple[ColumnElement[bool], ...]:
     return (

@@ -1,4 +1,4 @@
-"""``python -m channels_cleaner.healthcheck``, the Docker HEALTHCHECK: exit code 0 when the app answers /api/health."""
+"""The Docker HEALTHCHECK: exits 0 once the app answers /api/health."""
 
 from __future__ import annotations
 

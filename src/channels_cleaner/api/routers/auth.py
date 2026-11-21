@@ -8,8 +8,7 @@ from channels_cleaner.services.auth import TOPIC
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# What Telegram can answer a login step with
-_LOGIN_STEP = (errors.LoginStepUnexpected, errors.FloodWait, errors.TelegramError)
+LOGIN_STEP = (errors.LoginStepUnexpected, errors.FloodWait, errors.TelegramError)
 
 
 @router.get("/state", responses=errors.error_responses())
@@ -28,19 +27,19 @@ async def post_qr_login(ctx: ContextDep) -> models.AuthStateResponse:
     return models.AuthStateResponse.model_validate(ctx.auth.state)
 
 
-@router.post("/phone/send-code", responses=errors.error_responses(*_LOGIN_STEP, errors.InvalidPhone))
+@router.post("/phone/send-code", responses=errors.error_responses(*LOGIN_STEP, errors.InvalidPhone))
 async def post_send_code(body: models.SendCodeRequest, ctx: ContextDep) -> models.AuthStateResponse:
     await ctx.auth.send_code(body.phone.strip())
     return models.AuthStateResponse.model_validate(ctx.auth.state)
 
 
-@router.post("/phone/sign-in", responses=errors.error_responses(*_LOGIN_STEP, errors.InvalidCode))
+@router.post("/phone/sign-in", responses=errors.error_responses(*LOGIN_STEP, errors.InvalidCode))
 async def post_sign_in(body: models.SignInRequest, ctx: ContextDep) -> models.AuthStateResponse:
     await ctx.auth.sign_in(body.code.strip())
     return models.AuthStateResponse.model_validate(ctx.auth.state)
 
 
-@router.post("/password", responses=errors.error_responses(*_LOGIN_STEP, errors.InvalidPassword))
+@router.post("/password", responses=errors.error_responses(*LOGIN_STEP, errors.InvalidPassword))
 async def post_password(body: models.CheckPasswordRequest, ctx: ContextDep) -> models.AuthStateResponse:
     await ctx.auth.check_password(body.password)
     return models.AuthStateResponse.model_validate(ctx.auth.state)

@@ -1,7 +1,4 @@
-"""The API's OpenAPI schema as the UI's types are generated from it: frontend/openapi.json.
-
-uv run python -m channels_cleaner.api.openapi && npm --prefix frontend run api:types
-"""
+"""Writes the schema the UI's types are generated from: ``… -m channels_cleaner.api.openapi && npm run api:types``."""
 
 from __future__ import annotations
 

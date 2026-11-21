@@ -56,7 +56,6 @@ export const api = {
 
 export type SseHandlers = Record<string, (data: never) => void>
 
-/** Subscribe to a Server-Sent Events stream; returns an unsubscribe function. */
 export function subscribe(url: string, handlers: SseHandlers): () => void {
   const source = new EventSource(url)
   for (const [event, handler] of Object.entries(handlers)) {

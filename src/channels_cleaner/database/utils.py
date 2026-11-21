@@ -3,7 +3,6 @@ from sqlalchemy import ColumnElement, literal_column, true
 from channels_cleaner.database.models import Channel
 from channels_cleaner.enums import ArchiveFilter, ChatRole, Decision, RoleFilter
 
-#: one letter per final decision in the progress bar's trail
 TRAIL_CODES = {Decision.KEEP: "k", Decision.UNSUBSCRIBE: "u", Decision.MUTE: "m", Decision.ARCHIVE: "a"}
 
 # Ties on decided_at (same microsecond) keep the order of insertion; decisions has no column of its own for that
@@ -28,5 +27,4 @@ def role_is(role: RoleFilter) -> ColumnElement[bool]:
 
 
 def role_filter(role: ChatRole) -> RoleFilter:
-    """The deck a chat belongs to, by what the user is there."""
     return RoleFilter.MEMBER if role is ChatRole.MEMBER else RoleFilter.MANAGED

@@ -1,5 +1,3 @@
-"""The deck's saved prefs and what the results screen shows: stats and the export of the chats left."""
-
 import json
 from typing import Annotated, Literal
 

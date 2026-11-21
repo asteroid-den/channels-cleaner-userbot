@@ -1,8 +1,4 @@
-"""Open a URL in the user's browser without letting the browser write into our terminal.
-
-``webbrowser.open`` on Linux spawns the browser with our stdout/stderr attached, so things
-like Firefox sandbox and GTK theme warnings end up in the middle of the server log.
-"""
+"""Opens the browser detached: ``webbrowser.open`` on Linux lets it print its warnings into the server log."""
 
 from __future__ import annotations
 
@@ -12,12 +8,11 @@ import subprocess
 import sys
 import webbrowser
 
-_OPENERS = {"darwin": "open"}
+OPENERS = {"darwin": "open"}
 
 
-def _spawn_detached(command: list[str]) -> bool:
+def spawn_detached(command: list[str]) -> bool:
     try:
-        # A fixed opener and a URL we built ourselves, no shell involved
         subprocess.Popen(  # noqa: S603
             command,
             stdin=subprocess.DEVNULL,
@@ -33,9 +28,7 @@ def _spawn_detached(command: list[str]) -> bool:
 
 
 def open_url(url: str) -> bool:
-    """Open ``url`` in the default browser. Returns ``False`` if nothing could be launched."""
     if sys.platform == "win32":
-        # The shell association handles it; nothing is printed to our console.
         try:
             os.startfile(url)  # noqa: S606 - the shell association, as a double-click would
 
@@ -44,9 +37,9 @@ def open_url(url: str) -> bool:
 
         return True
 
-    opener = shutil.which(_OPENERS.get(sys.platform, "xdg-open"))
+    opener = shutil.which(OPENERS.get(sys.platform, "xdg-open"))
 
-    if opener and _spawn_detached([opener, url]):
+    if opener and spawn_detached([opener, url]):
         return True
 
     return webbrowser.open(url)

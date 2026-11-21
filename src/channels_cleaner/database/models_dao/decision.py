@@ -9,7 +9,7 @@ from channels_cleaner.database.models import Channel, ChannelDecision
 from channels_cleaner.enums import ACTION_DECISIONS, ChatKind, Decision, DecisionStatus, RoleFilter
 
 # An action already done in Telegram is history, not a choice to forget
-_APPLIED_ACTION = and_(ChannelDecision.status == DecisionStatus.APPLIED, ChannelDecision.decision.in_(ACTION_DECISIONS))
+APPLIED_ACTION = and_(ChannelDecision.status == DecisionStatus.APPLIED, ChannelDecision.decision.in_(ACTION_DECISIONS))
 
 
 class DecisionDAO:
@@ -75,7 +75,7 @@ class DecisionDAO:
     async def delete_decision(self, account_id: int, channel_id: int) -> bool:
         statement = (
             delete(ChannelDecision)
-            .where(ChannelDecision.account_id == account_id, ChannelDecision.channel_id == channel_id, ~_APPLIED_ACTION)
+            .where(ChannelDecision.account_id == account_id, ChannelDecision.channel_id == channel_id, ~APPLIED_ACTION)
             .returning(ChannelDecision.channel_id)
         )
 
@@ -90,7 +90,7 @@ class DecisionDAO:
         role: RoleFilter = RoleFilter.MEMBER,
     ) -> int:
         """Forget non-action decisions (keep/skip) and pending ones; applied actions stay."""
-        statement = delete(ChannelDecision).where(ChannelDecision.account_id == account_id, ~_APPLIED_ACTION)
+        statement = delete(ChannelDecision).where(ChannelDecision.account_id == account_id, ~APPLIED_ACTION)
 
         if only is not None:
             statement = statement.where(ChannelDecision.decision == only)
@@ -167,7 +167,6 @@ class DecisionDAO:
         return [(decision, status, count) for decision, status, count in result]
 
     async def unread_cleared(self, account_id: int, kind: ChatKind, role: RoleFilter) -> int:
-        """Unread posts in the chats the app has left."""
         statement = (
             select(func.coalesce(func.sum(Channel.unread_count), 0))
             .select_from(Channel)

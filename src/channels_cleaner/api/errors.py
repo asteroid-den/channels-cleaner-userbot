@@ -1,14 +1,8 @@
-"""The errors the API answers with: ``{"ok": false, "type": ..., "message": ..., <fields>}``.
-
-One class per error, under a class per HTTP status: CODE comes from that one, TYPE is what the UI acts on, MESSAGE a
-fallback text for it, the dataclass fields go into the body. Services raise these directly; the gateway's own errors
-(telegram/types.py) know nothing of HTTP and are translated here. A route lists the ones it can answer with in
-``error_responses``, which puts them into the OpenAPI schema.
-"""
+"""The API's errors: a class per HTTP status, under it one dataclass per error; its fields go into the body."""
 
 from collections import defaultdict
 from dataclasses import asdict, dataclass, fields, is_dataclass
-from functools import reduce
+from functools import cache, reduce
 from typing import Any, ClassVar, Literal
 
 from fastapi import FastAPI, Request
@@ -34,36 +28,10 @@ class BaseError(Exception):
     def response(self) -> JSONResponse:
         return JSONResponse(self.body(), self.CODE)
 
-    @classmethod
-    def model(cls) -> type[BaseModel]:
-        """The body of this error for the OpenAPI schema, built once per class."""
-        cached: type[BaseModel] | None = cls.__dict__.get("_model")
-
-        if cached is not None:
-            return cached
-
-        field_defs: dict[str, Any] = {
-            "ok": (Literal[False], False),
-            "type": (Literal[cls.TYPE], cls.TYPE),
-            "message": (str, cls.MESSAGE),
-        }
-
-        if is_dataclass(cls):
-            for field in fields(cls):
-                field_defs[field.name] = (field.type, ...)
-
-        name = cls.__name__ if cls.__name__.endswith("Error") else f"{cls.__name__}Error"
-        model = create_model(name, **field_defs)
-        cls._model = model  # pyright: ignore[reportAttributeAccessIssue] - a cache on the class itself
-        return model
-
 
 class ErrorDetail(BaseModel):
     loc: list[str | int]
     msg: str
-
-
-# --- one class per HTTP status --------------------------------------------------------------------------------------
 
 
 class BadRequest(BaseError):
@@ -96,9 +64,6 @@ class TooManyRequests(BaseError):
 
 class BadGateway(BaseError):
     CODE = 502
-
-
-# --- the API's own --------------------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -141,9 +106,6 @@ class CrossOriginRefused(Forbidden):
     MESSAGE = "Requests from other sites are refused"
 
 
-# --- login ----------------------------------------------------------------------------------------------------------
-
-
 @dataclass
 class NotAuthorized(Unauthorized):
     TYPE = "not_authorized"
@@ -154,7 +116,6 @@ class NotAuthorized(Unauthorized):
 class InvalidPhone(BadRequest):
     TYPE = "invalid_phone"
     MESSAGE = "That phone number is not valid"
-    # What Telegram said
     reason: str
 
 
@@ -174,14 +135,9 @@ class InvalidPassword(BadRequest):
 
 @dataclass
 class LoginStepUnexpected(Conflict):
-    """A login step that doesn't fit where the login is: a code nobody asked for, a second login."""
-
     TYPE = "login_step_unexpected"
     MESSAGE = "The login is not at that step"
     reason: str
-
-
-# --- chats and decisions --------------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -200,8 +156,6 @@ class PictureNotFound(NotFound):
 
 @dataclass
 class ApplyJobRunning(Conflict):
-    """Decisions are locked while the apply job runs, and only one job runs at a time."""
-
     TYPE = "apply_job_running"
     MESSAGE = "Wait for the running apply job to finish"
 
@@ -210,9 +164,6 @@ class ApplyJobRunning(Conflict):
 class OwnerLeaveNotEnabled(Conflict):
     TYPE = "owner_leave_not_enabled"
     MESSAGE = "Leaving a chat you own is off (start with --allow-owner-leave to allow it)"
-
-
-# --- Telegram -------------------------------------------------------------------------------------------------------
 
 
 @dataclass
@@ -229,26 +180,36 @@ class TelegramError(BadGateway):
     reason: str
 
 
-# --- in the OpenAPI schema ------------------------------------------------------------------------------------------
-
-#: what any route can answer with: the guard's refusals, a request that doesn't fit, a crash
 COMMON_ERRORS: tuple[type[BaseError], ...] = (HostNotAllowed, CrossOriginRefused, InvalidRequest, HttpInternalError)
 
 
+@cache
+def error_model(error: type[BaseError]) -> type[BaseModel]:
+    field_defs: dict[str, Any] = {
+        "ok": (Literal[False], False),
+        "type": (Literal[error.TYPE], error.TYPE),
+        "message": (str, error.MESSAGE),
+    }
+
+    # Field types are real types here: this module must not use `from __future__ import annotations`
+    if is_dataclass(error):
+        for field in fields(error):
+            field_defs[field.name] = (field.type, ...)
+
+    name = error.__name__ if error.__name__.endswith("Error") else f"{error.__name__}Error"
+    return create_model(name, **field_defs)
+
+
 def error_responses(*errors: type[BaseError]) -> dict[int | str, dict[str, Any]]:
-    """A route's ``responses``: the common errors and its own, one model (or a union of models) per status."""
     grouped: dict[int, list[Any]] = defaultdict(list)
 
     for error in (*COMMON_ERRORS, *errors):
-        grouped[error.CODE].append(error.model())
+        grouped[error.CODE].append(error_model(error))
 
     return {code: {"model": reduce(lambda a, b: a | b, models)} for code, models in grouped.items()}
 
 
-# --- handlers -------------------------------------------------------------------------------------------------------
-
-
-def _translate(exc: Exception) -> BaseError:  # noqa: PLR0911 - one answer per kind of error
+def translate(exc: Exception) -> BaseError:  # noqa: PLR0911 - one answer per kind of error
     match exc:
         case BaseError():
             return exc
@@ -270,10 +231,10 @@ def _translate(exc: Exception) -> BaseError:  # noqa: PLR0911 - one answer per k
             return HttpInternalError()
 
 
-async def _handle(_: Request, exc: Exception) -> JSONResponse:
-    return _translate(exc).response()
+async def handle(_: Request, exc: Exception) -> JSONResponse:
+    return translate(exc).response()
 
 
 def install(app: FastAPI) -> None:
     for error in (BaseError, GatewayError, RequestValidationError, HTTPException, Exception):
-        app.add_exception_handler(error, _handle)
+        app.add_exception_handler(error, handle)

@@ -29,7 +29,6 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => deck.unwatchSync())
 
-// --- actions -------------------------------------------------------------------------------
 const pressed = ref<string | null>(null)
 
 function flash(key: string) {
@@ -67,7 +66,7 @@ useHotkeys({
   'mod+ArrowRight': () => !swiper.value?.busy && deck.stepForward(),
 })
 
-// --- "+1" chip: flies from the leaving card into the progress bar in the header -------------
+// The "+1" chip flies from the leaving card into the progress bar
 const CHIP_CLASS: Record<Exclude<Decision, 'skip'>, string> = {
   keep: 'bg-success',
   unsubscribe: 'bg-danger-strong',
@@ -112,7 +111,6 @@ function onFlinging(decision: Decision, from: DOMRect) {
   }
 }
 
-// --- side zones: click to decide, hover to preview ------------------------------------------
 function zoneMove(e: PointerEvent) {
   const el = e.currentTarget as HTMLElement
   const r = el.getBoundingClientRect()
@@ -127,13 +125,12 @@ function zoneLeave() {
   if (swiper.value) swiper.value.preview = null
 }
 
-// --- leaving a chat the user owns is off unless the app was started with --allow-owner-leave ----
+// Leaving a chat the user owns is off unless the app was started with --allow-owner-leave
 const canLeave = computed(() => deck.current?.role !== 'owner' || ui.allowOwnerLeave)
 function onRefused() {
   ui.toast(t('deck.ownerLeaveOff'), 'info')
 }
 
-// --- derived ---------------------------------------------------------------------------------
 const showSync = computed(() => deck.syncing && deck.items.length === 0)
 const empty = computed(() => deck.loaded && !deck.syncing && deck.items.length === 0)
 
@@ -174,12 +171,10 @@ const ZONES = [
 <template>
   <!-- overflow-y-clip: the cursor glow of the side zones runs past the zone, but not past the page -->
   <div class="flex flex-1 flex-col overflow-y-clip">
-    <!-- progress, centred right above the deck -->
     <div v-if="deck.loaded && !showSync" class="relative z-20 flex justify-center px-6 pt-4">
       <div class="w-full max-w-[760px]"><DeckProgress /></div>
     </div>
 
-    <!-- gathering the list -->
     <section
       v-if="showSync"
       class="flex flex-1 flex-col items-center justify-center gap-4 text-center"
@@ -195,7 +190,6 @@ const ZONES = [
       </p>
     </section>
 
-    <!-- everything decided -->
     <section
       v-else-if="empty"
       class="flex flex-1 flex-col items-center justify-center gap-5 text-center"
@@ -231,7 +225,6 @@ const ZONES = [
       </div>
     </section>
 
-    <!-- the deck -->
     <section
       v-else-if="deck.loaded"
       class="glow relative flex min-h-0 flex-1 flex-col items-center"

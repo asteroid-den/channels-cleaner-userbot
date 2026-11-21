@@ -26,7 +26,7 @@ def left(gateway: MockGateway, monkeypatch: pytest.MonkeyPatch) -> list[int]:
     return calls
 
 
-async def _queue(client: httpx.AsyncClient, n: int) -> list[int]:
+async def queue_unsubscribes(client: httpx.AsyncClient, n: int) -> list[int]:
     ids = [item["id"] for item in (await get_json(client, "/api/channels"))["items"][:n]]
 
     for cid in ids:
@@ -35,16 +35,16 @@ async def _queue(client: httpx.AsyncClient, n: int) -> list[int]:
     return ids
 
 
-async def _finished(ctx: AppContext) -> bool:
+async def apply_finished(ctx: AppContext) -> bool:
     return not ctx.apply.running
 
 
 async def test_two_starts_at_once_run_one_job(client: httpx.AsyncClient, ctx: AppContext, left: list[int]) -> None:
     await login(client, ctx)
-    queued = await _queue(client, 3)
+    queued = await queue_unsubscribes(client, 3)
 
     first, second = await asyncio.gather(client.post("/api/apply"), client.post("/api/apply"))
-    await wait_for(lambda: _finished(ctx))
+    await wait_for(lambda: apply_finished(ctx))
 
     assert sorted([first.status_code, second.status_code]) == [200, 409]
     assert sorted(left) == sorted(queued)
@@ -52,11 +52,11 @@ async def test_two_starts_at_once_run_one_job(client: httpx.AsyncClient, ctx: Ap
 
 async def test_decisions_are_locked_while_applying(client: httpx.AsyncClient, ctx: AppContext, left: list[int]) -> None:
     await login(client, ctx)
-    queued = await _queue(client, 3)
+    queued = await queue_unsubscribes(client, 3)
     assert (await client.post("/api/apply")).status_code == 200
 
     r = await client.put(f"/api/decisions/{queued[-1]}", json={"decision": "keep"})
-    await wait_for(lambda: _finished(ctx))
+    await wait_for(lambda: apply_finished(ctx))
 
     assert r.status_code == 409
     assert sorted(left) == sorted(queued)
@@ -67,7 +67,7 @@ async def test_a_decision_changed_under_the_job_is_not_acted_on(
 ) -> None:
     await login(client, ctx)
     account = ctx.auth.account_id
-    first, last = await _queue(client, 2)
+    first, last = await queue_unsubscribes(client, 2)
     assert (await client.post("/api/apply")).status_code == 200
 
     # Past the API's lock, straight in the database: the last guard is the job's own re-check
@@ -75,7 +75,7 @@ async def test_a_decision_changed_under_the_job_is_not_acted_on(
         await decisions.decide(dao, account, last, Decision.KEEP, base.utc_now())
         await dao.commit()
 
-    await wait_for(lambda: _finished(ctx))
+    await wait_for(lambda: apply_finished(ctx))
 
     assert left == [first]
     item = next(i for i in ctx.apply.state.items if i.channel_id == last)

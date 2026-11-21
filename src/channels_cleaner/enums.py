@@ -1,8 +1,4 @@
-"""Closed sets of values shared by the gateway, the database and the API.
-
-Values are the lowercase member names (``auto()`` on a StrEnum): the same strings sit in the database, travel through
-the API and are compared in the UI.
-"""
+"""Values are the lowercase member names: the same strings are in the database, the API and the UI."""
 
 from enum import StrEnum, auto
 
@@ -14,8 +10,6 @@ class ChatKind(StrEnum):
 
 
 class ChatRole(StrEnum):
-    """What the user is in a chat."""
-
     MEMBER = auto()
     ADMIN = auto()
     OWNER = auto()
@@ -64,21 +58,16 @@ class SortMode(StrEnum):
 
 
 class ArchiveFilter(StrEnum):
-    """Which part of the chat list the deck shows."""
-
     ALL = auto()
     ACTIVE = auto()
     ARCHIVED = auto()
 
 
 class RoleFilter(StrEnum):
-    """The two decks: chats the user is just in, and the ones they run (admin or owner)."""
-
     MEMBER = auto()
     MANAGED = auto()
 
 
-#: final decisions that need a call to Telegram
 ACTION_DECISIONS = (Decision.UNSUBSCRIBE, Decision.MUTE, Decision.ARCHIVE)
 #: applied actions the app can take back (a left chat is gone for good)
 REVERSIBLE_ACTIONS = (Decision.MUTE, Decision.ARCHIVE)

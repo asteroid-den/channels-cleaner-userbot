@@ -1,12 +1,7 @@
-"""Keeps other websites out of the API.
+"""Keeps other websites out of the API: any page in the user's browser can reach localhost.
 
-The server listens on localhost, but the user's browser reaches localhost from any page it has open:
-- a page can send a "simple" POST (no body, no preflight), e.g. ``POST /api/apply``, which would leave every queued
-  chat (cross-site request forgery);
-- a domain that resolves to 127.0.0.1 after the page loaded (DNS rebinding) is same-origin with the API and can read
-  and do everything.
-
-So every request must name a local host, and a request that changes something must come from the app's own page.
+A cross-site "simple" POST could start the apply job (CSRF); a domain rebound to 127.0.0.1 could read everything. So
+every request must name a local host, and one that changes something must come from the app's own page.
 """
 
 import json
@@ -17,9 +12,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from channels_cleaner.api import errors
 
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
-_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 # Fetch metadata of a browser request from the app's own page, or typed into the address bar
-_OWN_PAGE = frozenset({"same-origin", "none"})
+OWN_PAGE = frozenset({"same-origin", "none"})
 
 
 class LocalOnlyMiddleware:
@@ -36,28 +31,27 @@ class LocalOnlyMiddleware:
         host = headers.get("host", "")
 
         if urlsplit(f"//{host}").hostname not in self.hosts:
-            await _refuse(send, errors.HostNotAllowed())
+            await refuse(send, errors.HostNotAllowed())
             return
 
-        if scope["method"] not in _SAFE_METHODS and not _from_own_page(headers, host):
-            await _refuse(send, errors.CrossOriginRefused())
+        if scope["method"] not in SAFE_METHODS and not from_own_page(headers, host):
+            await refuse(send, errors.CrossOriginRefused())
             return
 
         await self.app(scope, receive, send)
 
 
-def _from_own_page(headers: dict[str, str], host: str) -> bool:
+def from_own_page(headers: dict[str, str], host: str) -> bool:
     # Browsers send both on every cross-origin request that changes something; a client without them (curl, the
     # tests) is not a page some site made the browser run
-    if headers.get("sec-fetch-site", "same-origin") not in _OWN_PAGE:
+    if headers.get("sec-fetch-site", "same-origin") not in OWN_PAGE:
         return False
 
     origin = headers.get("origin")
     return origin is None or origin == f"http://{host}"
 
 
-async def _refuse(send: Send, error: errors.BaseError) -> None:
-    # Before FastAPI: the error class makes the body, the response goes out by hand
+async def refuse(send: Send, error: errors.BaseError) -> None:
     body = json.dumps(error.body()).encode()
     await send(
         {

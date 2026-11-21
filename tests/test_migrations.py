@@ -15,10 +15,10 @@ from channels_cleaner.database import DAO, DatabaseManager, legacy, migrate
 from channels_cleaner.database.types import UtcDateTime
 from channels_cleaner.enums import ChatKind, ChatRole, Decision, DecisionStatus
 
-_DIALECT: Dialect = sqlite.dialect()
+DIALECT: Dialect = sqlite.dialect()
 
 
-def _tables(path: Path) -> set[str]:
+def table_names(path: Path) -> set[str]:
     with closing(sqlite3.connect(path)) as connection:
         return {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
 
@@ -38,13 +38,13 @@ def test_migrations_go_down_and_up_again(tmp_path: Path) -> None:
 
     command.downgrade(config, "base")
     # sqlite_sequence is SQLite's own, left by the AUTOINCREMENT table
-    assert _tables(path) - {"sqlite_sequence"} == {"alembic_version"}
+    assert table_names(path) - {"sqlite_sequence"} == {"alembic_version"}
 
     command.upgrade(config, "head")
     command.check(config)
 
 
-def _legacy_database(path: Path, steps: int) -> None:
+def make_legacy_database(path: Path, steps: int) -> None:
     """A database as a version before Alembic left it, after ``steps`` of its migrations."""
     with closing(sqlite3.connect(path)) as connection, connection:
         connection.execute("CREATE TABLE schema_version (version INTEGER)")
@@ -70,11 +70,11 @@ def _legacy_database(path: Path, steps: int) -> None:
 @pytest.mark.parametrize("steps", [1, len(legacy.LEGACY_MIGRATIONS)])
 def test_database_from_before_alembic_is_taken_over(tmp_path: Path, steps: int) -> None:
     path = tmp_path / "cleaner.sqlite3"
-    _legacy_database(path, steps)
+    make_legacy_database(path, steps)
 
     migrate.upgrade(path)
 
-    assert "schema_version" not in _tables(path)
+    assert "schema_version" not in table_names(path)
     command.check(migrate.alembic_config(path))
 
     async def read() -> None:
@@ -99,13 +99,13 @@ def test_database_from_before_alembic_is_taken_over(tmp_path: Path, steps: int) 
 
 def test_a_takeover_cut_short_is_finished(tmp_path: Path) -> None:
     path = tmp_path / "cleaner.sqlite3"
-    _legacy_database(path, len(legacy.LEGACY_MIGRATIONS))
+    make_legacy_database(path, len(legacy.LEGACY_MIGRATIONS))
     # Tables set aside, then the app stopped before Alembic created the new ones
     assert legacy.set_aside(path)
 
     migrate.upgrade(path)
 
-    assert not {table for table in _tables(path) if table.startswith("legacy_")}
+    assert not {table for table in table_names(path) if table.startswith("legacy_")}
     command.check(migrate.alembic_config(path))
 
     with closing(sqlite3.connect(path)) as connection:
@@ -116,15 +116,15 @@ def test_utc_datetime_keeps_the_stored_format() -> None:
     column = UtcDateTime()
     moscow = timezone(timedelta(hours=3))
 
-    stored = column.process_bind_param(datetime(2026, 11, 17, 23, 0, tzinfo=moscow), _DIALECT)
+    stored = column.process_bind_param(datetime(2026, 11, 17, 23, 0, tzinfo=moscow), DIALECT)
 
     assert stored == "2026-11-17T20:00:00+00:00"
-    assert column.process_result_value(stored, _DIALECT) == datetime(2026, 11, 17, 20, 0, tzinfo=UTC)
+    assert column.process_result_value(stored, DIALECT) == datetime(2026, 11, 17, 20, 0, tzinfo=UTC)
 
 
 def test_utc_datetime_refuses_naive_values() -> None:
     with pytest.raises(ValueError, match="Naive datetime"):
-        UtcDateTime().process_bind_param(datetime(2026, 11, 17, 20, 0), _DIALECT)  # noqa: DTZ001
+        UtcDateTime().process_bind_param(datetime(2026, 11, 17, 20, 0), DIALECT)  # noqa: DTZ001
 
 
 async def test_concurrent_writers_wait_for_each_other(tmp_path: Path) -> None:
@@ -149,11 +149,11 @@ async def test_concurrent_writers_wait_for_each_other(tmp_path: Path) -> None:
 
 def test_a_legacy_step_that_fails_leaves_nothing_behind(tmp_path: Path) -> None:
     path = tmp_path / "cleaner.sqlite3"
-    _legacy_database(path, 1)
+    make_legacy_database(path, 1)
 
     with closing(sqlite3.connect(path, isolation_level=None)) as connection:
         with pytest.raises(sqlite3.OperationalError):
-            legacy._transaction(  # noqa: SLF001
+            legacy.run_in_transaction(
                 connection,
                 ["ALTER TABLE channels ADD COLUMN pulse TEXT", "INSERT INTO no_such_table VALUES (1)"],
             )
@@ -168,15 +168,14 @@ def test_a_legacy_step_that_fails_leaves_nothing_behind(tmp_path: Path) -> None:
 
 def test_a_database_is_backed_up_before_it_is_migrated(tmp_path: Path) -> None:
     path = tmp_path / "cleaner.sqlite3"
-    _legacy_database(path, len(legacy.LEGACY_MIGRATIONS))
+    make_legacy_database(path, len(legacy.LEGACY_MIGRATIONS))
 
     migrate.upgrade(path)
 
     backups = list(tmp_path.glob("cleaner.sqlite3.before-*"))
     assert len(backups) == 1
-    assert "schema_version" in _tables(backups[0])
+    assert "schema_version" in table_names(backups[0])
 
-    # Up to date: nothing to change, nothing to copy
     backups[0].unlink()
     migrate.upgrade(path)
     assert not list(tmp_path.glob("cleaner.sqlite3.before-*"))

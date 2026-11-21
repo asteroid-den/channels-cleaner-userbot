@@ -108,7 +108,6 @@ async def test_apply_review_stats_export(client: httpx.AsyncClient, ctx: AppCont
     csv = await client.get("/api/export", params={"format": "csv"})
     assert csv.text.startswith("channel_id,title")
 
-    # Failed ones can be retried.
     if final["failed"]:
         await client.post("/api/decisions/retry-failed")
         pending = await get_json(client, "/api/decisions", params={"status": "pending"})
@@ -196,14 +195,14 @@ async def test_sync_keeps_both_kinds_and_resyncs_old_lists(client: httpx.AsyncCl
         assert await dao.get_setting(account, "synced_scope") == SCOPE_VERSION
 
     ctx.sync.start(account)
-    await wait_for(lambda: _idle(ctx))
+    await wait_for(lambda: apply_idle(ctx))
 
     async with open_dao(ctx) as dao:
         assert await dao.count_channels(account, ChatKind.SUPERGROUP) == 25
         assert await dao.count_channels(account, ChatKind.CHANNEL) == 40
 
 
-async def _idle(ctx: AppContext) -> bool:
+async def apply_idle(ctx: AppContext) -> bool:
     return not ctx.sync.state.running
 
 
@@ -287,14 +286,14 @@ async def test_chats_the_user_runs_have_their_own_deck(client: httpx.AsyncClient
     assert (await get_json(client, "/api/stats", params={"role": "managed"}))["subscribed"] == len(mine["items"])
 
 
-async def _owned(client: httpx.AsyncClient) -> int:
+async def owned_chat_id(client: httpx.AsyncClient) -> int:
     items = (await get_json(client, "/api/channels", params={"role": "managed"}))["items"]
     return next(i["id"] for i in items if i["role"] == "owner")
 
 
 async def test_leaving_an_owned_chat_is_off_by_default(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
-    owned = await _owned(client)
+    owned = await owned_chat_id(client)
     refused = await client.put(f"/api/decisions/{owned}", json={"decision": "unsubscribe"})
     assert refused.status_code == 409
     assert (await client.put(f"/api/decisions/{owned}", json={"decision": "mute"})).status_code == 200
@@ -309,7 +308,7 @@ async def test_leaving_an_owned_chat_is_off_by_default(client: httpx.AsyncClient
 async def test_owner_leave_flag_allows_it(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     ctx.settings.allow_owner_leave = True
-    owned = await _owned(client)
+    owned = await owned_chat_id(client)
     assert (await client.put(f"/api/decisions/{owned}", json={"decision": "unsubscribe"})).status_code == 200
 
     async def finished() -> bool:
@@ -328,7 +327,7 @@ async def test_owner_leave_flag_allows_it(client: httpx.AsyncClient, ctx: AppCon
 async def test_queued_owner_leave_fails_when_the_flag_is_off(client: httpx.AsyncClient, ctx: AppContext) -> None:
     await login(client, ctx)
     ctx.settings.allow_owner_leave = True
-    owned = await _owned(client)
+    owned = await owned_chat_id(client)
     await client.put(f"/api/decisions/{owned}", json={"decision": "unsubscribe"})
     ctx.settings.allow_owner_leave = False  # e.g. the app was restarted without the flag
 

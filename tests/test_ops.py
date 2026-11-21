@@ -52,7 +52,7 @@ def test_uvicorns_records_go_to_the_file_too(tmp_path: Path) -> None:
     assert "Exception in ASGI application" in path.read_text(encoding="utf-8")
 
 
-class _Health(http.server.BaseHTTPRequestHandler):
+class HealthHandler(http.server.BaseHTTPRequestHandler):
     body = b""
 
     def do_GET(self) -> None:
@@ -66,7 +66,7 @@ class _Health(http.server.BaseHTTPRequestHandler):
 
 @pytest.mark.parametrize(("body", "expected"), [({"ok": True}, True), ({"ok": False}, False), (None, False)])
 def test_the_healthcheck_wants_the_apps_own_answer(body: dict[str, bool] | None, expected: bool) -> None:  # noqa: FBT001
-    handler = type("Handler", (_Health,), {"body": b"not json" if body is None else json.dumps(body).encode()})
+    handler = type("Handler", (HealthHandler,), {"body": b"not json" if body is None else json.dumps(body).encode()})
     server = http.server.HTTPServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
 

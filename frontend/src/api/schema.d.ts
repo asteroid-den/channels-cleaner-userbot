@@ -284,10 +284,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Decisions Trail
-         * @description Decided chats in the order decided: what the progress bar shows, for rewinding.
-         */
+        /** Get Decisions Trail */
         get: operations["get_decisions_trail_api_decisions_trail_get"];
         put?: never;
         post?: never;
@@ -541,7 +538,6 @@ export interface components {
         };
         /**
          * ArchiveFilter
-         * @description Which part of the chat list the deck shows.
          * @enum {string}
          */
         ArchiveFilter: "all" | "active" | "archived";
@@ -603,6 +599,8 @@ export interface components {
             last_post_media: components["schemas"]["MediaKind"] | null;
             /** Full Loaded */
             full_loaded: boolean;
+            /** Full Error */
+            full_error?: string | null;
             decision: components["schemas"]["Decision"] | null;
             decision_status: components["schemas"]["DecisionStatus"] | null;
             /** Error */
@@ -676,6 +674,8 @@ export interface components {
             last_post_media: components["schemas"]["MediaKind"] | null;
             /** Full Loaded */
             full_loaded: boolean;
+            /** Full Error */
+            full_error?: string | null;
             decision: components["schemas"]["Decision"] | null;
             decision_status: components["schemas"]["DecisionStatus"] | null;
             /** Error */
@@ -696,7 +696,6 @@ export interface components {
         ChatKind: "channel" | "supergroup";
         /**
          * ChatRole
-         * @description What the user is in a chat.
          * @enum {string}
          */
         ChatRole: "member" | "admin" | "owner";
@@ -830,10 +829,7 @@ export interface components {
             /** Msg */
             msg: string;
         };
-        /**
-         * ErrorResponse
-         * @description The body of every error (api/errors.py); which fields come along depends on the type.
-         */
+        /** ErrorResponse */
         ErrorResponse: {
             /**
              * Ok
@@ -854,10 +850,7 @@ export interface components {
             /** Details */
             details?: components["schemas"]["ErrorDetail"][] | null;
         };
-        /**
-         * ExportRow
-         * @description A chat left, as /api/export lists it.
-         */
+        /** ExportRow */
         ExportRow: {
             /** Channel Id */
             channel_id: number;
@@ -1179,7 +1172,6 @@ export interface components {
         };
         /**
          * RoleFilter
-         * @description The two decks: chats the user is just in, and the ones they run (admin or owner).
          * @enum {string}
          */
         RoleFilter: "member" | "managed";

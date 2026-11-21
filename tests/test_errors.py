@@ -12,7 +12,7 @@ from channels_cleaner.api import errors as api_errors
 from channels_cleaner.app import create_app
 from channels_cleaner.context import AppContext
 from channels_cleaner.enums import ChatKind
-from channels_cleaner.telegram.kurigram_gateway import _telegram_errors
+from channels_cleaner.telegram.kurigram_gateway import telegram_errors
 from channels_cleaner.telegram.mock_gateway import MockGateway
 from channels_cleaner.telegram.types import ChannelInfo, FloodWaitError, GatewayError, TgUser
 from tests.conftest import get_json, login, wait_for
@@ -93,7 +93,7 @@ async def test_an_unexpected_error_still_answers_json(ctx: AppContext, monkeypat
     ],
 )
 def test_kurigram_errors_become_the_gateways_own(raised: BaseException, expected: type[Exception]) -> None:
-    with pytest.raises(expected), _telegram_errors():
+    with pytest.raises(expected), telegram_errors():
         raise raised
 
 
@@ -138,7 +138,7 @@ def settings_offline(
         return await start()
 
     monkeypatch.setattr(gateway, "start", flaky)
-    monkeypatch.setattr(context_module, "_RECONNECT_DELAYS", (0,))
+    monkeypatch.setattr(context_module, "RECONNECT_DELAYS", (0,))
     return ctx, attempts
 
 
@@ -171,11 +171,11 @@ async def test_stopping_a_sync_waits_for_it(
 
     await ctx.sync.stop()
 
-    assert ctx.sync._task is not None  # noqa: SLF001
-    assert ctx.sync._task.done()  # noqa: SLF001
+    assert ctx.sync.task is not None
+    assert ctx.sync.task.done()
 
 
-def _error_classes() -> list[type[api_errors.BaseError]]:
+def error_classes() -> list[type[api_errors.BaseError]]:
     """The errors the API answers with: every subclass but the ones per HTTP status (BadRequest, NotFound…)."""
     found: list[type[api_errors.BaseError]] = []
     todo = list(api_errors.BaseError.__subclasses__())
@@ -194,7 +194,7 @@ def _error_classes() -> list[type[api_errors.BaseError]]:
 
 
 def test_every_error_class_is_complete_and_its_type_unique() -> None:
-    classes = _error_classes()
+    classes = error_classes()
 
     for cls in classes:
         assert 400 <= cls.CODE < 600, cls

@@ -176,7 +176,6 @@ function onLeave(el: Element, done: () => void) {
       </p>
     </div>
 
-    <!-- the deck of avatars, in the order they will be processed -->
     <div class="mt-14 flex h-48 w-full max-w-4xl items-center justify-center">
       <TransitionGroup
         tag="div"
