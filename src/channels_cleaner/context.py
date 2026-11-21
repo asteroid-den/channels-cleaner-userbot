@@ -5,6 +5,7 @@ import itertools
 import logging
 from dataclasses import dataclass, field
 
+from channels_cleaner.api.errors import AccountNotFound, ApplyJobRunning
 from channels_cleaner.config import Settings
 from channels_cleaner.database import DAO, DatabaseManager
 from channels_cleaner.database.models import base
@@ -14,7 +15,7 @@ from channels_cleaner.services.auth import AuthService
 from channels_cleaner.services.channels import ChannelsService
 from channels_cleaner.services.sync import SCOPE_SETTING, SCOPE_VERSION, SyncService
 from channels_cleaner.telegram.gateway import TelegramGateway
-from channels_cleaner.telegram.types import TgUser
+from channels_cleaner.telegram.types import LEGACY_SESSION, TgUser, new_session_name
 
 log = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class AppContext:
         # Started without a network (a laptop waking up, a VPN not up yet): keep trying instead of asking for a restart
         for attempt in itertools.count():
             try:
-                await self.auth.start()
+                await self.auth.start(await self.active_session())
 
             except Exception as exc:
                 if attempt == 0:
@@ -90,6 +91,34 @@ class AppContext:
 
             else:
                 return
+
+    async def active_session(self) -> str:
+        async with self.database.session() as session:
+            stored = await DAO(session).active_session()
+
+        # Nothing stored before the first login, or by the versions with one account: their session is the legacy one
+        return stored or LEGACY_SESSION
+
+    async def switch_account(self, account_id: int) -> None:
+        async with self.database.session() as session:
+            account = await DAO(session).get_account(account_id)
+
+        if account is None or account.session_name is None:
+            raise AccountNotFound(account_id=account_id)
+
+        await self.switch_session(account.session_name)
+
+    async def add_account(self) -> None:
+        await self.switch_session(new_session_name())
+
+    async def switch_session(self, session: str) -> None:
+        # The job works for the account it started with, and stopping it halfway is the user's call
+        if self.apply.running:
+            raise ApplyJobRunning
+
+        await self.sync.forget()
+        self.channels.reset()
+        await self.auth.switch_to(session)
 
     async def after_login(self, user: TgUser) -> None:
         await self.sync.load(user.id)

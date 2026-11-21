@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -43,6 +44,14 @@ class ChannelInfo:
 class ChannelFull:
     about: str | None
     members_count: int | None
+
+
+#: the session of the versions with one account; later ones get a name of their own
+LEGACY_SESSION = "account"
+
+
+def new_session_name() -> str:
+    return f"session-{secrets.token_hex(4)}"
 
 
 class GatewayError(Exception):

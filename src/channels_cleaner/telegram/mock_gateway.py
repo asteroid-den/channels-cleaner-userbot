@@ -4,7 +4,7 @@ import asyncio
 import json
 import random
 from collections.abc import AsyncIterator
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
 from html import escape
 from pathlib import Path
@@ -13,6 +13,7 @@ from channels_cleaner.config import Settings
 from channels_cleaner.enums import ChatKind, ChatRole, MediaKind
 from channels_cleaner.telegram.device_profiles import DeviceProfile, all_profiles
 from channels_cleaner.telegram.types import (
+    LEGACY_SESSION,
     ChannelFull,
     ChannelInfo,
     FloodWaitError,
@@ -30,6 +31,12 @@ from channels_cleaner.telegram.types import (
 MOCK_CODE = "12345"
 MOCK_PASSWORD = "mock"
 MOCK_USER = TgUser(id=777000111, first_name="Mock", last_name="User", username="mock_user")
+#: who logs in to each further mock session, in turn
+MOCK_USERS = (
+    MOCK_USER,
+    TgUser(id=777000222, first_name="Work", last_name="Mock", username="mock_work"),
+    TgUser(id=777000333, first_name="Side", last_name="Project", username=None),
+)
 
 ADJECTIVES = [
     "Daily",
@@ -244,9 +251,11 @@ class MockGateway:
 
     def __init__(self, settings: Settings, *, seed: int = 42) -> None:
         self.settings = settings
-        self.state_path = settings.data_dir / "mock_session.json"
+        self.seed = seed
+        self.session = LEGACY_SESSION
         self.channels = self.generate_all(seed)
         self.authorized = False
+        self.user: TgUser | None = None
         self.awaiting_password = False
         self.phone: str | None = None
         self.qr_round = 0
@@ -264,20 +273,41 @@ class MockGateway:
     def device_profile(self) -> DeviceProfile | None:
         return self._profile
 
-    async def start(self) -> TgUser | None:
-        if self.state_path.exists():
-            state = json.loads(self.state_path.read_text("utf-8"))
-            self.authorized = bool(state.get("authorized"))
-            gone = set(state.get("gone", []))
-            self.channels = {k: v for k, v in self.channels.items() if k not in gone}
+    def state_file(self, session: str) -> Path:
+        # The file of the versions with one account stays where it was
+        name = "mock_session.json" if session == LEGACY_SESSION else f"mock_{session}.json"
+        return self.settings.data_dir / name
 
-        return MOCK_USER if self.authorized else None
+    @property
+    def state_path(self) -> Path:
+        return self.state_file(self.session)
+
+    def channels_of(self, user: TgUser | None) -> dict[int, tuple[ChannelInfo, ChannelFull]]:
+        # Every mock account has chats of its own; the first one keeps the ones it always had
+        return self.generate_all(self.seed if user is None or user.id == MOCK_USER.id else user.id % 1000)
+
+    async def start(self, session: str) -> TgUser | None:
+        self.session = session
+        self.authorized = False
+        self.user = None
+        self.awaiting_password = False
+        self.phone = None
+        state = json.loads(self.state_path.read_text("utf-8")) if self.state_path.exists() else {}
+
+        if state.get("authorized"):
+            self.authorized = True
+            self.user = TgUser(**state["user"]) if "user" in state else MOCK_USER
+
+        gone = set(state.get("gone", []))
+        self.channels = {k: v for k, v in self.channels_of(self.user).items() if k not in gone}
+        return self.user
 
     async def stop(self) -> None:
         return None
 
     def save_state(self, gone: set[int] | None = None) -> None:
-        state = {"authorized": self.authorized, "gone": sorted(gone or set())}
+        user = asdict(self.user) if self.user is not None else None
+        state = {"authorized": self.authorized, "user": user, "gone": sorted(gone or set())}
 
         if self.state_path.exists() and gone is None:
             state["gone"] = json.loads(self.state_path.read_text("utf-8")).get("gone", [])
@@ -290,9 +320,20 @@ class MockGateway:
             self.awaiting_password = True
             raise PasswordNeededError
 
+        return self.log_in()
+
+    def log_in(self) -> TgUser:
+        taken = {self.user_of(path) for path in self.settings.data_dir.glob("mock_*.json") if path != self.state_path}
+        self.user = next((user for user in MOCK_USERS if user.id not in taken), MOCK_USERS[-1])
         self.authorized = True
+        self.channels = self.channels_of(self.user)
         self.save_state()
-        return MOCK_USER
+        return self.user
+
+    @staticmethod
+    def user_of(path: Path) -> int | None:
+        state = json.loads(path.read_text("utf-8"))
+        return (state.get("user") or {}).get("id", MOCK_USER.id) if state.get("authorized") else None
 
     def require_auth(self) -> None:
         if not self.authorized:
@@ -347,14 +388,16 @@ class MockGateway:
             raise InvalidPasswordError(msg)
 
         self.awaiting_password = False
-        self.authorized = True
-        self.save_state()
-        return MOCK_USER
+        return self.log_in()
 
     async def log_out(self) -> None:
+        await self.forget_session()
+
+    async def forget_session(self) -> None:
         self.authorized = False
+        self.user = None
         self.state_path.unlink(missing_ok=True)
-        self.channels = self.generate_all(42)
+        self.channels = self.channels_of(None)
 
     async def iter_channels(self) -> AsyncIterator[ChannelInfo]:
         self.require_auth()

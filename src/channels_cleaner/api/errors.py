@@ -148,6 +148,13 @@ class ChannelNotFound(NotFound):
 
 
 @dataclass
+class AccountNotFound(NotFound):
+    TYPE = "account_not_found"
+    MESSAGE = "No such account to switch to"
+    account_id: int
+
+
+@dataclass
 class PictureNotFound(NotFound):
     TYPE = "picture_not_found"
     MESSAGE = "The chat has no such picture"

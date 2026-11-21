@@ -189,6 +189,17 @@ class ApplyState(BaseModel):
     items: list[ApplyItem]
 
 
+class Account(BaseModel):
+    id: int
+    first_name: str
+    last_name: str | None
+    username: str | None
+    active: bool
+    chats: int
+    #: decisions waiting for the apply job in that account
+    pending: int
+
+
 class ExportRow(BaseModel):
     channel_id: int
     title: str
@@ -281,3 +292,7 @@ class StatsResponse(OkResponse):
     unread_cleared: int
     decisions: dict[Decision, dict[DecisionStatus, int]]
     last_post_age: dict[str, int]
+
+
+class AccountsResponse(OkResponse):
+    items: list[Account]

@@ -18,3 +18,7 @@ class Account(Base):
     device_profile: Mapped[str | None]
     created_at: Mapped[datetime]
     last_login_at: Mapped[datetime]
+    # The session file it logs in with; None once logged out (its data stays until wiped)
+    session_name: Mapped[str | None]
+    # When it was last the active account: the latest one is connected on start
+    selected_at: Mapped[datetime | None]

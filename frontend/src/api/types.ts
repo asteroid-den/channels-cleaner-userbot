@@ -45,3 +45,5 @@ export type ApplyState = Omit<Schemas['ApplyStateResponse'], 'ok'>
 export type Stats = Schemas['StatsResponse']
 export type Prefs = Schemas['DeckPrefsRequest']
 export type ErrorBody = Schemas['ErrorResponse']
+export type Account = Schemas['Account']
+export type AccountsResponse = Schemas['AccountsResponse']

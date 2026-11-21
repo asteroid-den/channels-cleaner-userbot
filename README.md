@@ -32,6 +32,8 @@ userbot + FastAPI) and a web UI that opens in your browser. No hosted service, n
   unmutes or unarchives the channel.
 - **Results and export**: what's left of your subscriptions by last post, plus a CSV/JSON list
   of what you left, with `t.me` links for the public ones.
+- **Several accounts**: add another Telegram account from the account menu and switch between
+  them; each keeps its own chats, decisions and session.
 - QR or phone login with two-step verification, English and Russian, dark and light themes.
 
 | Deck (light theme) | History loupe |
@@ -142,8 +144,8 @@ Letter keys work on any keyboard layout. On macOS, <kbd>Cmd</kbd> works in place
 
 The startup message prints the exact path. Inside:
 
-- `sessions/account.session`: the Telegram session.
-- `sessions/account.device.json`: the device profile this session presents to Telegram.
+- `sessions/*.session`: one Telegram session per account (`account.session` for the first one).
+- `sessions/*.device.json`: the device profile each session presents to Telegram.
 - `cleaner.sqlite3`: the channel cache, your decisions and stats. Before an update changes
   its structure, the app copies it next to it (`cleaner.sqlite3.before-<version>`).
 - `media/`: cached avatars and post thumbnails.

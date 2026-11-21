@@ -22,6 +22,7 @@ from channels_cleaner.enums import ChatKind, ChatRole, MediaKind
 from channels_cleaner.telegram import device_profiles
 from channels_cleaner.telegram.device_profiles import DeviceProfile
 from channels_cleaner.telegram.types import (
+    LEGACY_SESSION,
     ChannelFull,
     ChannelInfo,
     FloodWaitError,
@@ -38,8 +39,6 @@ from channels_cleaner.telegram.types import (
 )
 
 log = logging.getLogger(__name__)
-
-SESSION_NAME = "account"
 
 MEDIA_KINDS: dict[Any, MediaKind] = {
     enums.MessageMediaType.PHOTO: MediaKind.PHOTO,
@@ -119,6 +118,7 @@ class KurigramGateway:
         self.phone: str | None = None
         self.phone_code_hash: str | None = None
         self.started = False
+        self.session = LEGACY_SESSION
 
     @property
     def device_profile(self) -> DeviceProfile | None:
@@ -126,12 +126,12 @@ class KurigramGateway:
 
     @property
     def profile_path(self) -> Path:
-        return self.settings.sessions_dir / f"{SESSION_NAME}.device.json"
+        return self.settings.sessions_dir / f"{self.session}.device.json"
 
     def make_client(self) -> Client:
         self._profile = device_profiles.load_or_create(self.profile_path)
         return Client(
-            SESSION_NAME,
+            self.session,
             api_id=self.settings.api_id,
             api_hash=self.settings.api_hash,
             workdir=self.settings.sessions_dir,
@@ -148,7 +148,8 @@ class KurigramGateway:
 
         return self._client
 
-    async def start(self) -> TgUser | None:
+    async def start(self, session: str) -> TgUser | None:
+        self.session = session
         self._client = self.make_client()
         # Mirror the first lines of ``Client.start`` so a bare ``connect`` works on our loop.
         self._client._loop = asyncio.get_running_loop()  # noqa: SLF001
@@ -174,7 +175,7 @@ class KurigramGateway:
         except (errors.AuthKeyUnregistered, errors.Unauthorized) as exc:
             # Session revoked from another device: start from scratch.
             log.warning("Stored session is no longer valid: %s", exc)
-            await self.reset_session()
+            await self.forget_session()
             msg = "Session was revoked, please log in again"
             raise NotAuthorizedError(msg) from exc
 
@@ -195,10 +196,10 @@ class KurigramGateway:
 
         self.started = False
 
-    async def reset_session(self) -> None:
+    async def forget_session(self) -> None:
         await self.stop()
 
-        for path in self.settings.sessions_dir.glob(f"{SESSION_NAME}.*"):
+        for path in self.settings.sessions_dir.glob(f"{self.session}.*"):
             path.unlink(missing_ok=True)
 
         self._client = None
@@ -326,7 +327,7 @@ class KurigramGateway:
 
             self.started = False
 
-        await self.reset_session()
+        await self.forget_session()
         self.profile_path.unlink(missing_ok=True)
         self._profile = None
 
