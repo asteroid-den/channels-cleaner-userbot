@@ -56,6 +56,7 @@ async def post_logout(body: models.LogoutRequest, ctx: ContextDep) -> models.Aut
     if ctx.apply.running:
         raise errors.ApplyJobRunning
 
-    await ctx.sync.stop()
+    await ctx.sync.forget()
+    ctx.channels.reset()
     await ctx.auth.log_out(wipe_data=body.wipe_data)
     return models.AuthStateResponse.model_validate(ctx.auth.state)

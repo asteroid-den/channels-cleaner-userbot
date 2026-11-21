@@ -36,6 +36,10 @@ class ChannelsService:
         # holds for the next ones too: they would only get the same answer, and Telegram lengthens waits for that.
         self.cooldowns: dict[str, float] = {}
 
+    def reset(self) -> None:
+        """Another account is on: a flood wait was the last one's."""
+        self.cooldowns.clear()
+
     def check_cooldown(self, kind: str) -> None:
         left = self.cooldowns.get(kind, 0) - time.monotonic()
 

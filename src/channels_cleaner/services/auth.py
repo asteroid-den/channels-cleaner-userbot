@@ -20,6 +20,7 @@ from channels_cleaner.telegram.types import (
     PasswordNeededError,
     QrExpiredError,
     TgUser,
+    new_session_name,
 )
 
 log = logging.getLogger(__name__)
@@ -73,12 +74,12 @@ class AuthService:
         self.state = AuthState(status=status, user=self.state.user, **changes)
         self.publish()
 
-    async def start(self) -> None:
+    async def start(self, session: str) -> None:
         try:
-            user = await self.gateway.start()
+            user = await self.gateway.start(session)
 
         except NotAuthorizedError:
-            user = await self.gateway.start()  # the stored session was revoked: start fresh
+            user = await self.gateway.start(session)  # the stored session was revoked: start fresh
 
         if user is not None:
             await self.logged_in(user)
@@ -98,7 +99,7 @@ class AuthService:
 
         async with self.database.session() as session:
             dao = DAO(session)
-            await dao.upsert_account(user, profile.to_json() if profile else None, base.utc_now())
+            await dao.upsert_account(user, profile.to_json() if profile else None, self.gateway.session, base.utc_now())
             await dao.commit()
 
         self.state = AuthState(status="authorized", user=user)
@@ -228,20 +229,37 @@ class AuthService:
             user = self.state.user
             await self.gateway.log_out()
 
-            if wipe_data and user is not None:
-                async with self.database.session() as session:
-                    dao = DAO(session)
+            async with self.database.session() as session:
+                dao = DAO(session)
+
+                if user is not None and wipe_data:
                     await dao.wipe_account(user.id)
-                    await dao.commit()
+
+                elif user is not None:
+                    await dao.forget_session(user.id)
+
+                await dao.commit()
+                # Another account takes over, else a login for a new one
+                next_session = await dao.active_session()
 
             self.state = AuthState(status="starting")
-            user_after = await self.gateway.start()
+            await self.start(next_session or new_session_name())
 
-            if user_after is not None:
-                await self.logged_in(user_after)
+    async def switch_to(self, session: str) -> None:
+        """Connects another session: an account's, or a new one to log in with."""
+        async with self.lock:
+            await self.cancel_qr()
 
+            if self.state.status == "authorized":
+                await self.gateway.stop()
+
+            # A login given up halfway leaves a session nobody can use
             else:
-                self.set_status("unauthorized")
+                await self.gateway.forget_session()
+
+            self.state = AuthState(status="starting")
+            self.publish()
+            await self.start(session)
 
     async def cancel(self) -> None:
         async with self.lock:

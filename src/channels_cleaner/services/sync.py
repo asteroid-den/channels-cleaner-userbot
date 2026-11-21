@@ -67,6 +67,12 @@ class SyncService:
             with contextlib.suppress(asyncio.CancelledError):
                 await self.task
 
+    async def forget(self) -> None:
+        """Stops and clears the state: another account is coming, with a list of its own."""
+        await self.stop()
+        self.state = SyncState()
+        self.publish("progress")
+
     def publish(self, type_: str) -> None:
         self.bus.publish(TOPIC, type_, **self.state.snapshot())
 
