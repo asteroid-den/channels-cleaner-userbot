@@ -13,8 +13,8 @@ from channels_cleaner.services.sync import TOPIC
 router = APIRouter(prefix="/channels", tags=["channels"])
 
 # A card's extras come from Telegram on demand
-_FROM_TELEGRAM = (errors.NotAuthorized, errors.ChannelNotFound, errors.FloodWait, errors.TelegramError)
-_IMMUTABLE = {"Cache-Control": "private, max-age=604800, immutable"}
+FROM_TELEGRAM = (errors.NotAuthorized, errors.ChannelNotFound, errors.FloodWait, errors.TelegramError)
+IMMUTABLE = {"Cache-Control": "private, max-age=604800, immutable"}
 
 
 @router.post("/sync", responses=errors.error_responses(errors.NotAuthorized))
@@ -60,7 +60,7 @@ async def get_channels(  # noqa: PLR0913
     )
 
 
-@router.get("/{channel_id}/full", responses=errors.error_responses(*_FROM_TELEGRAM))
+@router.get("/{channel_id}/full", responses=errors.error_responses(*FROM_TELEGRAM))
 async def get_channel_full(channel_id: int, ctx: ContextDep, account_id: AccountIdDep) -> models.ChannelResponse:
     return models.ChannelResponse.from_channel(await ctx.channels.get_full(account_id, channel_id))
 
@@ -68,7 +68,7 @@ async def get_channel_full(channel_id: int, ctx: ContextDep, account_id: Account
 @router.get(
     "/{channel_id}/avatar",
     response_class=FileResponse,
-    responses={**errors.error_responses(*_FROM_TELEGRAM, errors.PictureNotFound), **utils.PICTURE},
+    responses={**errors.error_responses(*FROM_TELEGRAM, errors.PictureNotFound), **utils.PICTURE},
 )
 async def get_channel_avatar(channel_id: int, ctx: ContextDep, account_id: AccountIdDep) -> FileResponse:
     path = await ctx.channels.avatar(account_id, channel_id)
@@ -76,13 +76,13 @@ async def get_channel_avatar(channel_id: int, ctx: ContextDep, account_id: Accou
     if path is None:
         raise errors.PictureNotFound(channel_id=channel_id)
 
-    return FileResponse(path, headers=_IMMUTABLE)
+    return FileResponse(path, headers=IMMUTABLE)
 
 
 @router.get(
     "/{channel_id}/thumb",
     response_class=FileResponse,
-    responses={**errors.error_responses(*_FROM_TELEGRAM, errors.PictureNotFound), **utils.PICTURE},
+    responses={**errors.error_responses(*FROM_TELEGRAM, errors.PictureNotFound), **utils.PICTURE},
 )
 async def get_channel_thumb(channel_id: int, ctx: ContextDep, account_id: AccountIdDep) -> FileResponse:
     path = await ctx.channels.post_thumb(account_id, channel_id)
@@ -90,4 +90,4 @@ async def get_channel_thumb(channel_id: int, ctx: ContextDep, account_id: Accoun
     if path is None:
         raise errors.PictureNotFound(channel_id=channel_id)
 
-    return FileResponse(path, headers=_IMMUTABLE)
+    return FileResponse(path, headers=IMMUTABLE)

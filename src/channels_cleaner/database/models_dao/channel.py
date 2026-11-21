@@ -21,7 +21,7 @@ from channels_cleaner.enums import (
 from channels_cleaner.telegram.types import ChannelFull, ChannelInfo
 
 # Refreshed by every sync; the rest (about, pulse, full_fetched_at, gone…) is the app's own
-_SYNCED = (
+SYNCED_COLUMNS = (
     "title",
     "username",
     "unread_count",
@@ -74,7 +74,7 @@ class ChannelDAO:
         statement = statement.on_conflict_do_update(
             index_elements=[Channel.account_id, Channel.channel_id],
             set_={
-                **{column: statement.excluded[column] for column in _SYNCED},
+                **{column: statement.excluded[column] for column in SYNCED_COLUMNS},
                 # The dialogs list rarely has it; a count from the full info stays until a better one comes
                 "members_count": func.coalesce(statement.excluded.members_count, Channel.members_count),
                 "gone": False,
@@ -334,7 +334,7 @@ class ChannelDAO:
             .execution_options(populate_existing=True)
             .join(Channel.decision)
             .options(contains_eager(Channel.decision))
-            .where(*_trail_conditions(account_id, kind, archive, role))
+            .where(*trail_conditions(account_id, kind, archive, role))
             .order_by(ChannelDecision.decided_at, utils.DECISION_ROWID)
         )
 
@@ -353,7 +353,7 @@ class ChannelDAO:
             select(ChannelDecision.decision)
             .select_from(Channel)
             .join(Channel.decision)
-            .where(*_trail_conditions(account_id, kind, archive, role))
+            .where(*trail_conditions(account_id, kind, archive, role))
             .order_by(ChannelDecision.decided_at, utils.DECISION_ROWID)
         )
 
@@ -372,7 +372,7 @@ class ChannelDAO:
             select(ChannelDecision.decision, func.count().label("chats"))
             .select_from(Channel)
             .join(Channel.decision)
-            .where(*_trail_conditions(account_id, kind, archive, role))
+            .where(*trail_conditions(account_id, kind, archive, role))
             .group_by(ChannelDecision.decision)
         )
 
@@ -380,7 +380,7 @@ class ChannelDAO:
         return dict.fromkeys(utils.TRAIL_CODES, 0) | {row.decision: row.chats for row in result}
 
 
-def _trail_conditions(
+def trail_conditions(
     account_id: int, kind: ChatKind, archive: ArchiveFilter, role: RoleFilter
 ) -> tuple[ColumnElement[bool], ...]:
     return (

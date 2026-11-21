@@ -43,7 +43,7 @@ log = logging.getLogger(__name__)
 
 SESSION_NAME = "account"
 
-_MEDIA_KINDS: dict[Any, MediaKind] = {
+MEDIA_KINDS: dict[Any, MediaKind] = {
     enums.MessageMediaType.PHOTO: MediaKind.PHOTO,
     enums.MessageMediaType.LIVE_PHOTO: MediaKind.PHOTO,
     enums.MessageMediaType.VIDEO: MediaKind.VIDEO,
@@ -58,7 +58,7 @@ _MEDIA_KINDS: dict[Any, MediaKind] = {
 
 # A forum (a supergroup with topics) is a separate type in Kurigram but a supergroup for Telegram
 # and for its 1000 channels-and-supergroups limit. Basic groups and channel DMs are not covered.
-_CHAT_KINDS: dict[Any, ChatKind] = {
+CHAT_KINDS: dict[Any, ChatKind] = {
     enums.ChatType.CHANNEL: ChatKind.CHANNEL,
     enums.ChatType.SUPERGROUP: ChatKind.SUPERGROUP,
     enums.ChatType.FORUM: ChatKind.SUPERGROUP,
@@ -66,7 +66,7 @@ _CHAT_KINDS: dict[Any, ChatKind] = {
 
 
 @contextlib.contextmanager
-def _telegram_errors() -> Iterator[None]:
+def telegram_errors() -> Iterator[None]:
     """Kurigram's errors as the gateway's own: the services and the API know only those.
 
     A dropped connection is an error of the request, not a crash of the apply job or a 500 for the card.
@@ -77,29 +77,29 @@ def _telegram_errors() -> Iterator[None]:
     except errors.FloodWait as exc:
         raise FloodWaitError(int(exc.value or 0)) from exc
 
-    except _REFUSED as exc:
+    except REFUSED as exc:
         raise RequestRefusedError(str(exc.MESSAGE or exc)) from exc
 
     except errors.RPCError as exc:
         raise GatewayError(str(exc.MESSAGE or exc)) from exc
 
     except (OSError, TimeoutError) as exc:
-        raise _offline(exc) from exc
+        raise offline_error(exc) from exc
 
 
 #: Telegram's answers that won't change if asked again soon: the chat is private, banned, gone, or the request is wrong
-_REFUSED = (errors.BadRequest, errors.Forbidden, errors.NotFound, errors.NotAcceptable)
+REFUSED = (errors.BadRequest, errors.Forbidden, errors.NotFound, errors.NotAcceptable)
 
 
-def _offline(exc: BaseException) -> GatewayError:
+def offline_error(exc: BaseException) -> GatewayError:
     return GatewayError(f"No connection to Telegram: {exc or type(exc).__name__}")
 
 
 # Telegram uses this as "muted forever".
-_MUTE_FOREVER = timedelta(days=365 * 10)
+MUTE_FOREVER = timedelta(days=365 * 10)
 
 
-def _to_user(user: Any) -> TgUser:  # noqa: ANN401 - a pyrogram User, untyped
+def to_user(user: Any) -> TgUser:  # noqa: ANN401 - a pyrogram User, untyped
     return TgUser(
         id=user.id,
         first_name=user.first_name or "",
@@ -108,7 +108,7 @@ def _to_user(user: Any) -> TgUser:  # noqa: ANN401 - a pyrogram User, untyped
     )
 
 
-def _utc(value: datetime | None) -> datetime | None:
+def utc(value: datetime | None) -> datetime | None:
     if value is None:
         return None
 
@@ -117,13 +117,13 @@ def _utc(value: datetime | None) -> datetime | None:
 
 class KurigramGateway:
     def __init__(self, settings: Settings) -> None:
-        self._settings = settings
+        self.settings = settings
         self._client: Client | None = None
         self._profile: DeviceProfile | None = None
-        self._qr: QRLogin | None = None
-        self._phone: str | None = None
-        self._phone_code_hash: str | None = None
-        self._started = False
+        self.qr_login: QRLogin | None = None
+        self.phone: str | None = None
+        self.phone_code_hash: str | None = None
+        self.started = False
 
     # --- lifecycle -------------------------------------------------------------
     @property
@@ -131,16 +131,16 @@ class KurigramGateway:
         return self._profile
 
     @property
-    def _profile_path(self) -> Path:
-        return self._settings.sessions_dir / f"{SESSION_NAME}.device.json"
+    def profile_path(self) -> Path:
+        return self.settings.sessions_dir / f"{SESSION_NAME}.device.json"
 
-    def _make_client(self) -> Client:
-        self._profile = device_profiles.load_or_create(self._profile_path)
+    def make_client(self) -> Client:
+        self._profile = device_profiles.load_or_create(self.profile_path)
         return Client(
             SESSION_NAME,
-            api_id=self._settings.api_id,
-            api_hash=self._settings.api_hash,
-            workdir=self._settings.sessions_dir,
+            api_id=self.settings.api_id,
+            api_hash=self.settings.api_hash,
+            workdir=self.settings.sessions_dir,
             client_platform=enums.ClientPlatform.DESKTOP,
             sleep_threshold=30,
             **self._profile.client_kwargs(),
@@ -148,14 +148,14 @@ class KurigramGateway:
 
     @property
     def client(self) -> Client:
-        if self._client is None or not self._started:
+        if self._client is None or not self.started:
             msg = "Telegram client is not authorized"
             raise NotAuthorizedError(msg)
 
         return self._client
 
     async def start(self) -> TgUser | None:
-        self._client = self._make_client()
+        self._client = self.make_client()
         # Mirror the first lines of ``Client.start`` so a bare ``connect`` works on our loop.
         self._client._loop = asyncio.get_running_loop()  # noqa: SLF001
         rebuild = getattr(self._client, "_rebuild_loop_bound_state", None)
@@ -168,11 +168,11 @@ class KurigramGateway:
         if not authorized:
             return None
 
-        return await self._finish_login()
+        return await self.finish_login()
 
-    async def _finish_login(self) -> TgUser:
+    async def finish_login(self) -> TgUser:
         """Restart the connected-but-not-started client the regular way (now non-interactive)."""
-        client = self._pending_client()
+        client = self.pending_client()
         await client.disconnect()
 
         try:
@@ -181,41 +181,41 @@ class KurigramGateway:
         except (errors.AuthKeyUnregistered, errors.Unauthorized) as exc:
             # Session revoked from another device: start from scratch.
             log.warning("Stored session is no longer valid: %s", exc)
-            await self._reset_session()
+            await self.reset_session()
             msg = "Session was revoked, please log in again"
             raise NotAuthorizedError(msg) from exc
 
-        self._started = True
-        self._qr = None
-        return _to_user(client.me)
+        self.started = True
+        self.qr_login = None
+        return to_user(client.me)
 
     async def stop(self) -> None:
         if self._client is None:
             return
 
         with contextlib.suppress(Exception):
-            if self._started:
+            if self.started:
                 await self._client.stop()
 
             elif self._client.is_connected:
                 await self._client.disconnect()
 
-        self._started = False
+        self.started = False
 
-    async def _reset_session(self) -> None:
+    async def reset_session(self) -> None:
         await self.stop()
 
-        for path in self._settings.sessions_dir.glob(f"{SESSION_NAME}.*"):
+        for path in self.settings.sessions_dir.glob(f"{SESSION_NAME}.*"):
             path.unlink(missing_ok=True)
 
         self._client = None
 
-    def _pending_client(self) -> Client:
+    def pending_client(self) -> Client:
         if self._client is None or not self._client.is_connected:
             msg = "Client is not connected"
             raise GatewayError(msg)
 
-        if self._started:
+        if self.started:
             msg = "Already authorized"
             raise GatewayError(msg)
 
@@ -223,13 +223,13 @@ class KurigramGateway:
 
     # --- auth: QR ----------------------------------------------------------------
     async def qr_export(self) -> QrToken:
-        client = self._pending_client()
+        client = self.pending_client()
 
-        if self._qr is None:
-            self._qr = QRLogin(client)
+        if self.qr_login is None:
+            self.qr_login = QRLogin(client)
 
         try:
-            await self._qr.recreate()
+            await self.qr_login.recreate()
 
         except errors.SessionPasswordNeeded as exc:
             raise PasswordNeededError from exc
@@ -237,22 +237,22 @@ class KurigramGateway:
         except errors.FloodWait as exc:
             raise FloodWaitError(int(exc.value or 0)) from exc
 
-        token = self._qr.r
+        token = self.qr_login.r
 
         if not isinstance(token, LoginToken):  # migrate/success come from qr_wait, not from a fresh export
             msg = f"Unexpected QR login answer: {type(token).__name__}"
             raise GatewayError(msg)
 
         expires = datetime.fromtimestamp(token.expires, tz=UTC)
-        return QrToken(url=self._qr.url, expires_at=expires)
+        return QrToken(url=self.qr_login.url, expires_at=expires)
 
     async def qr_wait(self) -> TgUser:
-        if self._qr is None:
+        if self.qr_login is None:
             msg = "QR login was not started"
             raise GatewayError(msg)
 
         try:
-            user = await self._qr.wait()
+            user = await self.qr_login.wait()
 
         except TimeoutError as exc:
             raise QrExpiredError from exc
@@ -266,12 +266,12 @@ class KurigramGateway:
         if user is None:
             raise QrExpiredError
 
-        return await self._finish_login()
+        return await self.finish_login()
 
     # --- auth: phone -------------------------------------------------------------
     async def send_code(self, phone: str) -> None:
-        client = self._pending_client()
-        self._qr = None
+        client = self.pending_client()
+        self.qr_login = None
 
         try:
             sent = await client.send_code(phone)
@@ -282,18 +282,18 @@ class KurigramGateway:
         except errors.FloodWait as exc:
             raise FloodWaitError(int(exc.value or 0)) from exc
 
-        self._phone = phone
-        self._phone_code_hash = sent.phone_code_hash
+        self.phone = phone
+        self.phone_code_hash = sent.phone_code_hash
 
     async def sign_in_code(self, code: str) -> TgUser:
-        client = self._pending_client()
+        client = self.pending_client()
 
-        if not self._phone or not self._phone_code_hash:
+        if not self.phone or not self.phone_code_hash:
             msg = "Request a code first"
             raise GatewayError(msg)
 
         try:
-            result = await client.sign_in(self._phone, self._phone_code_hash, code)
+            result = await client.sign_in(self.phone, self.phone_code_hash, code)
 
         except (errors.PhoneCodeInvalid, errors.PhoneCodeExpired) as exc:
             raise InvalidCodeError(str(exc.MESSAGE)) from exc
@@ -308,14 +308,14 @@ class KurigramGateway:
             msg = "This phone number has no Telegram account"
             raise GatewayError(msg)
 
-        return await self._finish_login()
+        return await self.finish_login()
 
     async def password_hint(self) -> str | None:
-        hint: str | None = await self._pending_client().get_password_hint()
+        hint: str | None = await self.pending_client().get_password_hint()
         return hint
 
     async def check_password(self, password: str) -> TgUser:
-        client = self._pending_client()
+        client = self.pending_client()
 
         try:
             await client.check_password(password)
@@ -326,17 +326,17 @@ class KurigramGateway:
         except errors.FloodWait as exc:
             raise FloodWaitError(int(exc.value or 0)) from exc
 
-        return await self._finish_login()
+        return await self.finish_login()
 
     async def log_out(self) -> None:
-        if self._client is not None and self._started:
+        if self._client is not None and self.started:
             with contextlib.suppress(Exception):
                 await self._client.log_out()
 
-            self._started = False
+            self.started = False
 
-        await self._reset_session()
-        self._profile_path.unlink(missing_ok=True)
+        await self.reset_session()
+        self.profile_path.unlink(missing_ok=True)
         self._profile = None
 
     # --- channels ------------------------------------------------------------------
@@ -344,19 +344,19 @@ class KurigramGateway:
         client = self.client
         now = datetime.now(UTC)
 
-        with _telegram_errors():
+        with telegram_errors():
             async for dialog in client.get_dialogs():
                 chat = dialog.chat
 
-                kind = _CHAT_KINDS.get(chat.type) if chat is not None else None
+                kind = CHAT_KINDS.get(chat.type) if chat is not None else None
 
                 if chat is None or kind is None:
                     continue
 
-                yield self._channel_info(dialog, now, kind)
+                yield self.channel_info(dialog, now, kind)
 
     @staticmethod
-    def _channel_info(dialog: Any, now: datetime, kind: ChatKind) -> ChannelInfo:  # noqa: ANN401 - a pyrogram Dialog, untyped
+    def channel_info(dialog: Any, now: datetime, kind: ChatKind) -> ChannelInfo:  # noqa: ANN401 - a pyrogram Dialog, untyped
         chat = dialog.chat
         top = dialog.top_message
         muted = False
@@ -373,7 +373,7 @@ class KurigramGateway:
             text = top.text or top.caption
 
             if top.media is not None:
-                media = _MEDIA_KINDS.get(top.media, MediaKind.OTHER)
+                media = MEDIA_KINDS.get(top.media, MediaKind.OTHER)
 
         photo = chat.photo
         return ChannelInfo(
@@ -387,7 +387,7 @@ class KurigramGateway:
             photo_file_id=photo.small_file_id if photo else None,
             photo_unique_id=photo.small_photo_unique_id if photo else None,
             last_post_id=top.id if top is not None else None,
-            last_post_at=_utc(top.date) if top is not None else None,
+            last_post_at=utc(top.date) if top is not None else None,
             last_post_text=str(text) if text else None,
             last_post_media=media,
             kind=kind,
@@ -397,7 +397,7 @@ class KurigramGateway:
     async def get_full(self, channel_id: int) -> ChannelFull:
         # Raw GetFullChannel (supergroups are channels too): get_chat can't be told not to sleep through a flood wait,
         # and a sleep of up to sleep_threshold here holds up every other card. The service decides what to do instead.
-        with _telegram_errors():
+        with telegram_errors():
             peer = await self.client.resolve_peer(channel_id)
 
             if not isinstance(peer, InputPeerChannel):
@@ -461,7 +461,7 @@ class KurigramGateway:
 
         # Not "no picture": that would be remembered, while the connection comes back
         except (OSError, TimeoutError) as exc:
-            raise _offline(exc) from exc
+            raise offline_error(exc) from exc
 
         return Path(result) if isinstance(result, str) else None
 
@@ -496,13 +496,13 @@ class KurigramGateway:
 
         # Not "no picture": that would be remembered, while the connection comes back
         except (OSError, TimeoutError) as exc:
-            raise _offline(exc) from exc
+            raise offline_error(exc) from exc
 
         return Path(result) if isinstance(result, str) else None
 
     # --- actions ---------------------------------------------------------------------
     async def leave(self, channel_id: int) -> None:
-        with _telegram_errors():
+        with telegram_errors():
             try:
                 await self.client.leave_chat(channel_id)
 
@@ -511,17 +511,17 @@ class KurigramGateway:
                 return
 
     async def mute(self, channel_id: int) -> None:
-        with _telegram_errors():
-            await self.client.update_chat_notifications(channel_id, mute=True, mute_until=_MUTE_FOREVER)
+        with telegram_errors():
+            await self.client.update_chat_notifications(channel_id, mute=True, mute_until=MUTE_FOREVER)
 
     async def archive(self, channel_id: int) -> None:
-        with _telegram_errors():
+        with telegram_errors():
             await self.client.archive_chats(channel_id)
 
     async def unmute(self, channel_id: int) -> None:
-        with _telegram_errors():
+        with telegram_errors():
             await self.client.update_chat_notifications(channel_id, mute=False)
 
     async def unarchive(self, channel_id: int) -> None:
-        with _telegram_errors():
+        with telegram_errors():
             await self.client.unarchive_chats(channel_id)

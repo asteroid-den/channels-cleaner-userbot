@@ -11,7 +11,7 @@ from contextlib import closing
 from pathlib import Path
 
 TABLES = ("accounts", "channels", "decisions", "apply_jobs", "settings")
-_ASIDE = "legacy_"
+ASIDE = "legacy_"
 
 # Never changes: the step list ended with 1.4, new schema changes are Alembic revisions
 LEGACY_MIGRATIONS: list[str] = [
@@ -93,11 +93,11 @@ LEGACY_MIGRATIONS: list[str] = [
 ]
 
 
-def _tables(connection: sqlite3.Connection) -> set[str]:
+def table_names(connection: sqlite3.Connection) -> set[str]:
     return {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
 
 
-def _transaction(connection: sqlite3.Connection, statements: list[str]) -> None:
+def run_in_transaction(connection: sqlite3.Connection, statements: list[str]) -> None:
     """Run the statements all or nothing. SQLite's DDL is transactional, but executescript commits on its own."""
     connection.execute("BEGIN")
 
@@ -112,7 +112,7 @@ def _transaction(connection: sqlite3.Connection, statements: list[str]) -> None:
     connection.execute("COMMIT")
 
 
-def _statements(script: str) -> list[str]:
+def split_statements(script: str) -> list[str]:
     # The legacy scripts are plain DDL: no semicolons inside strings or triggers
     return [statement.strip() for statement in script.split(";") if statement.strip()]
 
@@ -127,9 +127,9 @@ def set_aside(path: Path) -> bool:
         return False
 
     # closing(): a sqlite3 connection used as a context manager commits but stays open.
-    # isolation_level=None: no implicit transactions, _transaction() opens them
+    # isolation_level=None: no implicit transactions, run_in_transaction() opens them
     with closing(sqlite3.connect(path, isolation_level=None)) as connection:
-        tables = _tables(connection)
+        tables = table_names(connection)
 
         if "schema_version" in tables:
             current = connection.execute("SELECT MAX(version) FROM schema_version").fetchone()[0] or 0
@@ -138,22 +138,22 @@ def set_aside(path: Path) -> bool:
                 if version > current:
                     # The version is enumerate()'s int
                     row = f"INSERT INTO schema_version (version) VALUES ({version})"  # noqa: S608
-                    _transaction(connection, [*_statements(script), row])
+                    run_in_transaction(connection, [*split_statements(script), row])
 
-            _transaction(
+            run_in_transaction(
                 connection,
-                [*(f"ALTER TABLE {table} RENAME TO {_ASIDE}{table}" for table in TABLES), "DROP TABLE schema_version"],
+                [*(f"ALTER TABLE {table} RENAME TO {ASIDE}{table}" for table in TABLES), "DROP TABLE schema_version"],
             )
-            tables = _tables(connection)
+            tables = table_names(connection)
 
-        return any(table.startswith(_ASIDE) for table in tables)
+        return any(table.startswith(ASIDE) for table in tables)
 
 
 def move_rows(path: Path) -> None:
     """Move the rows of the set-aside tables into the ones Alembic created, then drop them."""
     with closing(sqlite3.connect(path)) as connection, connection:
         for table in TABLES:
-            aside = f"{_ASIDE}{table}"
+            aside = f"{ASIDE}{table}"
             old = {row[1] for row in connection.execute(f"PRAGMA table_info({aside})")}
 
             if not old:

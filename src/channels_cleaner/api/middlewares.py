@@ -17,9 +17,9 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from channels_cleaner.api import errors
 
 LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
-_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 # Fetch metadata of a browser request from the app's own page, or typed into the address bar
-_OWN_PAGE = frozenset({"same-origin", "none"})
+OWN_PAGE = frozenset({"same-origin", "none"})
 
 
 class LocalOnlyMiddleware:
@@ -36,27 +36,27 @@ class LocalOnlyMiddleware:
         host = headers.get("host", "")
 
         if urlsplit(f"//{host}").hostname not in self.hosts:
-            await _refuse(send, errors.HostNotAllowed())
+            await refuse(send, errors.HostNotAllowed())
             return
 
-        if scope["method"] not in _SAFE_METHODS and not _from_own_page(headers, host):
-            await _refuse(send, errors.CrossOriginRefused())
+        if scope["method"] not in SAFE_METHODS and not from_own_page(headers, host):
+            await refuse(send, errors.CrossOriginRefused())
             return
 
         await self.app(scope, receive, send)
 
 
-def _from_own_page(headers: dict[str, str], host: str) -> bool:
+def from_own_page(headers: dict[str, str], host: str) -> bool:
     # Browsers send both on every cross-origin request that changes something; a client without them (curl, the
     # tests) is not a page some site made the browser run
-    if headers.get("sec-fetch-site", "same-origin") not in _OWN_PAGE:
+    if headers.get("sec-fetch-site", "same-origin") not in OWN_PAGE:
         return False
 
     origin = headers.get("origin")
     return origin is None or origin == f"http://{host}"
 
 
-async def _refuse(send: Send, error: errors.BaseError) -> None:
+async def refuse(send: Send, error: errors.BaseError) -> None:
     # Before FastAPI: the error class makes the body, the response goes out by hand
     body = json.dumps(error.body()).encode()
     await send(

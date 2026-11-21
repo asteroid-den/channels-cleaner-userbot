@@ -21,7 +21,7 @@ from channels_cleaner.telegram.types import TgUser
 log = logging.getLogger(__name__)
 
 #: seconds between attempts to connect on start, the last one repeated
-_RECONNECT_DELAYS = (2, 5, 10, 30, 60)
+RECONNECT_DELAYS = (2, 5, 10, 30, 60)
 
 
 def make_gateway(settings: Settings) -> TelegramGateway:
@@ -75,10 +75,10 @@ class AppContext:
             await dao.clear_skips()
             await dao.commit()
 
-        self.auth.on_login(self._after_login)
-        self._boot_task = asyncio.create_task(self._boot(), name="boot")
+        self.auth.on_login(self.after_login)
+        self.boot_task = asyncio.create_task(self.boot(), name="boot")
 
-    async def _boot(self) -> None:
+    async def boot(self) -> None:
         # Started without a network (a laptop waking up, a VPN not up yet): keep trying instead of asking for a restart
         for attempt in itertools.count():
             try:
@@ -89,12 +89,12 @@ class AppContext:
                     log.exception("Could not connect to Telegram, retrying")
 
                 self.auth.connect_failed(exc)
-                await asyncio.sleep(_RECONNECT_DELAYS[min(attempt, len(_RECONNECT_DELAYS) - 1)])
+                await asyncio.sleep(RECONNECT_DELAYS[min(attempt, len(RECONNECT_DELAYS) - 1)])
 
             else:
                 return
 
-    async def _after_login(self, user: TgUser) -> None:
+    async def after_login(self, user: TgUser) -> None:
         await self.sync.load(user.id)
 
         async with self.database.session() as session:
@@ -106,12 +106,12 @@ class AppContext:
             self.sync.start(user.id)
 
     async def wait_ready(self) -> None:
-        if self._boot_task is not None:
-            await self._boot_task
+        if self.boot_task is not None:
+            await self.boot_task
 
     async def shutdown(self) -> None:
-        if self._boot_task is not None and not self._boot_task.done():
-            self._boot_task.cancel()
+        if self.boot_task is not None and not self.boot_task.done():
+            self.boot_task.cancel()
 
         await self.apply.stop()
         await self.sync.stop()

@@ -30,10 +30,10 @@ def dialog(chat_type: enums.ChatType, chat_id: int, *, creator: bool = False, ad
 
 class FakeClient:
     def __init__(self, dialogs: list[Any]) -> None:
-        self._dialogs = dialogs
+        self.dialogs = dialogs
 
     async def get_dialogs(self) -> AsyncIterator[Any]:
-        for item in self._dialogs:
+        for item in self.dialogs:
             yield item
 
 
@@ -52,7 +52,7 @@ async def test_forums_count_as_supergroups_and_the_rest_is_left_out(tmp_path: Pa
             dialog(enums.ChatType.DIRECT, 8),  # a channel's direct messages
         ]
     )
-    gateway._started = True  # noqa: SLF001
+    gateway.started = True
     found = {info.id: (info.kind, info.role) async for info in gateway.iter_channels()}
     assert found == {
         1: ("channel", "member"),

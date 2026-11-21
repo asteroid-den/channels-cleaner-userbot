@@ -12,7 +12,7 @@ from channels_cleaner.services import decisions, deck
 router = APIRouter(prefix="/decisions", tags=["decisions"])
 
 
-async def _chat(dao: DAO, account_id: int, channel_id: int) -> db_models.Channel:
+async def get_chat(dao: DAO, account_id: int, channel_id: int) -> db_models.Channel:
     channel = await dao.get_channel(account_id, channel_id)
 
     if channel is None:
@@ -34,7 +34,7 @@ async def put_decision(
     if ctx.apply.running:
         raise errors.ApplyJobRunning
 
-    chat = await _chat(dao, account_id, channel_id)
+    chat = await get_chat(dao, account_id, channel_id)
 
     if decisions.leaves_owned_chat(body.decision, chat.role, allowed=ctx.settings.allow_owner_leave):
         raise errors.OwnerLeaveNotEnabled
@@ -56,7 +56,7 @@ async def delete_decision(
     if ctx.apply.running:
         raise errors.ApplyJobRunning
 
-    chat = await _chat(dao, account_id, channel_id)
+    chat = await get_chat(dao, account_id, channel_id)
     removed = await decisions.undo(dao, account_id, channel_id)
     await dao.commit()
     return models.UndoDecisionResponse(

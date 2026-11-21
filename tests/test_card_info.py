@@ -29,7 +29,7 @@ def full_calls(gateway: MockGateway, monkeypatch: pytest.MonkeyPatch) -> list[in
     return calls
 
 
-async def _ids(client: httpx.AsyncClient, ctx: AppContext, n: int) -> list[int]:
+async def first_ids(client: httpx.AsyncClient, ctx: AppContext, n: int) -> list[int]:
     await login(client, ctx)
     return [item["id"] for item in (await get_json(client, "/api/channels"))["items"][:n]]
 
@@ -37,7 +37,7 @@ async def _ids(client: httpx.AsyncClient, ctx: AppContext, n: int) -> list[int]:
 async def test_a_refusal_is_remembered_and_not_asked_again(
     client: httpx.AsyncClient, ctx: AppContext, gateway: MockGateway, full_calls: list[int]
 ) -> None:
-    (cid,) = await _ids(client, ctx, 1)
+    (cid,) = await first_ids(client, ctx, 1)
     gateway.answers.append(RequestRefusedError("CHANNEL_PRIVATE"))  # pyright: ignore[reportAttributeAccessIssue]
 
     first = await client.get(f"/api/channels/{cid}/full")
@@ -52,7 +52,7 @@ async def test_a_refusal_is_remembered_and_not_asked_again(
 async def test_a_refusal_goes_stale_like_an_answer(
     client: httpx.AsyncClient, ctx: AppContext, gateway: MockGateway, full_calls: list[int]
 ) -> None:
-    (cid,) = await _ids(client, ctx, 1)
+    (cid,) = await first_ids(client, ctx, 1)
     gateway.answers.append(RequestRefusedError("CHANNEL_PRIVATE"))  # pyright: ignore[reportAttributeAccessIssue]
     await client.get(f"/api/channels/{cid}/full")
     ctx.settings.full_info_ttl_hours = 0
@@ -66,7 +66,7 @@ async def test_a_refusal_goes_stale_like_an_answer(
 async def test_a_dropped_connection_is_not_remembered(
     client: httpx.AsyncClient, ctx: AppContext, gateway: MockGateway, full_calls: list[int]
 ) -> None:
-    (cid,) = await _ids(client, ctx, 1)
+    (cid,) = await first_ids(client, ctx, 1)
     gateway.answers.append(GatewayError("No connection to Telegram"))  # pyright: ignore[reportAttributeAccessIssue]
 
     first = await client.get(f"/api/channels/{cid}/full")
@@ -79,7 +79,7 @@ async def test_a_dropped_connection_is_not_remembered(
 async def test_a_flood_wait_holds_every_card(
     client: httpx.AsyncClient, ctx: AppContext, gateway: MockGateway, full_calls: list[int]
 ) -> None:
-    first, second = await _ids(client, ctx, 2)
+    first, second = await first_ids(client, ctx, 2)
     gateway.answers.append(FloodWaitError(120))  # pyright: ignore[reportAttributeAccessIssue]
 
     r1 = await client.get(f"/api/channels/{first}/full")
@@ -99,7 +99,7 @@ async def test_a_flood_wait_on_the_history_keeps_the_full_info(
     full_calls: list[int],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    (cid,) = await _ids(client, ctx, 1)
+    (cid,) = await first_ids(client, ctx, 1)
 
     async def flood(_: int, __: int) -> list[object]:
         raise FloodWaitError(60)

@@ -11,14 +11,14 @@ from channels_cleaner.cli import settings_error_message
 from channels_cleaner.config import Settings, default_data_dir
 
 
-def _checkout(root: Path, name: str) -> None:
+def make_checkout(root: Path, name: str) -> None:
     (root / "src" / "channels_cleaner").mkdir(parents=True)
     (root / "pyproject.toml").write_text(f'[project]\nname = "{name}"\n')
 
 
 def test_checkout_keeps_local_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    _checkout(tmp_path, "telegram-channels-cleaner")
+    make_checkout(tmp_path, "telegram-channels-cleaner")
     assert default_data_dir() == Path("data")
 
 
@@ -32,7 +32,7 @@ def test_data_folder_of_another_project_is_left_alone(
     (tmp_path / "data").mkdir()
 
     if other == "other project":
-        _checkout(tmp_path, "someone-elses-app")
+        make_checkout(tmp_path, "someone-elses-app")
 
     assert default_data_dir() == tmp_path / "xdg" / "telegram-channels-cleaner"
 

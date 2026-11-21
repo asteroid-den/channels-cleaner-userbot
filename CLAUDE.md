@@ -29,6 +29,9 @@ Talk to the user in **Russian**. Code, comments, commits and README are in Engli
 - `data/` — local sessions/DB/media (gitignored). Contains the user's mock DB from earlier runs.
 
 Code style: ruff ALL (120 cols), pyright, blank lines around blocks (see the user memory on tooling).
+No leading underscores, as in mercury: this is an app, not a library, so module constants, helpers, methods and
+attributes are plain names (tests too). Kept only where a property sits on the field (`_client`, `_profile` in the
+gateways). Pydantic models set `from_attributes` themselves where they read the services' dataclasses.
 Commit style: small logical commits, conventional prefixes (`feat(api):`, `fix(ui):`, `design(tool):`…),
 **no `Co-Authored-By` trailer** (the user removed them from history on 2026-11-17). Branches for iterations after v1.
 
@@ -136,14 +139,14 @@ with `TYPE` (snake case of the class name; what the UI acts on, `ApiError.type` 
 (upper case as in mercury: `type` would shadow the builtin); fields go into the body
 `{"ok": false, "type", "message", …fields}` (`reason` = what Telegram said, `retry_after`, `channel_id`, `details`).
 Services and routes raise these classes directly; the gateway's own errors (telegram/types.py) stay HTTP-free and
-are translated in `_translate`, as are Starlette's 404/405, validation (422) and any other exception (500). The
+are translated in `translate`, as are Starlette's 404/405, validation (422) and any other exception (500). The
 guard builds its 403s from the same classes. Each route lists its errors in `responses=errors.error_responses(…)`
 (plus `COMMON_ERRORS`: the guard's 403s, 422, 500) — in OpenAPI as `<Name>Error` models; the test client checks
 every error answer against what its route lists (conftest `check_error_is_declared`, like mercury's jsonrpc
 plugin). A test checks every class is complete and TYPEs are unique. "No picture" is `PictureNotFound` (JSON 404).
-`kurigram_gateway._telegram_errors()`
+`kurigram_gateway.telegram_errors()`
 maps FloodWait/RPCError/OSError/TimeoutError to the gateway's errors; downloads raise on network errors instead of
-caching "no picture". Started offline, `context._boot` retries (2, 5, 10, 30, 60 s…) and publishes `connect_failed`;
+caching "no picture". Started offline, `context.boot` retries (2, 5, 10, 30, 60 s…) and publishes `connect_failed`;
 the login screen shows it and clears it once connected.
 
 Key behaviours / decisions (agreed with the user):

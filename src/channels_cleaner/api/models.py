@@ -1,8 +1,8 @@
 """Pydantic request and response models: the API's contract, as /openapi.json shows it.
 
 Bodies the UI sends are ``…Request``; what a route answers is a ``…Response`` (``ok: true``, as errors carry
-``ok: false``); the parts they are made of are plain nouns. Responses are built from the services' own state
-(dataclasses, ORM rows) with from_attributes.
+``ok: false``); the parts they are made of are plain nouns. Responses are built from the services' own state:
+the ones made of their dataclasses read them with from_attributes.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ from channels_cleaner.services.apply import ApplyStatus, ItemStatus
 from channels_cleaner.services.auth import AuthStatus
 
 #: media the card shows a thumbnail of
-_THUMB_MEDIA = {MediaKind.PHOTO, MediaKind.VIDEO, MediaKind.ANIMATION}
+THUMB_MEDIA = {MediaKind.PHOTO, MediaKind.VIDEO, MediaKind.ANIMATION}
 
 
 # --- what the UI sends ----------------------------------------------------------------------------------------------
@@ -75,18 +75,18 @@ class DeckPrefsRequest(DeckPrefs):
 # --- parts of the answers -------------------------------------------------------------------------------------------
 
 
-class _Model(BaseModel):
+class User(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-
-class User(_Model):
     id: int
     first_name: str
     last_name: str | None
     username: str | None
 
 
-class SyncState(_Model):
+class SyncState(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     running: bool
     fetched: int
     total: int | None
@@ -95,7 +95,7 @@ class SyncState(_Model):
     error: str | None
 
 
-class Pulse(_Model):
+class Pulse(BaseModel):
     #: 26 weekly post counts, oldest first; None = a week the fetched history doesn't reach
     weeks: list[int | None]
     per_week: float
@@ -103,7 +103,7 @@ class Pulse(_Model):
     sample: int
 
 
-class Channel(_Model):
+class Channel(BaseModel):
     id: int
     kind: ChatKind
     role: ChatRole
@@ -131,7 +131,7 @@ class Channel(_Model):
 
     @classmethod
     def from_channel(cls, channel: models.Channel) -> Self:
-        has_thumb = channel.last_post_id is not None and channel.last_post_media in _THUMB_MEDIA
+        has_thumb = channel.last_post_id is not None and channel.last_post_media in THUMB_MEDIA
         version = channel.photo_unique_id or "x"
         decision = channel.decision
         return cls(
@@ -161,7 +161,7 @@ class Channel(_Model):
         )
 
 
-class DeckCounts(_Model):
+class DeckCounts(BaseModel):
     total: int
     #: how many chats each choice in the deck settings menu would show
     kind_totals: dict[ChatKind, int]
@@ -178,7 +178,9 @@ class DeckCounts(_Model):
     trail: str
 
 
-class ApplyItem(_Model):
+class ApplyItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     channel_id: int
     decision: Decision
     title: str
@@ -190,7 +192,9 @@ class ApplyItem(_Model):
     role: ChatRole
 
 
-class ApplyState(_Model):
+class ApplyState(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     job_id: int | None
     status: ApplyStatus
     total: int
@@ -202,7 +206,7 @@ class ApplyState(_Model):
     items: list[ApplyItem]
 
 
-class ExportRow(_Model):
+class ExportRow(BaseModel):
     """A chat left, as /api/export lists it."""
 
     channel_id: int
@@ -217,11 +221,13 @@ class ExportRow(_Model):
 # --- what the routes answer -----------------------------------------------------------------------------------------
 
 
-class OkResponse(_Model):
+class OkResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     ok: Literal[True] = True
 
 
-class ErrorResponse(_Model):
+class ErrorResponse(BaseModel):
     """The body of every error (api/errors.py); which fields come along depends on the type."""
 
     ok: Literal[False] = False

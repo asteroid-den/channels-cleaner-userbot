@@ -57,11 +57,11 @@ def default_data_dir() -> Path:
         base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
 
     data_dir = base / APP_DIR
-    _adopt_legacy_dir(base / LEGACY_APP_DIR, data_dir)
+    adopt_legacy_dir(base / LEGACY_APP_DIR, data_dir)
     return data_dir
 
 
-def _adopt_legacy_dir(legacy: Path, data_dir: Path) -> None:
+def adopt_legacy_dir(legacy: Path, data_dir: Path) -> None:
     """Move the data of a version from before the rename to the new place.
 
     Otherwise the user has to log in again and the old session, full access to their account, stays behind.
@@ -109,7 +109,7 @@ class Settings(BaseSettings):
     full_info_ttl_hours: int = Field(default=72, ge=0)
 
     @model_validator(mode="after")
-    def _delay_range(self) -> Self:
+    def check_delay_range(self) -> Self:
         if self.apply_delay_min > self.apply_delay_max:
             msg = f"CC_APPLY_DELAY_MIN ({self.apply_delay_min}) is above CC_APPLY_DELAY_MAX ({self.apply_delay_max})"
             raise ValueError(msg)

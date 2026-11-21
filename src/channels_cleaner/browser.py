@@ -12,10 +12,10 @@ import subprocess
 import sys
 import webbrowser
 
-_OPENERS = {"darwin": "open"}
+OPENERS = {"darwin": "open"}
 
 
-def _spawn_detached(command: list[str]) -> bool:
+def spawn_detached(command: list[str]) -> bool:
     try:
         # A fixed opener and a URL we built ourselves, no shell involved
         subprocess.Popen(  # noqa: S603
@@ -44,9 +44,9 @@ def open_url(url: str) -> bool:
 
         return True
 
-    opener = shutil.which(_OPENERS.get(sys.platform, "xdg-open"))
+    opener = shutil.which(OPENERS.get(sys.platform, "xdg-open"))
 
-    if opener and _spawn_detached([opener, url]):
+    if opener and spawn_detached([opener, url]):
         return True
 
     return webbrowser.open(url)

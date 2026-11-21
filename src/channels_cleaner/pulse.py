@@ -54,10 +54,10 @@ def compute_pulse(
 
     if truncated and oldest_seen is not None:
         span_weeks = max((now - oldest_seen) / timedelta(weeks=1), 1 / 7)
-        per_week = len(utc) / span_weeks if span_weeks < RECENT_WEEKS else _recent(counts)
+        per_week = len(utc) / span_weeks if span_weeks < RECENT_WEEKS else recent_rate(counts)
 
     else:
-        per_week = _recent(counts)
+        per_week = recent_rate(counts)
 
     return {
         "weeks": counts,
@@ -67,6 +67,6 @@ def compute_pulse(
     }
 
 
-def _recent(counts: list[int | None]) -> float:
+def recent_rate(counts: list[int | None]) -> float:
     tail = [c for c in counts[-RECENT_WEEKS:] if c is not None]
     return sum(tail) / len(tail) if tail else 0.0

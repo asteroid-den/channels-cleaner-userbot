@@ -8,7 +8,7 @@ fallback text for it, the dataclass fields go into the body. Services raise thes
 
 from collections import defaultdict
 from dataclasses import asdict, dataclass, fields, is_dataclass
-from functools import reduce
+from functools import cache, reduce
 from typing import Any, ClassVar, Literal
 
 from fastapi import FastAPI, Request
@@ -33,29 +33,6 @@ class BaseError(Exception):
 
     def response(self) -> JSONResponse:
         return JSONResponse(self.body(), self.CODE)
-
-    @classmethod
-    def model(cls) -> type[BaseModel]:
-        """The body of this error for the OpenAPI schema, built once per class."""
-        cached: type[BaseModel] | None = cls.__dict__.get("_model")
-
-        if cached is not None:
-            return cached
-
-        field_defs: dict[str, Any] = {
-            "ok": (Literal[False], False),
-            "type": (Literal[cls.TYPE], cls.TYPE),
-            "message": (str, cls.MESSAGE),
-        }
-
-        if is_dataclass(cls):
-            for field in fields(cls):
-                field_defs[field.name] = (field.type, ...)
-
-        name = cls.__name__ if cls.__name__.endswith("Error") else f"{cls.__name__}Error"
-        model = create_model(name, **field_defs)
-        cls._model = model  # pyright: ignore[reportAttributeAccessIssue] - a cache on the class itself
-        return model
 
 
 class ErrorDetail(BaseModel):
@@ -235,12 +212,30 @@ class TelegramError(BadGateway):
 COMMON_ERRORS: tuple[type[BaseError], ...] = (HostNotAllowed, CrossOriginRefused, InvalidRequest, HttpInternalError)
 
 
+@cache
+def error_model(error: type[BaseError]) -> type[BaseModel]:
+    """The body of that error for the OpenAPI schema: ``ok``, its TYPE as a constant, ``message`` and its fields."""
+    field_defs: dict[str, Any] = {
+        "ok": (Literal[False], False),
+        "type": (Literal[error.TYPE], error.TYPE),
+        "message": (str, error.MESSAGE),
+    }
+
+    # Field types are real types here: this module must not use `from __future__ import annotations`
+    if is_dataclass(error):
+        for field in fields(error):
+            field_defs[field.name] = (field.type, ...)
+
+    name = error.__name__ if error.__name__.endswith("Error") else f"{error.__name__}Error"
+    return create_model(name, **field_defs)
+
+
 def error_responses(*errors: type[BaseError]) -> dict[int | str, dict[str, Any]]:
     """A route's ``responses``: the common errors and its own, one model (or a union of models) per status."""
     grouped: dict[int, list[Any]] = defaultdict(list)
 
     for error in (*COMMON_ERRORS, *errors):
-        grouped[error.CODE].append(error.model())
+        grouped[error.CODE].append(error_model(error))
 
     return {code: {"model": reduce(lambda a, b: a | b, models)} for code, models in grouped.items()}
 
@@ -248,7 +243,7 @@ def error_responses(*errors: type[BaseError]) -> dict[int | str, dict[str, Any]]
 # --- handlers -------------------------------------------------------------------------------------------------------
 
 
-def _translate(exc: Exception) -> BaseError:  # noqa: PLR0911 - one answer per kind of error
+def translate(exc: Exception) -> BaseError:  # noqa: PLR0911 - one answer per kind of error
     match exc:
         case BaseError():
             return exc
@@ -270,10 +265,10 @@ def _translate(exc: Exception) -> BaseError:  # noqa: PLR0911 - one answer per k
             return HttpInternalError()
 
 
-async def _handle(_: Request, exc: Exception) -> JSONResponse:
-    return _translate(exc).response()
+async def handle(_: Request, exc: Exception) -> JSONResponse:
+    return translate(exc).response()
 
 
 def install(app: FastAPI) -> None:
     for error in (BaseError, GatewayError, RequestValidationError, HTTPException, Exception):
-        app.add_exception_handler(error, _handle)
+        app.add_exception_handler(error, handle)

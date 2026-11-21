@@ -93,7 +93,7 @@ def settings_error_message(error: ValidationError) -> str:
     return "\n".join(lines)
 
 
-def _settings(args: argparse.Namespace) -> Settings:
+def settings_from_args(args: argparse.Namespace) -> Settings:
     """Settings from the environment and .env, with the flags given on top; exits with a message if they don't fit."""
     overrides: dict[str, Any] = {}  # flags given on the command line, checked by Settings
 
@@ -134,7 +134,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
-    settings = _settings(args)
+    settings = settings_from_args(args)
 
     # Before the log file goes in: the data dir is made private first
     settings.ensure_dirs()

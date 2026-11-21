@@ -15,7 +15,7 @@ from channels_cleaner.events import EventBus
 PING_INTERVAL = 15.0
 
 
-def _format(event: str, data: dict[str, Any]) -> str:
+def format_event(event: str, data: dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, default=str, ensure_ascii=False)}\n\n"
 
 
@@ -24,7 +24,7 @@ def sse_response(
 ) -> StreamingResponse:
     async def stream() -> AsyncIterator[str]:
         with bus.subscribe(topic) as queue:
-            yield _format("snapshot", snapshot())
+            yield format_event("snapshot", snapshot())
 
             while True:
                 if await request.is_disconnected():
@@ -37,7 +37,7 @@ def sse_response(
                     yield ": ping\n\n"
                     continue
 
-                yield _format(event.type, event.data)
+                yield format_event(event.type, event.data)
 
     return StreamingResponse(
         stream(),

@@ -69,14 +69,14 @@ async def export_rows(
             "username": channel.username,
             "link": f"https://t.me/{channel.username}" if channel.username else None,
             "members_count": channel.members_count,
-            "last_post_at": _iso(channel.last_post_at),
-            "unsubscribed_at": _iso(channel.decision.applied_at if channel.decision else None),
+            "last_post_at": iso(channel.last_post_at),
+            "unsubscribed_at": iso(channel.decision.applied_at if channel.decision else None),
         }
         for channel in channels
     ]
 
 
-def _iso(value: datetime | None) -> str | None:
+def iso(value: datetime | None) -> str | None:
     return value.isoformat() if value else None
 
 
