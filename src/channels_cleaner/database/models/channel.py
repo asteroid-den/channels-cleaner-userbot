@@ -32,6 +32,9 @@ class Channel(Base):
     last_post_text: Mapped[str | None]
     last_post_media: Mapped[MediaKind | None]
     full_fetched_at: Mapped[datetime | None]
+    # What Telegram answered when it refused the full info for good (CHANNEL_PRIVATE…): not asked again until
+    # full_fetched_at goes stale, like a successful fetch
+    full_error: Mapped[str | None]
     synced_at: Mapped[datetime]
     # Missing from the latest sync, or left by the apply job
     gone: Mapped[bool] = mapped_column(default=False)

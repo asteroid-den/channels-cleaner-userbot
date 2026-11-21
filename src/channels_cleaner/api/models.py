@@ -121,6 +121,8 @@ class Channel(_Model):
     last_post_text: str | None
     last_post_media: MediaKind | None
     full_loaded: bool
+    #: what Telegram said when it refused the full info (private, banned…); asked again once the cache goes stale
+    full_error: str | None = None
     decision: Decision | None
     decision_status: DecisionStatus | None
     error: str | None
@@ -150,6 +152,7 @@ class Channel(_Model):
             last_post_text=channel.last_post_text,
             last_post_media=channel.last_post_media,
             full_loaded=channel.full_fetched_at is not None,
+            full_error=channel.full_error,
             decision=decision.decision if decision else None,
             decision_status=decision.status if decision else None,
             error=decision.error if decision else None,

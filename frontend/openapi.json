@@ -3199,6 +3199,17 @@
             "type": "boolean",
             "title": "Full Loaded"
           },
+          "full_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Error"
+          },
           "decision": {
             "anyOf": [
               {
@@ -3459,6 +3470,17 @@
           "full_loaded": {
             "type": "boolean",
             "title": "Full Loaded"
+          },
+          "full_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Error"
           },
           "decision": {
             "anyOf": [

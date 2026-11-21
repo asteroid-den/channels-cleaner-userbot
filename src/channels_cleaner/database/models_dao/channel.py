@@ -134,6 +134,7 @@ class ChannelDAO:
             "about": full.about,
             "members_count": func.coalesce(full.members_count, Channel.members_count),
             "full_fetched_at": fetched_at,
+            "full_error": None,
         }
 
         # A failed history fetch keeps the pulse from before
@@ -142,6 +143,16 @@ class ChannelDAO:
 
         statement = (
             update(Channel).where(Channel.account_id == account_id, Channel.channel_id == channel_id).values(values)
+        )
+
+        await self.session.execute(statement)
+
+    async def save_full_refused(self, account_id: int, channel_id: int, error: str, fetched_at: datetime) -> None:
+        """Telegram won't give this chat's full info: remember why, so the card isn't asked for it again and again."""
+        statement = (
+            update(Channel)
+            .where(Channel.account_id == account_id, Channel.channel_id == channel_id)
+            .values(full_error=error, full_fetched_at=fetched_at)
         )
 
         await self.session.execute(statement)

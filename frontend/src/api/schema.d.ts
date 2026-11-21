@@ -603,6 +603,8 @@ export interface components {
             last_post_media: components["schemas"]["MediaKind"] | null;
             /** Full Loaded */
             full_loaded: boolean;
+            /** Full Error */
+            full_error?: string | null;
             decision: components["schemas"]["Decision"] | null;
             decision_status: components["schemas"]["DecisionStatus"] | null;
             /** Error */
@@ -676,6 +678,8 @@ export interface components {
             last_post_media: components["schemas"]["MediaKind"] | null;
             /** Full Loaded */
             full_loaded: boolean;
+            /** Full Error */
+            full_error?: string | null;
             decision: components["schemas"]["Decision"] | null;
             decision_status: components["schemas"]["DecisionStatus"] | null;
             /** Error */

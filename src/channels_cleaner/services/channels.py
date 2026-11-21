@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
+import time
+from collections.abc import Coroutine
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from channels_cleaner.api.errors import ChannelNotFound
 from channels_cleaner.config import Settings
@@ -14,7 +18,7 @@ from channels_cleaner.database.models import Channel, base
 from channels_cleaner.enums import MediaKind
 from channels_cleaner.pulse import HISTORY_LIMIT, compute_pulse
 from channels_cleaner.telegram.gateway import TelegramGateway
-from channels_cleaner.telegram.types import ChannelFull
+from channels_cleaner.telegram.types import ChannelFull, FloodWaitError, RequestRefusedError
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +34,20 @@ class ChannelsService:
         self._full_sem = asyncio.Semaphore(1)
         self._media_sem = asyncio.Semaphore(2)
         self._inflight: dict[tuple[str, int], asyncio.Future[object]] = {}
+        # Until when (time.monotonic) Telegram asked us to leave each kind of request alone. A flood wait on one card
+        # holds for the next ones too: they would only get the same answer, and Telegram lengthens waits for that.
+        self._cooldowns: dict[str, float] = {}
+
+    def _check_cooldown(self, kind: str) -> None:
+        left = self._cooldowns.get(kind, 0) - time.monotonic()
+
+        if left > 0:
+            raise FloodWaitError(math.ceil(left))
+
+    def _cool_down(self, kind: str, exc: FloodWaitError) -> None:
+        until = time.monotonic() + exc.seconds
+        self._cooldowns[kind] = max(self._cooldowns.get(kind, 0), until)
+        log.info("Telegram asks to wait %s s before the next %s request", exc.seconds, kind)
 
     async def _row(self, account_id: int, channel_id: int) -> Channel:
         async with self._database.session() as session:
@@ -49,10 +67,11 @@ class ChannelsService:
     async def get_full(self, account_id: int, channel_id: int) -> Channel:
         row = await self._row(account_id, channel_id)
 
-        # Rows cached before the pulse existed are refreshed once to get it.
-        if self._is_fresh(row.full_fetched_at) and row.pulse is not None:
+        # Rows cached before the pulse existed are refreshed once to get it; a refusal stands as long as an answer would
+        if self._is_fresh(row.full_fetched_at) and (row.pulse is not None or row.full_error is not None):
             return row
 
+        self._check_cooldown("full")
         key = ("full", channel_id)
 
         if key in self._inflight:
@@ -63,15 +82,7 @@ class ChannelsService:
             self._inflight[key] = future
 
             try:
-                async with self._full_sem:
-                    full: ChannelFull = await self._gw.get_full(channel_id)
-                    dates = await self._gw.recent_post_dates(channel_id, HISTORY_LIMIT)
-
-                async with self._database.session() as session:
-                    dao = DAO(session)
-                    pulse = compute_pulse(dates, limit=HISTORY_LIMIT)
-                    await dao.save_full(account_id, channel_id, full, pulse, base.utc_now())
-                    await dao.commit()
+                await self._fetch_full(account_id, channel_id)
 
             finally:
                 # Waiters just re-read the row; if this fetch failed they get it without extras.
@@ -79,6 +90,40 @@ class ChannelsService:
                 self._inflight.pop(key, None)
 
         return await self._row(account_id, channel_id)
+
+    async def _fetch_full(self, account_id: int, channel_id: int) -> None:
+        async with self._full_sem:
+            # A card that waited for the semaphore behind a flood wait gets it too, without asking
+            self._check_cooldown("full")
+
+            try:
+                full: ChannelFull = await self._gw.get_full(channel_id)
+
+            except FloodWaitError as exc:
+                self._cool_down("full", exc)
+                raise
+
+            except RequestRefusedError as exc:
+                async with self._database.session() as session:
+                    dao = DAO(session)
+                    await dao.save_full_refused(account_id, channel_id, str(exc), base.utc_now())
+                    await dao.commit()
+
+                return
+
+            try:
+                dates: list[datetime] | None = await self._gw.recent_post_dates(channel_id, HISTORY_LIMIT)
+
+            # The full info is in hand: keep it, the pulse comes with a later fetch (a row without one is refetched)
+            except FloodWaitError as exc:
+                self._cool_down("full", exc)
+                dates = None
+
+        async with self._database.session() as session:
+            dao = DAO(session)
+            pulse = compute_pulse(dates, limit=HISTORY_LIMIT) if dates is not None else None
+            await dao.save_full(account_id, channel_id, full, pulse, base.utc_now())
+            await dao.commit()
 
     # --- media ---------------------------------------------------------------------------
     def _media_dir(self, account_id: int) -> Path:
@@ -113,8 +158,7 @@ class ChannelsService:
         if isinstance(cached, Path):
             return cached
 
-        async with self._media_sem:
-            path = await self._gw.download_avatar(channel_id, row.photo_file_id, directory / f"{stem}.jpg")
+        path = await self._download(self._gw.download_avatar(channel_id, row.photo_file_id, directory / f"{stem}.jpg"))
 
         if path is None:
             (directory / f"{stem}{_NONE_MARKER}").touch()
@@ -137,10 +181,30 @@ class ChannelsService:
         if isinstance(cached, Path):
             return cached
 
-        async with self._media_sem:
-            path = await self._gw.download_post_thumb(channel_id, row.last_post_id, directory / f"{stem}.jpg")
+        path = await self._download(
+            self._gw.download_post_thumb(channel_id, row.last_post_id, directory / f"{stem}.jpg")
+        )
 
         if path is None:
             (directory / f"{stem}{_NONE_MARKER}").touch()
 
         return path
+
+    async def _download(self, download: Coroutine[Any, Any, Path | None]) -> Path | None:
+        try:
+            self._check_cooldown("media")
+
+            async with self._media_sem:
+                # One that waited for the semaphore behind a flood wait gets it too, without asking
+                self._check_cooldown("media")
+
+                try:
+                    return await download
+
+                except FloodWaitError as exc:
+                    self._cool_down("media", exc)
+                    raise
+
+        finally:
+            # Never awaited when the cooldown refused it: closed, or Python warns about a coroutine never awaited
+            download.close()
