@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onClickOutside } from '@vueuse/core'
-import { ref, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 
@@ -8,7 +8,10 @@ import { useAuthStore } from '@/stores/auth'
 import { useDeckStore } from '@/stores/deck'
 import { useUiStore } from '@/stores/ui'
 
+import type { Account } from '@/api/types'
+
 import AppIcon, { type IconName } from './AppIcon.vue'
+import ChannelAvatar from './ChannelAvatar.vue'
 
 const { t } = useI18n()
 const auth = useAuthStore()
@@ -19,6 +22,23 @@ const router = useRouter()
 const open = ref(false)
 const root = useTemplateRef<HTMLElement>('root')
 onClickOutside(root, () => (open.value = false))
+
+const user = computed(() => auth.state.user)
+const name = computed(() => user.value?.first_name ?? '')
+
+// Fresh counts each time the menu opens: decisions were made since
+watch(open, (isOpen) => {
+  if (isOpen) void auth.loadAccounts().catch(() => undefined)
+})
+
+function fullName(account: Account) {
+  return [account.first_name, account.last_name].filter(Boolean).join(' ')
+}
+
+function switchTo(account: Account) {
+  if (!account.active) void run(() => auth.switchTo(account))
+  else open.value = false
+}
 
 async function run(action: () => Promise<unknown> | unknown) {
   open.value = false
@@ -38,18 +58,19 @@ const items: { icon: IconName; label: string; danger?: boolean; action: () => un
     label: 'account.resetAll',
     action: () => confirm(t('account.resetConfirm')) && deck.reset(null),
   },
-  {
-    icon: 'logout',
-    label: 'account.logout',
-    action: () => confirm(t('account.logoutConfirm')) && logout(false),
-  },
-  {
-    icon: 'logout',
-    label: 'account.logoutWipe',
-    danger: true,
-    action: () => confirm(t('account.logoutWipeConfirm')) && logout(true),
-  },
 ]
+
+const logouts = computed<{ label: string; danger?: boolean; action: () => unknown }[]>(() => [
+  {
+    label: t('account.logoutNamed', { name: name.value }),
+    action: () => confirm(t('account.logoutConfirm', { name: name.value })) && logout(false),
+  },
+  {
+    label: t('account.logoutWipe'),
+    danger: true,
+    action: () => confirm(t('account.logoutWipeConfirm', { name: name.value })) && logout(true),
+  },
+])
 
 async function logout(wipe: boolean) {
   await auth.logout(wipe)
@@ -60,13 +81,14 @@ async function logout(wipe: boolean) {
 <template>
   <div ref="root" class="relative">
     <button
-      class="flex h-[30px] items-center gap-2 rounded-lg border border-border-2 px-2.5 text-[12.5px] text-muted hover:text-text"
+      class="flex h-[30px] items-center gap-2 rounded-lg border border-border-2 pr-2 pl-1 text-[12.5px] text-muted hover:text-text"
       :aria-label="t('account.menu')"
       :aria-expanded="open"
       @click="open = !open"
     >
-      <AppIcon name="user" :size="14" />
-      <span class="max-w-32 truncate">{{ auth.state.user?.first_name }}</span>
+      <ChannelAvatar v-if="user" :id="user.id" :title="name" :src="null" :size="22" />
+      <span class="max-w-32 truncate">{{ name }}</span>
+      <AppIcon name="chevron" :size="12" class="opacity-70" />
     </button>
     <Transition
       enter-from-class="opacity-0 -translate-y-1"
@@ -76,14 +98,48 @@ async function logout(wipe: boolean) {
     >
       <div
         v-if="open"
-        class="absolute right-0 z-40 mt-2 w-72 overflow-hidden rounded-xl border border-border-2 bg-surface p-1 shadow-card"
+        class="absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-xl border border-border-2 bg-surface p-1 shadow-card"
         role="menu"
         data-hotkeys-off
       >
-        <div class="px-3 py-2 text-xs text-muted">
-          {{ auth.state.user?.first_name }} {{ auth.state.user?.last_name ?? '' }}
-          <span v-if="auth.state.user?.username">· @{{ auth.state.user.username }}</span>
+        <div
+          class="px-3 pt-2 pb-1 text-[11px] font-semibold tracking-[0.07em] text-faint uppercase"
+        >
+          {{ t('account.accounts') }}
         </div>
+        <button
+          v-for="account in auth.accounts"
+          :key="account.id"
+          role="menuitemradio"
+          :aria-checked="account.active"
+          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-surface-2"
+          @click="switchTo(account)"
+        >
+          <ChannelAvatar :id="account.id" :title="fullName(account)" :src="null" :size="30" />
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm">{{ fullName(account) }}</span>
+            <span class="block truncate text-xs text-faint">
+              <template v-if="account.username">@{{ account.username }} · </template>
+              {{ t('account.chats', account.chats) }}
+            </span>
+          </span>
+          <AppIcon v-if="account.active" name="check" :size="16" class="shrink-0 text-accent" />
+          <span
+            v-else-if="account.pending"
+            class="shrink-0 rounded-full bg-danger/10 px-2 py-0.5 text-[11px] font-semibold text-danger"
+            :title="t('account.pendingThere', account.pending)"
+            >{{ account.pending }}</span
+          >
+        </button>
+        <button
+          role="menuitem"
+          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-accent hover:bg-surface-2"
+          @click="run(() => auth.addAccount())"
+        >
+          <AppIcon name="plus" :size="16" class="shrink-0" />
+          {{ t('account.add') }}
+        </button>
+        <div class="mx-2 my-1 h-px bg-border" />
         <button
           v-for="item in items"
           :key="item.label"
@@ -94,6 +150,18 @@ async function logout(wipe: boolean) {
         >
           <AppIcon :name="item.icon" :size="16" class="shrink-0 opacity-80" />
           {{ t(item.label) }}
+        </button>
+        <div class="mx-2 my-1 h-px bg-border" />
+        <button
+          v-for="item in logouts"
+          :key="item.label"
+          role="menuitem"
+          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-surface-2"
+          :class="item.danger ? 'text-danger' : ''"
+          @click="run(item.action)"
+        >
+          <AppIcon name="logout" :size="16" class="shrink-0 opacity-80" />
+          {{ item.label }}
         </button>
       </div>
     </Transition>

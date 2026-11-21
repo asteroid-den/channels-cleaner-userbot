@@ -24,6 +24,22 @@ const busy = ref(false)
 const error = ref<string | null>(null)
 
 const status = computed(() => auth.state.status)
+// Other accounts are in the app: this login adds one, and giving it up goes back
+const backTo = computed(
+  () => auth.accounts.find((a) => a.id === auth.previous?.id) ?? auth.accounts[0] ?? null,
+)
+
+async function goBack() {
+  if (!backTo.value) return
+  busy.value = true
+  try {
+    await auth.switchTo(backTo.value)
+  } catch (err) {
+    error.value = describe(err)
+  } finally {
+    busy.value = false
+  }
+}
 const step = computed<'method' | 'code' | 'password'>(() =>
   status.value === 'password' ? 'password' : status.value === 'code' ? 'code' : 'method',
 )
@@ -86,6 +102,7 @@ const startOver = () =>
   })
 
 onMounted(() => {
+  void auth.loadAccounts().catch(() => undefined)
   if (status.value === 'unauthorized') void chooseMethod('qr')
   else if (status.value === 'code') method.value = 'phone'
 })
@@ -105,15 +122,30 @@ watch(
 </script>
 
 <template>
-  <section class="flex flex-1 items-start justify-center px-4 pt-6 pb-16 sm:items-center sm:pt-0">
+  <section
+    class="relative flex flex-1 items-start justify-center px-4 pt-14 pb-16 sm:items-center sm:pt-0"
+  >
+    <button
+      v-if="backTo"
+      class="absolute top-4 left-4 flex items-center gap-1.5 text-sm text-accent hover:underline disabled:opacity-50 sm:left-6"
+      :disabled="busy"
+      @click="goBack"
+    >
+      <AppIcon name="chevron" :size="14" class="rotate-90" />
+      {{ t('login.backTo', { name: backTo.first_name }) }}
+    </button>
     <div
       class="w-full max-w-[880px] overflow-hidden rounded-[18px] border border-border-2 bg-surface shadow-card"
     >
       <div class="grid md:grid-cols-[1fr_1.05fr]">
         <div class="flex flex-col justify-between gap-8 border-border p-8 md:border-r">
           <div>
-            <h1 class="text-2xl font-semibold tracking-tight">{{ t('login.title') }}</h1>
-            <p class="mt-2 text-sm leading-relaxed text-muted">{{ t('login.subtitle') }}</p>
+            <h1 class="text-2xl font-semibold tracking-tight">
+              {{ t(backTo ? 'login.addTitle' : 'login.title') }}
+            </h1>
+            <p class="mt-2 text-sm leading-relaxed text-muted">
+              {{ t(backTo ? 'login.addSubtitle' : 'login.subtitle') }}
+            </p>
           </div>
 
           <ol v-if="step === 'method' && method === 'qr'" class="space-y-4">

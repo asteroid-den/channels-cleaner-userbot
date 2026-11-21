@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { api, subscribe } from '@/api/client'
-import type { AuthState } from '@/api/types'
+import type { Account, AccountsResponse, AuthState } from '@/api/types'
 
 const INITIAL: AuthState = {
   status: 'starting',
@@ -17,6 +17,12 @@ const INITIAL: AuthState = {
 export const useAuthStore = defineStore('auth', () => {
   const state = ref<AuthState>({ ...INITIAL })
   const ready = ref(false)
+  /** Accounts with a session, the active one included. */
+  const accounts = ref<Account[]>([])
+  /** The account being switched to, for the placeholder over the deck. */
+  const switchingTo = ref<string | null>(null)
+  /** Who to go back to when adding an account is given up. */
+  const previous = ref<Account | null>(null)
   let unsubscribe: (() => void) | null = null
 
   const authorized = computed(() => state.value.status === 'authorized')
@@ -61,6 +67,24 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async (wipeData: boolean) =>
     set(await api.post<AuthState>('/api/auth/logout', { wipe_data: wipeData }))
 
+  async function loadAccounts() {
+    accounts.value = (await api.get<AccountsResponse>('/api/accounts')).items
+  }
+
+  async function switchTo(account: Account) {
+    switchingTo.value = account.first_name
+    try {
+      set(await api.post<AuthState>(`/api/accounts/${account.id}/activate`))
+    } finally {
+      switchingTo.value = null
+    }
+  }
+
+  async function addAccount() {
+    previous.value = accounts.value.find((account) => account.active) ?? null
+    set(await api.post<AuthState>('/api/accounts/add'))
+  }
+
   return {
     state,
     ready,
@@ -74,5 +98,11 @@ export const useAuthStore = defineStore('auth', () => {
     checkPassword,
     cancel,
     logout,
+    accounts,
+    switchingTo,
+    previous,
+    loadAccounts,
+    switchTo,
+    addAccount,
   }
 })
