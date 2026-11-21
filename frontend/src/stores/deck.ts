@@ -363,9 +363,14 @@ export const useDeckStore = defineStore('deck', () => {
     history.value = history.value.filter((h) => h.channel.id !== channelId)
   }
 
-  async function prefetch(channel: Channel) {
-    // Rows cached before the pulse existed are "loaded" but still need the pulse.
-    if ((channel.full_loaded && channel.pulse) || inflight.has(channel.id)) return
+  /** Card info still to fetch: a refusal (full_error) is an answer too; rows cached before the pulse need it. */
+  function needsInfo(channel: Channel) {
+    return !(channel.full_loaded && (channel.pulse || channel.full_error))
+  }
+
+  /** Fetches one card's info; false when Telegram asked to wait, which holds for every card. */
+  async function prefetch(channel: Channel): Promise<boolean> {
+    if (!needsInfo(channel) || inflight.has(channel.id)) return true
     inflight.add(channel.id)
     try {
       const full = await api.get<Channel>(`/api/channels/${channel.id}/full`)
@@ -376,21 +381,55 @@ export const useDeckStore = defineStore('deck', () => {
       }
     } catch (err) {
       if (err instanceof ApiError && err.type === 'flood_wait') {
-        // Back off quietly; the card simply shows without a description for now.
-        setTimeout(() => inflight.delete(channel.id), (err.retryAfter ?? 10) * 1000)
-        return
+        pauseUntil(Date.now() + (err.retryAfter ?? 10) * 1000)
+        return false
       }
+      // Anything else (no connection…): asked again when the deck moves
+    } finally {
+      inflight.delete(channel.id)
     }
-    inflight.delete(channel.id)
+    return true
+  }
+
+  // A flood wait pauses the whole prefetch: the next cards would only get the same answer, and Telegram lengthens
+  // the wait for asking anyway. The cards show without their extras meanwhile.
+  let pausedUntil = 0
+  let resumeTimer: ReturnType<typeof setTimeout> | null = null
+  let prefetching = false
+  let again = false
+
+  function pauseUntil(until: number) {
+    pausedUntil = Math.max(pausedUntil, until)
+    if (resumeTimer) clearTimeout(resumeTimer)
+    resumeTimer = setTimeout(() => {
+      resumeTimer = null
+      void prefetchAhead()
+    }, pausedUntil - Date.now())
+  }
+
+  async function prefetchAhead() {
+    if (Date.now() < pausedUntil) return
+    if (prefetching) {
+      again = true // the deck moved meanwhile: one more round once this one is done
+      return
+    }
+    prefetching = true
+    try {
+      do {
+        again = false
+        for (const channel of items.value.slice(0, PREFETCH_AHEAD)) {
+          // sequential: the backend serialises GetFullChannel anyway
+          if (!(await prefetch(channel))) return
+        }
+      } while (again)
+    } finally {
+      prefetching = false
+    }
   }
 
   watch(
     () => items.value.slice(0, PREFETCH_AHEAD).map((c) => c.id),
-    async () => {
-      for (const channel of items.value.slice(0, PREFETCH_AHEAD)) {
-        await prefetch(channel) // sequential: the backend serialises GetFullChannel anyway
-      }
-    },
+    () => void prefetchAhead(),
   )
 
   function watchSync() {
@@ -437,6 +476,9 @@ export const useDeckStore = defineStore('deck', () => {
     history.value = []
     loaded.value = false
     returning.value = null
+    pausedUntil = 0
+    if (resumeTimer) clearTimeout(resumeTimer)
+    resumeTimer = null
   }
 
   return {
