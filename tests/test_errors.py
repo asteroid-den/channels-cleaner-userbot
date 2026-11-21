@@ -128,14 +128,14 @@ def settings_offline(
     attempts: list[int] = []
     start = gateway.start
 
-    async def flaky() -> TgUser | None:
+    async def flaky(session: str) -> TgUser | None:
         attempts.append(len(attempts))
 
         if len(attempts) < 3:
             msg = "Network is unreachable"
             raise OSError(msg)
 
-        return await start()
+        return await start(session)
 
     monkeypatch.setattr(gateway, "start", flaky)
     monkeypatch.setattr(context_module, "RECONNECT_DELAYS", (0,))
