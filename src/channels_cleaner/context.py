@@ -43,7 +43,7 @@ class AppContext:
     sync: SyncService
     channels: ChannelsService
     apply: ApplyService
-    _boot_task: asyncio.Task[None] | None = field(default=None, repr=False)
+    boot_task: asyncio.Task[None] | None = field(default=None, repr=False)
 
     @classmethod
     def create(cls, settings: Settings, gateway: TelegramGateway | None = None) -> AppContext:
