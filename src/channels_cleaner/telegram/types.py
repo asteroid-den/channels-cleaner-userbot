@@ -77,6 +77,11 @@ class NotAuthorizedError(GatewayError):
     pass
 
 
+class RequestRefusedError(GatewayError):
+    """Telegram refused the request for good (a 4xx: CHANNEL_PRIVATE, CHAT_FORBIDDEN…): asking again soon gets the
+    same answer, unlike a dropped connection or a server error."""
+
+
 class FloodWaitError(GatewayError):
     def __init__(self, seconds: int) -> None:
         super().__init__(f"Flood wait for {seconds}s")

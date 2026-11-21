@@ -12,8 +12,11 @@ from typing import Any
 
 from pyrogram import Client, enums, errors
 from pyrogram.qrlogin import QRLogin
+from pyrogram.raw.functions.channels.get_full_channel import GetFullChannel
 from pyrogram.raw.functions.messages.get_history import GetHistory
 from pyrogram.raw.types.auth.login_token import LoginToken
+from pyrogram.raw.types.input_channel import InputChannel
+from pyrogram.raw.types.input_peer_channel import InputPeerChannel
 from pyrogram.raw.types.message import Message
 
 from channels_cleaner.config import Settings
@@ -32,6 +35,7 @@ from channels_cleaner.telegram.types import (
     PasswordNeededError,
     QrExpiredError,
     QrToken,
+    RequestRefusedError,
     TgUser,
 )
 
@@ -73,11 +77,18 @@ def _telegram_errors() -> Iterator[None]:
     except errors.FloodWait as exc:
         raise FloodWaitError(int(exc.value or 0)) from exc
 
+    except _REFUSED as exc:
+        raise RequestRefusedError(str(exc.MESSAGE or exc)) from exc
+
     except errors.RPCError as exc:
         raise GatewayError(str(exc.MESSAGE or exc)) from exc
 
     except (OSError, TimeoutError) as exc:
         raise _offline(exc) from exc
+
+
+#: Telegram's answers that won't change if asked again soon: the chat is private, banned, gone, or the request is wrong
+_REFUSED = (errors.BadRequest, errors.Forbidden, errors.NotFound, errors.NotAcceptable)
 
 
 def _offline(exc: BaseException) -> GatewayError:
@@ -384,14 +395,21 @@ class KurigramGateway:
         )
 
     async def get_full(self, channel_id: int) -> ChannelFull:
-        # A private or deleted chat (CHANNEL_PRIVATE…) used to escape as a 500
+        # Raw GetFullChannel (supergroups are channels too): get_chat can't be told not to sleep through a flood wait,
+        # and a sleep of up to sleep_threshold here holds up every other card. The service decides what to do instead.
         with _telegram_errors():
-            chat = await self.client.get_chat(channel_id, force_full=True)
+            peer = await self.client.resolve_peer(channel_id)
 
-        if chat is None:
-            return ChannelFull(about=None, members_count=None)
+            if not isinstance(peer, InputPeerChannel):
+                return ChannelFull(about=None, members_count=None)
 
-        return ChannelFull(about=chat.description, members_count=chat.members_count)
+            result = await self.client.invoke(
+                GetFullChannel(channel=InputChannel(channel_id=peer.channel_id, access_hash=peer.access_hash)),
+                sleep_threshold=0,
+            )
+
+        full = result.full_chat
+        return ChannelFull(about=full.about or None, members_count=getattr(full, "participants_count", None))
 
     async def recent_post_dates(self, channel_id: int, limit: int) -> list[datetime]:
         # Raw GetHistory: one request, no message parsing (the high-level iterator parses
@@ -414,7 +432,8 @@ class KurigramGateway:
                     max_id=0,
                     min_id=0,
                     hash=0,
-                )
+                ),
+                sleep_threshold=0,
             )
 
         except errors.FloodWait as exc:

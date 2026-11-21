@@ -25,6 +25,7 @@ from channels_cleaner.telegram.types import (
     NotAuthorizedError,
     PasswordNeededError,
     QrToken,
+    RequestRefusedError,
     TgUser,
 )
 
@@ -377,7 +378,7 @@ class MockGateway:
 
         if entry is None:
             msg = "CHANNEL_INVALID"
-            raise GatewayError(msg)
+            raise RequestRefusedError(msg)
 
         return entry[1]
 
