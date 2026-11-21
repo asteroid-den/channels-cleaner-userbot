@@ -4,8 +4,7 @@ import httpx
 import pytest
 
 from channels_cleaner.context import AppContext
-from channels_cleaner.telegram.mock_gateway import MockGateway
-from channels_cleaner.telegram.types import ChannelFull, FloodWaitError, GatewayError, RequestRefusedError
+from channels_cleaner.telegram import ChannelFull, FloodWaitError, GatewayError, MockGateway, RequestRefusedError
 from tests.conftest import get_json, login, open_dao
 
 

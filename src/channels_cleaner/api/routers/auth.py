@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from channels_cleaner.api import errors, models, utils
 from channels_cleaner.api.dependencies import ContextDep
 from channels_cleaner.api.sse import sse_response
-from channels_cleaner.services.auth import TOPIC
+from channels_cleaner.services import AUTH_TOPIC
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -18,7 +18,7 @@ async def get_auth_state(ctx: ContextDep) -> models.AuthStateResponse:
 
 @router.get("/events", response_class=StreamingResponse, responses={**errors.error_responses(), **utils.EVENT_STREAM})
 async def get_auth_events(request: Request, ctx: ContextDep) -> StreamingResponse:
-    return sse_response(request, ctx.bus, TOPIC, ctx.auth.state.snapshot)
+    return sse_response(request, ctx.bus, AUTH_TOPIC, ctx.auth.state.snapshot)
 
 
 @router.post("/qr/start", responses=errors.error_responses(errors.LoginStepUnexpected))

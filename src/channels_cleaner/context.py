@@ -7,15 +7,17 @@ from dataclasses import dataclass, field
 
 from channels_cleaner.api.errors import AccountNotFound, ApplyJobRunning
 from channels_cleaner.config import Settings
-from channels_cleaner.database import DAO, DatabaseManager
-from channels_cleaner.database.models import base
+from channels_cleaner.database import DAO, DatabaseManager, utc_now
 from channels_cleaner.events import EventBus
-from channels_cleaner.services.apply import ApplyService
-from channels_cleaner.services.auth import AuthService
-from channels_cleaner.services.channels import ChannelsService
-from channels_cleaner.services.sync import SCOPE_SETTING, SCOPE_VERSION, SyncService
-from channels_cleaner.telegram.gateway import TelegramGateway
-from channels_cleaner.telegram.types import LEGACY_SESSION, TgUser, new_session_name
+from channels_cleaner.services import (
+    SCOPE_SETTING,
+    SCOPE_VERSION,
+    ApplyService,
+    AuthService,
+    ChannelsService,
+    SyncService,
+)
+from channels_cleaner.telegram import LEGACY_SESSION, MockGateway, TelegramGateway, TgUser, new_session_name
 
 log = logging.getLogger(__name__)
 
@@ -23,12 +25,10 @@ RECONNECT_DELAYS = (2, 5, 10, 30, 60)
 
 
 def make_gateway(settings: Settings) -> TelegramGateway:
-    # Only the backend in use is imported: mock mode does not load Kurigram at all
     if settings.mock:
-        from channels_cleaner.telegram.mock_gateway import MockGateway  # noqa: PLC0415
-
         return MockGateway(settings)
 
+    # Imported here only: mock mode does not load Kurigram at all
     from channels_cleaner.telegram.kurigram_gateway import KurigramGateway  # noqa: PLC0415
 
     return KurigramGateway(settings)
@@ -68,7 +68,7 @@ class AppContext:
 
         async with self.database.session() as session:
             dao = DAO(session)
-            await dao.interrupt_running_jobs(base.utc_now())
+            await dao.interrupt_running_jobs(utc_now())
             # "Skip" means "not now", so it lasts one launch
             await dao.clear_skips()
             await dao.commit()

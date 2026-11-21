@@ -6,25 +6,20 @@ import logging
 import random
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Any, Literal
+from typing import Any
 
 from channels_cleaner.api.errors import ApplyJobRunning
 from channels_cleaner.config import Settings
-from channels_cleaner.database import DAO, DatabaseManager
-from channels_cleaner.database.models import base
-from channels_cleaner.enums import ChatRole, Decision, DecisionStatus, JobStatus
+from channels_cleaner.database import DAO, DatabaseManager, utc_now
+from channels_cleaner.enums import ApplyStatus, ChatRole, Decision, DecisionStatus, ItemStatus, JobStatus
 from channels_cleaner.events import EventBus
 from channels_cleaner.services import decisions
-from channels_cleaner.telegram.gateway import TelegramGateway
-from channels_cleaner.telegram.types import FloodWaitError, GatewayError
+from channels_cleaner.telegram import FloodWaitError, GatewayError, TelegramGateway
 
 log = logging.getLogger(__name__)
 
-TOPIC = "apply"
+APPLY_TOPIC = "apply"
 
-#: the job as the UI sees it; "idle" before any job, the rest is written down as a JobStatus
-ApplyStatus = Literal["idle", "running", "finished", "cancelled", "error"]
-ItemStatus = Literal["queued", "running", "done", "failed"]
 
 MAX_FLOOD_RETRIES = 5
 
@@ -93,7 +88,7 @@ class ApplyService:
                 self.state = ApplyState(status="finished")
                 return self.state
 
-            job = await dao.create_job(account_id, len(pending), base.utc_now())
+            job = await dao.create_job(account_id, len(pending), utc_now())
             await dao.commit()
 
         self.state = ApplyState(
@@ -113,7 +108,7 @@ class ApplyService:
             ],
         )
         self.cancel_requested.clear()
-        self.bus.publish(TOPIC, "started", **self.state.snapshot())
+        self.bus.publish(APPLY_TOPIC, "started", **self.state.snapshot())
         self.task = asyncio.create_task(self.run(account_id), name="apply-job")
         return self.state
 
@@ -172,7 +167,7 @@ class ApplyService:
 
                 state.current = item.channel_id
                 item.status = "running"
-                self.bus.publish(TOPIC, "item_started", channel_id=item.channel_id, index=index)
+                self.bus.publish(APPLY_TOPIC, "item_started", channel_id=item.channel_id, index=index)
 
                 # The pause between actions happens while the item is already "running", so
                 # the UI shows the card being worked on rather than idling, then leaving.
@@ -198,7 +193,7 @@ class ApplyService:
                     item.status = "queued"
 
             await self.save_job(job_id, finished=True)
-            self.bus.publish(TOPIC, "finished", **state.snapshot())
+            self.bus.publish(APPLY_TOPIC, "finished", **state.snapshot())
 
     async def save_job(self, job_id: int, *, finished: bool = False) -> None:
         state = self.state
@@ -210,14 +205,14 @@ class ApplyService:
                 done=state.done,
                 failed=state.failed,
                 status=JobStatus(state.status) if finished else None,
-                finished_at=base.utc_now() if finished else None,
+                finished_at=utc_now() if finished else None,
             )
             await dao.commit()
 
     async def record(self, account_id: int, item: ApplyItem) -> None:
         async with self.database.session() as session:
             dao = DAO(session)
-            now = base.utc_now()
+            now = utc_now()
 
             if item.status == "failed":
                 await dao.mark_decision(
@@ -263,12 +258,12 @@ class ApplyService:
 
         if result == "done":
             state.done += 1
-            self.bus.publish(TOPIC, "item_done", channel_id=item.channel_id, done=state.done, failed=state.failed)
+            self.bus.publish(APPLY_TOPIC, "item_done", channel_id=item.channel_id, done=state.done, failed=state.failed)
 
         elif result == "failed":
             state.failed += 1
             self.bus.publish(
-                TOPIC,
+                APPLY_TOPIC,
                 "item_failed",
                 channel_id=item.channel_id,
                 error=item.error,
@@ -303,7 +298,7 @@ class ApplyService:
                 wait = exc.seconds + 1
                 self.state.flood_wait_until = time.time() + wait
                 self.bus.publish(
-                    TOPIC,
+                    APPLY_TOPIC,
                     "flood_wait",
                     channel_id=item.channel_id,
                     seconds=wait,
@@ -311,7 +306,7 @@ class ApplyService:
                 )
                 cancelled = await self.sleep(wait)
                 self.state.flood_wait_until = None
-                self.bus.publish(TOPIC, "flood_wait_over", channel_id=item.channel_id)
+                self.bus.publish(APPLY_TOPIC, "flood_wait_over", channel_id=item.channel_id)
 
                 if cancelled:
                     item.status = "queued"

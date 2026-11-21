@@ -3,10 +3,9 @@ from __future__ import annotations
 import httpx
 
 from channels_cleaner.context import AppContext
-from channels_cleaner.database.models import base
+from channels_cleaner.database import utc_now
 from channels_cleaner.enums import ChatKind, Decision, DecisionStatus, RoleFilter
-from channels_cleaner.services import decisions
-from channels_cleaner.services.sync import SCOPE_VERSION
+from channels_cleaner.services import SCOPE_VERSION, decisions
 from tests.conftest import get_json, login, open_dao, wait_for
 
 
@@ -134,7 +133,7 @@ async def test_changing_an_applied_mute_queues_the_way_back(client: httpx.AsyncC
     cid = (await get_json(client, "/api/channels"))["items"][0]["id"]
 
     async with open_dao(ctx) as dao:
-        now = base.utc_now()
+        now = utc_now()
         await decisions.decide(dao, account, cid, Decision.MUTE, now)
         await dao.mark_decision(account, cid, DecisionStatus.APPLIED, expected=Decision.MUTE, now=now)
 

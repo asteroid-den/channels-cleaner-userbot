@@ -6,28 +6,26 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from channels_cleaner.api.errors import FloodWait, InvalidCode, InvalidPassword, InvalidPhone, LoginStepUnexpected
-from channels_cleaner.database import DAO, DatabaseManager
-from channels_cleaner.database.models import base
+from channels_cleaner.database import DAO, DatabaseManager, utc_now
+from channels_cleaner.enums import AuthStatus
 from channels_cleaner.events import EventBus
-from channels_cleaner.telegram.gateway import TelegramGateway
-from channels_cleaner.telegram.types import (
+from channels_cleaner.telegram import (
     FloodWaitError,
     GatewayError,
     NotAuthorizedError,
     PasswordNeededError,
     QrExpiredError,
+    TelegramGateway,
     TgUser,
     new_session_name,
 )
 
 log = logging.getLogger(__name__)
 
-TOPIC = "auth"
-
-AuthStatus = Literal["starting", "unauthorized", "qr", "code", "password", "authorized"]
+AUTH_TOPIC = "auth"
 
 
 @dataclass(slots=True)
@@ -68,7 +66,7 @@ class AuthService:
         return self.state.user.id
 
     def publish(self) -> None:
-        self.bus.publish(TOPIC, "state", **self.state.snapshot())
+        self.bus.publish(AUTH_TOPIC, "state", **self.state.snapshot())
 
     def set_status(self, status: AuthStatus, **changes: Any) -> None:  # noqa: ANN401 - AuthState fields
         self.state = AuthState(status=status, user=self.state.user, **changes)
@@ -99,7 +97,7 @@ class AuthService:
 
         async with self.database.session() as session:
             dao = DAO(session)
-            await dao.upsert_account(user, profile.to_json() if profile else None, self.gateway.session, base.utc_now())
+            await dao.upsert_account(user, profile.to_json() if profile else None, self.gateway.session, utc_now())
             await dao.commit()
 
         self.state = AuthState(status="authorized", user=user)

@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, create_model
 from starlette.exceptions import HTTPException
 
-from channels_cleaner.telegram.types import FloodWaitError, GatewayError, NotAuthorizedError
+from channels_cleaner.telegram import FloodWaitError, GatewayError, NotAuthorizedError
 
 
 class BaseError(Exception):

@@ -5,7 +5,7 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from channels_cleaner.database.models import Account, ApplyJob, Channel, ChannelDecision, Setting
-from channels_cleaner.telegram.types import TgUser
+from channels_cleaner.telegram import TgUser
 
 
 class AccountDAO:

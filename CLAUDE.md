@@ -32,6 +32,13 @@ Code style: ruff ALL (120 cols), pyright, blank lines around blocks (see the use
 No leading underscores, as in mercury: this is an app, not a library, so module constants, helpers, methods and
 attributes are plain names (tests too). Kept only where a property sits on the field (`_client`, `_profile` in the
 gateways). Pydantic models set `from_attributes` themselves where they read the services' dataclasses.
+Packages re-export what other packages use: `from channels_cleaner.services import ApplyService, deck`,
+`from channels_cleaner.telegram import MockGateway, TgUser`, `from channels_cleaner.database import DAO, utc_now`.
+Inside a package, modules import each other's submodules (a package import there would be circular). Left out on
+purpose: KurigramGateway (imported lazily, so mock mode never loads Kurigram) and `api` (its modules are used as
+modules, `errors.X` / `models.X`, and an `api/__init__` importing routers would close the api → context → services
+cycle). The UI-only status Literals (AuthStatus, ApplyStatus, ItemStatus) live in `enums.py`, which breaks the
+api.models ↔ services loop.
 Commit style: small logical commits, conventional prefixes (`feat(api):`, `fix(ui):`, `design(tool):`…),
 **no `Co-Authored-By` trailer** (the user removed them from history on 2026-11-17). Branches for iterations after v1.
 

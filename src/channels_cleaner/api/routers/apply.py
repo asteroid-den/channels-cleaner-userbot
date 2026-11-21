@@ -4,7 +4,7 @@ from fastapi.responses import StreamingResponse
 from channels_cleaner.api import errors, models, utils
 from channels_cleaner.api.dependencies import AccountIdDep, ContextDep
 from channels_cleaner.api.sse import sse_response
-from channels_cleaner.services.apply import TOPIC
+from channels_cleaner.services import APPLY_TOPIC
 
 router = APIRouter(prefix="/apply", tags=["apply"])
 
@@ -27,4 +27,4 @@ async def get_apply_state(ctx: ContextDep) -> models.ApplyStateResponse:
 
 @router.get("/events", response_class=StreamingResponse, responses={**errors.error_responses(), **utils.EVENT_STREAM})
 async def get_apply_events(request: Request, ctx: ContextDep) -> StreamingResponse:
-    return sse_response(request, ctx.bus, TOPIC, ctx.apply.state.snapshot)
+    return sse_response(request, ctx.bus, APPLY_TOPIC, ctx.apply.state.snapshot)

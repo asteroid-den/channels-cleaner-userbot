@@ -10,17 +10,18 @@ from pydantic import BaseModel, ConfigDict, Field
 from channels_cleaner.api.errors import ErrorDetail
 from channels_cleaner.database import models
 from channels_cleaner.enums import (
+    ApplyStatus,
     ArchiveFilter,
+    AuthStatus,
     ChatKind,
     ChatRole,
     Decision,
     DecisionStatus,
+    ItemStatus,
     MediaKind,
     RoleFilter,
     SortMode,
 )
-from channels_cleaner.services.apply import ApplyStatus, ItemStatus
-from channels_cleaner.services.auth import AuthStatus
 
 THUMB_MEDIA = {MediaKind.PHOTO, MediaKind.VIDEO, MediaKind.ANIMATION}
 
