@@ -7,13 +7,15 @@ review screen. Runs on the user's own machine only (127.0.0.1, no auth, not a se
 
 Talk to the user in **Russian**. Code, comments, commits and README are in English.
 
-## Repo state (as of 2026-11-20)
+## Repo state (as of 2026-11-21)
 
 - **Released and public** (since 2026-11-17). Repo `asteroid-den/telegram-channels-cleaner` (was
-  `channels-cleaner-userbot`); PyPI `telegram-channels-cleaner` 1.0.2–1.4.1, image
+  `channels-cleaner-userbot`); PyPI `telegram-channels-cleaner` 1.0.2–1.6.0, image
   `ghcr.io/asteroid-den/telegram-channels-cleaner` (amd64+arm64, public). 1.0.0/1.0.1 shipped as
   `channels-cleaner`; that PyPI project is gone. Their user data dir was `channels-cleaner`: `config.py` moves it to
   `telegram-channels-cleaner` on first start. Tag `v0.9.0` = the old generic UI (local only).
+- **Commit only after the user's OK** for that change set (prepare, run the checks, show, wait); push only on
+  their word too.
 - PRs don't bump `__version__`: it is set in its own commit (`chore: bump version to X.Y.Z`) right before a release,
   then the user tags and pushes the tag. 1.5.1/1.5.2 were never tagged: everything after 1.5.0 ships as 1.6.0.
 - Work goes through branches + PRs into `main` (merge commits). Push only when the user says so
@@ -162,8 +164,14 @@ Key behaviours / decisions (agreed with the user):
   right above the deck (mockup D in `mockups/header-layout.html`). Switching kind is deliberately two clicks.
 - Decisions: keep/skip are final immediately; unsubscribe/mute/archive are `pending` until the
   apply job. "Skip" = back of the deck, forgotten on next launch. Undo = DELETE decision.
-- Full info (GetFullChannel) and pulse (raw `messages.GetHistory`, limit 100, no parsing) are
+- Full info (raw GetFullChannel) and pulse (raw `messages.GetHistory`, limit 100, no parsing) are
   fetched lazily per card with a semaphore of 1; cached 72 h. Rows without pulse are refetched.
+  Both invoke with `sleep_threshold=0`: a flood wait comes back at once instead of kurigram sleeping up to 30 s
+  while holding the semaphore. A 4xx (CHANNEL_PRIVATE…) is `RequestRefusedError` → `channels.full_error` +
+  `full_fetched_at`, answered 200 and not asked again until the TTL; a dropped connection stays a 502.
+  A flood wait sets a per-kind cooldown in ChannelsService ("full", "media"): later cards get 429 at once without
+  reaching Telegram; a flood on the history keeps the full info (pulse comes later). The UI's prefetch pauses as a
+  whole until `retry_after`, then resumes by itself.
 - Sort: "dead first" (never-posted, then oldest last post) or "most unread", each reversible;
   prefs stored per account in DB. Language/theme in localStorage, dark theme default.
 - Kurigram: `connect()` manually (start() would prompt interactively), QR via built-in
@@ -203,7 +211,8 @@ The user rejected the retro "press" look; wants modern digital but not generic S
 ## Open items
 
 - Card drag fix (fe87e4c) verified in Chrome only — user to confirm in Firefox.
-- Watch flood waits from the extra GetHistory call per card on big accounts; lower prefetch depth if needed.
+- Flood waits on big accounts: the cooldown and the paused prefetch handle them; lower PREFETCH_AHEAD if they
+  still come often.
 - What Telegram does when a creator leaves their own chat (`--allow-owner-leave`) is untested.
 - `deck.counts` runs ~14 small COUNT queries on each decision: fine at a few thousand chats.
 - Base images in the Dockerfile are pinned by tag + digest and CI's Python to 3.12.16: no Dependabot, bump by
